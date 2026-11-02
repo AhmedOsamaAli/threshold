@@ -19,7 +19,7 @@ from app.payments import pledges as rules
 from app.payments import receipts
 from app.payments.pledges import PledgeStatus
 from app.routes.receipts import HideReceipts, hidden
-from tests.founders_fakes import BUSINESS, CRON_SECRET, configure, make_client, race
+from tests.founders_fakes import BUSINESS, CRON_SECRET, configure, limits_header, make_client, race
 from tests.test_campaigns import EMAIL, start, table
 from tests.test_campaigns import world as campaign_world
 
@@ -69,9 +69,11 @@ def test_each_pledge_gets_a_private_receipt_once_and_walkin_keeps_only_its_diges
     client, paypal = world["client"], world["paypal"]
     campaign_id = start(world)
     answer = client.post(f"/api/campaigns/{campaign_id}/pledges", json={"flow": "buttons"}).json()
-    assert set(answer) == {"order_id", "approve_url", "receipt"}
-    redirect = client.post(f"/api/campaigns/{campaign_id}/pledges", json={"flow": "redirect"}).json()
-    assert redirect["approve_url"] and set(redirect) == {"order_id", "approve_url", "receipt"}
+    assert set(answer) == {"order_id", "approve_url", "receipt", "ref", "terms_hash"}
+    redirect = client.post(
+        f"/api/campaigns/{campaign_id}/pledges", json={"flow": "redirect"}, headers=limits_header(client),
+    ).json()
+    assert redirect["approve_url"] and set(redirect) == {"order_id", "approve_url", "receipt", "ref", "terms_hash", "limits"}
     given = [answer["receipt"], redirect["receipt"]]
     assert all(RECEIPT.fullmatch(receipt) for receipt in given) and given[0] != given[1]
 

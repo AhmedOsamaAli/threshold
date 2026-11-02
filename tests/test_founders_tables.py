@@ -19,6 +19,7 @@ from app.payments.records import CURRENCY, EMAIL
 from app.routes.campaigns import PLEDGE_REF, PledgeRequest
 from app.routes.hooks import CAPTURE_REFUSED
 from app.settlement import CAPTURE_OUTCOME
+from app.trust.keys import Signer, digest
 
 FOUNDERS = (campaigns, pledges, payouts, paypal_events)
 # Every status PayPal documents for a capture (Payments v2), and for a payout's item and batch (Payouts v1).
@@ -67,6 +68,9 @@ WRITTEN: dict[str, dict[str, list | int]] = {
         "capture_status": [*CAPTURE_STATUSES, *CAPTURE_OUTCOME, *(code for _, code in CAPTURE_REFUSED.values())],
         "error": list(ISSUES),
         "receipt_hash": [receipts.mint()[1]],
+        "terms_hash": [digest({"any": "terms"})],
+        "terms_sig": [Signer.load("").sign(b"x")],
+        "limits_jti": [uuid.uuid4().hex],
     },
     "payouts": {
         "campaign_id": [uuid.uuid4().hex[:16]],

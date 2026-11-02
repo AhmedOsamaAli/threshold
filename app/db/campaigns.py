@@ -165,6 +165,16 @@ class CampaignStore:
             row = (await connection.execute(query)).mappings().first()
         return dict(row) if row else None
 
+    async def limit_usage(self, jti: str, since: datetime) -> list[dict]:
+        """The pledges prepared under a limits token that still count against it: held or collected, or prepared since
+        `since` and not approved yet."""
+        query = select(pledges.c.campaign_id, pledges.c.amount_cents, pledges.c.status).where(
+            pledges.c.limits_jti == jti,
+            or_(pledges.c.status.in_(("authorized", "captured")), and_(pledges.c.status == "created", pledges.c.created_at >= since)),
+        )
+        async with self._engine.connect() as connection:
+            return [dict(row) for row in (await connection.execute(query)).mappings()]
+
     async def update_pledge(self, pledge_id: str, *, only: tuple[str, ...] = (), **values: object) -> bool:
         """Changes a pledge; with `only`, just while its status is one of them. False when nothing changed."""
         query = update(pledges).where(pledges.c.id == pledge_id)

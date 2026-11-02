@@ -135,6 +135,13 @@ pledges = Table(
     # The SHA-256 of the pledge's private receipt (app.payments.receipts), never the receipt itself; null for pledges
     # made before receipts.
     Column("receipt_hash", String(64), unique=True, index=True),
+    # The terms the pledge was made under, their SHA-256 and the service's signature over that hash and the pledge's
+    # public reference (app.trust.terms).
+    Column("terms", JSON),
+    Column("terms_hash", String(64)),
+    Column("terms_sig", String(128)),
+    # The limits token (its jti) an assistant prepared the pledge under; null for a pledge the person made on the page.
+    Column("limits_jti", String(32), index=True),
     _created(),
     _updated(),
 )

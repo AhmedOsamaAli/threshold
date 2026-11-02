@@ -12,7 +12,7 @@ import uuid
 from datetime import datetime, timedelta
 from typing import Any, Literal
 
-from fastapi import APIRouter, HTTPException, Path, Query, Request
+from fastapi import APIRouter, Header, HTTPException, Path, Query, Request
 from pydantic import BaseModel, Field
 
 from .. import auth
@@ -33,6 +33,8 @@ from ..payments.records import (
 )
 from ..ratelimit import client_ip
 from ..settlement import Refused
+from ..trust import limits as limit_rules
+from ..trust import terms as pledge_terms
 
 log = logging.getLogger("walkin")
 router = APIRouter(prefix="/api")
@@ -62,7 +64,7 @@ class MoneyTerms(BaseModel):
 class PledgeRequest(BaseModel):
     flow: Literal["buttons", "redirect"] = Field(
         "buttons", description="buttons: the page's PayPal buttons approve it; redirect: PayPal's approval link, for an "
-                               "assistant to hand to the person",
+                               "assistant to hand to the person, which needs the person's limits (the X-Limits header)",
     )
 
 
@@ -218,11 +220,16 @@ async def campaign_page(request: Request, campaign_id: str = Path(..., pattern=C
 @router.post("/campaigns/{campaign_id}/pledges")
 async def pledge(
     request: Request, body: PledgeRequest | None = None, campaign_id: str = Path(..., pattern=CAMPAIGN_ID),
+    limits_token: str | None = Header(None, alias=limit_rules.HEADER),
 ) -> dict:
     """A PayPal order (intent AUTHORIZE) that will hold one supporter's pledge. The page's PayPal buttons approve it by
     its id; with flow "redirect" the answer carries PayPal's approval link, and PayPal sends the supporter back to the
     campaign's page to hold it there. Either way the answer carries the pledge's private receipt, once: only its digest
-    is kept (app.payments.receipts)."""
+    is kept (app.payments.receipts).
+
+    The redirect flow is how an assistant prepares a pledge, so it needs the limits its person set (the X-Limits header,
+    app.trust.limits): the server refuses a pledge outside them before PayPal is asked for an approval link, whatever any
+    text says. The person still approves in PayPal. Every pledge is made under signed terms (app.trust.terms)."""
     state = request.app.state
     row = await campaign_row(request, campaign_id)
     campaign = campaign_of(row)
@@ -231,15 +238,42 @@ async def pledge(
     client = paypal_client(request)
     if not state.pledge_limiter.allow(client_ip(request)):
         raise HTTPException(429, "Too many pledges from this address. Try again later.")
+    if settings.hosted and not state.signer.persistent:
+        raise HTTPException(503, "Pledging is not set up on this server: its signing key is missing.")
     flow = body.flow if body else "buttons"
+    if flow != "redirect":
+        return await prepare_pledge(request, row, campaign, client, flow, None)
+    try:
+        limits = limit_rules.decode(state.signer, limits_token, state.now())
+    except limit_rules.LimitsError as exc:
+        raise Problem(exc.status, exc.detail, code=exc.code) from exc
+    async with state.limit_locks[hash(limits.jti) % len(state.limit_locks)]:
+        used = limit_rules.usage_of(await state.campaigns.limit_usage(limits.jti, state.now() - limit_rules.PREPARED_FOR))
+        try:
+            limit_rules.check(limits, row, used)
+        except limit_rules.LimitsError as exc:
+            raise Problem(exc.status, exc.detail, code=exc.code, limits=limit_rules.view(limits, used)) from exc
+        made = await prepare_pledge(request, row, campaign, client, flow, limits)
+    after = limit_rules.Usage(used.cents + row["amount_cents"], used.count + 1, used.campaigns | {campaign_id})
+    return {**made, "limits": limit_rules.view(limits, after)}
+
+
+async def prepare_pledge(
+    request: Request, row: dict, campaign: pledges.Campaign, client, flow: str, limits: limit_rules.Limits | None,
+) -> dict:
+    """Signs the campaign's terms for a new pledge, has PayPal make the order that carries their hash, and keeps the
+    pledge, started and not yet approved."""
+    state = request.app.state
+    campaign_id = row["id"]
     pledge_id = uuid.uuid4().hex
+    signed = pledge_terms.sign(state.signer, pledge_id, pledge_terms.terms_of(row))
     name = (row["offer"] or {}).get("name") or row["title"]
     base = public_base(request)
     try:
         order = await client.create_order(
             intent="AUTHORIZE", amount=campaign.amount, currency=campaign.currency,
             description=f"Founding supporter: {name}", custom_id=pledge_id, reference_id=campaign_id,
-            request_id=request_key("pledge", pledge_id),
+            invoice_id=signed.invoice_id, request_id=request_key("pledge", pledge_id),
             # PayPal adds token (the order id) and PayerID to these; the page holds the pledge it names.
             return_url=f"{base}/p/{campaign_id}?pledge={pledge_id}", cancel_url=f"{base}/p/{campaign_id}?cancelled=1",
         )
@@ -254,9 +288,13 @@ async def pledge(
     receipt, digest = receipts.mint()
     await state.campaigns.add_pledge(
         id=pledge_id, campaign_id=campaign_id, order_id=order_id, flow=flow, amount_cents=row["amount_cents"],
-        status="created", receipt_hash=digest,
+        status="created", receipt_hash=digest, created_at=state.now(), terms=signed.terms, terms_hash=signed.hash,
+        terms_sig=signed.signature, limits_jti=limits.jti if limits else None,
     )
-    return {"order_id": order_id, "approve_url": approve if flow == "redirect" else None, "receipt": receipt}
+    return {
+        "order_id": order_id, "approve_url": approve if flow == "redirect" else None, "receipt": receipt,
+        "ref": signed.ref, "terms_hash": signed.hash,
+    }
 
 
 async def release_late(request: Request, campaign: pledges.Campaign, found: dict, order: dict | None = None) -> bool:

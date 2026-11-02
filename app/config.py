@@ -131,6 +131,9 @@ class Settings:
     cron_secret: str = field(default_factory=lambda: _env("CRON_SECRET"))
     # Seconds between the in-app settlement passes (0 turns the loop off; the cron endpoint still settles).
     settle_every: float = field(default_factory=lambda: _env_or("SETTLE_EVERY_S", 180.0))
+    # The Ed25519 seed (32 bytes, base64) that signs each pledge's terms and the limits a person sets; its public key is
+    # GET /api/keys. Without it the key lives only as long as the process, and a hosted site then prepares no pledges.
+    signing_key: str = field(default_factory=lambda: _env("SIGNING_KEY"))
 
     @property
     def hosted(self) -> bool:

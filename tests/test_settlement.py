@@ -20,6 +20,7 @@ from tests.founders_fakes import (
     FakePayPal,
     configure,
     dev_sign_in,
+    limits_header,
     make_client,
     race,
     start_campaign,
@@ -318,7 +319,9 @@ def test_webhooks_are_verified_on_the_raw_body_and_handled_once(world):
 def test_a_pledge_approved_in_paypal_is_held_from_the_webhook_when_the_supporter_never_came_back(world):
     client = world["client"]
     campaign_id = start(world)
-    order_id = client.post(f"/api/campaigns/{campaign_id}/pledges", json={"flow": "redirect"}).json()["order_id"]
+    order_id = client.post(
+        f"/api/campaigns/{campaign_id}/pledges", json={"flow": "redirect"}, headers=limits_header(client),
+    ).json()["order_id"]
     approved = webhook(client, "WH-APPROVED", "CHECKOUT.ORDER.APPROVED", {"id": order_id, "status": "APPROVED"})
     assert approved.json() == {"status": "ok"}
     assert by_order(client)[order_id]["status"] == "authorized"

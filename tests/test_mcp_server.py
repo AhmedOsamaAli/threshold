@@ -420,6 +420,68 @@ def test_back_campaign_failures_are_plain_sentences():
     assert fail(call=paypal_down.walkin().back(CAMPAIGN_ID)) == "PayPal could not start the pledge. Try again in a moment."
 
 
+LIMITS_TOKEN = "eyJhbGciOiJFZERTQSJ9.eyJ2IjoxfQ.c2lnbmF0dXJl"  # shaped like the person's signed limits; this server never reads it
+
+
+def test_the_persons_limits_travel_with_the_pledge_and_nowhere_else():
+    api = founders()
+    asyncio.run(api.walkin(zone=UTC, limits=f" {LIMITS_TOKEN} ").back(CAMPAIGN_ID))
+    read, prepare = api.requests
+    assert "x-limits" not in read.headers and prepare.headers["x-limits"] == LIMITS_TOKEN
+
+
+def test_the_limits_come_from_the_environment_and_without_them_none_are_sent(monkeypatch):
+    monkeypatch.setenv("WALKIN_LIMITS", f"  {LIMITS_TOKEN}  ")
+    assert Walkin().limits == LIMITS_TOKEN
+    monkeypatch.setenv("WALKIN_LIMITS", "   ")
+    assert Walkin().limits is None
+    monkeypatch.delenv("WALKIN_LIMITS", raising=False)
+    api = founders()
+    asyncio.run(api.walkin().back(CAMPAIGN_ID))
+    assert Walkin().limits is None and all("x-limits" not in request.headers for request in api.requests)
+
+
+@pytest.mark.parametrize(("code", "detail", "words"), [
+    ("limits_required", "An assistant needs the limits its person set before it can prepare a pledge.",
+     "has not given this assistant any limits"),
+    ("limits_invalid", "These limits are not valid: ask the person to set them again.", "set new limits on Walk-in's Ask page"),
+    ("limits_expired", "These limits have ended: ask the person to set new ones.", "WALKIN_LIMITS"),
+    ("over_pledge_limit", "This pledge is 25.00 USD and the limit for one pledge is 20.00 USD.", "not yours"),
+    ("over_total_limit", "35.00 USD is already prepared or held under these limits, and 25.00 USD more would pass the limit "
+                         "of 50.00 USD in all.", "not yours"),
+    ("too_many_pledges", "The limits allow 2 pledges, and that many are already prepared or held.", "not yours"),
+    ("too_far", "This place is 12.0 km from the point you chose, and the limit is 5 km.", "not yours"),
+    ("wrong_kind", "This is a gym; the limits allow cafe, bakery only.", "not yours"),
+    ("already_pledged", "A pledge to this campaign was already prepared under these limits.", "not yours"),
+])
+def test_a_pledge_the_limits_refuse_is_explained_and_the_model_is_told_not_to_work_around_it(code, detail, words):
+    api = founders(**{f"/api/campaigns/{CAMPAIGN_ID}/pledges": lambda request: httpx.Response(
+        403, json={"detail": detail, "code": code, "limits": {"max_total": "50.00"}})})
+    said = fail(call=api.walkin(limits=LIMITS_TOKEN).back(CAMPAIGN_ID))
+    assert said.startswith("No pledge was prepared.") and words in said and LIMITS_TOKEN not in said
+    assert (code == "limits_required") or detail in said  # the server's own words, unless the person has set none
+    assert "look for another way" in said or code != "over_pledge_limit"
+
+
+def test_a_refusal_that_is_not_about_limits_is_told_as_the_server_says_it():
+    other = founders(**{f"/api/campaigns/{CAMPAIGN_ID}/pledges": lambda request: httpx.Response(
+        403, json={"detail": "Not allowed from here.", "code": "something_else"})})
+    assert fail(call=other.walkin(limits=LIMITS_TOKEN).back(CAMPAIGN_ID)) == "Not allowed from here."
+
+
+def test_a_prepared_pledge_tells_its_signed_reference_and_what_is_left_of_the_limits():
+    signed = founders(**{f"/api/campaigns/{CAMPAIGN_ID}/pledges": lambda request: httpx.Response(200, json={
+        "order_id": "5O190127TN364715T", "approve_url": APPROVE_URL, "ref": "9f2c41a07bd3", "terms_hash": "ab" * 32,
+        "limits": {"currency": "USD", "max_total": "60.00", "used": "25.00", "remaining": "35.00"}})})
+    lines = asyncio.run(signed.walkin(zone=UTC, limits=LIMITS_TOKEN).back(CAMPAIGN_ID)).splitlines()
+    assert (f"- The terms are signed (reference 9f2c41a07bd3); anyone can check them against PayPal's own record at "
+            f"{BASE}/proof/{CAMPAIGN_ID}.") in lines
+    assert "- Under the person's limits 25.00 of 60.00 USD is prepared or held so far, and 35.00 is left." in lines
+    assert all(LIMITS_TOKEN not in line for line in lines)
+    plain = asyncio.run(founders().walkin(zone=UTC).back(CAMPAIGN_ID))
+    assert "signed" not in plain and "limits" not in plain  # an older server says nothing of either
+
+
 NOT_PAYPAL = [
     "https://evil.example\\.paypal.com/checkoutnow?token=1",  # urlsplit: host on paypal.com; a browser: evil.example
     "https://evil.example\\.sandbox.paypal.com/checkoutnow?token=1",

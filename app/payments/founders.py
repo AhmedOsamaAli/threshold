@@ -7,6 +7,7 @@ their stores, rate limits and the settlement loop for the app's lifetime.
 """
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -17,10 +18,17 @@ from ..db.campaigns import CampaignStore
 from ..db.events import EventStore
 from ..ratelimit import RateLimiter
 from ..settlement import Settler
+from ..trust.keys import Signer
+from ..trust.proof import ProofBook
 from . import records
 
 PLEDGES_PER_HOUR = 20
 DRAFTS_PER_HOUR = 30
+# A person's page mints limits a few times; the proof is kept for a while, so its page costs little.
+LIMITS_PER_HOUR = 30
+PROOFS_PER_HOUR = 240
+# Pledges prepared under one limits token take one of these locks, so two of them never pass the same limit together.
+LIMIT_LOCKS = 64
 # A receipt's page reads it once as it opens and again after each step, and an assistant on request.
 RECEIPT_CHECKS_PER_HOUR = 120
 RECEIPT_WITHDRAWALS_PER_HOUR = 20
@@ -45,9 +53,9 @@ def paypal_config(state) -> dict:
 
 def install(app: FastAPI) -> None:
     """Adds the campaign and receipt endpoints and the callbacks to the app; the web app's pages are PAGES."""
-    from ..routes import business_campaigns, campaigns, hooks, receipts
+    from ..routes import business_campaigns, campaigns, hooks, receipts, trust
 
-    for area in (campaigns, hooks, receipts, business_campaigns):
+    for area in (campaigns, hooks, receipts, business_campaigns, trust):
         app.include_router(area.router)
     app.add_exception_handler(records.Problem, records.problem_response)
     app.state.origin_exempt = frozenset(getattr(app.state, "origin_exempt", frozenset()) | CALLBACKS)
@@ -67,6 +75,11 @@ async def running(app: FastAPI, settle_every: float | None) -> AsyncIterator[Non
     state.campaign_limiter = RateLimiter(10, 3600)
     state.receipt_limiter = RateLimiter(RECEIPT_CHECKS_PER_HOUR, 3600)
     state.receipt_withdraw_limiter = RateLimiter(RECEIPT_WITHDRAWALS_PER_HOUR, 3600)
+    state.signer = Signer.load(settings.signing_key)
+    state.proofs = ProofBook()
+    state.limits_limiter = RateLimiter(LIMITS_PER_HOUR, 3600)
+    state.proof_limiter = RateLimiter(PROOFS_PER_HOUR, 3600)
+    state.limit_locks = tuple(asyncio.Lock() for _ in range(LIMIT_LOCKS))
     if settle_every:
         state.settler.start(settle_every)
     try:

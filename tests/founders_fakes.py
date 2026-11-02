@@ -21,7 +21,7 @@ from tests.account_fakes import Clock, dev_sign_in
 
 __all__ = [
     "API", "BUSINESS", "CRON_SECRET", "OWNER_EMAIL", "WEBHOOK_HEADERS", "WEBHOOK_ID", "Clock", "FakePayPal",
-    "business_terms", "configure", "dev_sign_in", "make_client", "race", "start_campaign", "webhook",
+    "business_terms", "configure", "dev_sign_in", "limits_header", "make_client", "race", "start_campaign", "webhook",
 ]
 
 API = "https://api-m.sandbox.paypal.com"
@@ -133,6 +133,7 @@ class FakePayPal:
                 return self._authorize_order(order)
             if found.group(2) == "capture":
                 return failure(422, "UNPROCESSABLE_ENTITY", "ACTION_DOES_NOT_MATCH_INTENT")
+            self._show(order)
             return httpx.Response(200, json=order)
         found = re.fullmatch(r"/v2/payments/authorizations/([^/]+)/(capture|void|reauthorize)", path)
         if found:
@@ -153,6 +154,19 @@ class FakePayPal:
             "request": body,
         }
         return httpx.Response(200, json=self.orders[order_id])
+
+    def _show(self, order: dict) -> None:
+        """The order as PayPal shows it now: each hold's current status, and the collections made from its holds."""
+        payments = order["purchase_units"][0].get("payments")
+        if not payments:
+            return
+        for hold in payments.get("authorizations", []):
+            now = self.authorizations.get(hold["id"])
+            if now:
+                hold["status"] = now["status"]
+        made = [c for c in self.captures.values() if c["supplementary_data"]["related_ids"]["order_id"] == order["id"]]
+        if made:
+            payments["captures"] = made
 
     def _authorize_order(self, order: dict) -> httpx.Response:
         if order["id"] in self.unapproved:
@@ -305,6 +319,14 @@ def start_campaign(client: TestClient, clock: Clock, days: float = 10, **changes
     })
     assert created.status_code == 200, created.text
     return created.json()["id"]
+
+
+def limits_header(client: TestClient, **changes) -> dict:
+    """The X-Limits header an assistant sends: limits the person's page mints for it ($25 pledges, $100 in all)."""
+    body = {"max_pledge": "25.00", "max_total": "100.00", "max_count": 5, "days": 1, **changes}
+    made = client.post("/api/limits", json=body)
+    assert made.status_code == 200, made.text
+    return {"X-Limits": made.json()["token"]}
 
 
 def webhook(client: TestClient, event_id: str, kind: str, resource: dict, headers: dict | None = None) -> httpx.Response:

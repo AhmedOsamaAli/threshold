@@ -97,6 +97,10 @@ def upgrade() -> None:
         timestamp("captured_at", nullable=True),
         sa.Column("error", sa.String(64), nullable=True),
         sa.Column("receipt_hash", sa.String(64), nullable=True),
+        sa.Column("terms", sa.JSON(), nullable=True),
+        sa.Column("terms_hash", sa.String(64), nullable=True),
+        sa.Column("terms_sig", sa.String(128), nullable=True),
+        sa.Column("limits_jti", sa.String(32), nullable=True),
         timestamp("created_at"),
         timestamp("updated_at"),
         sa.ForeignKeyConstraint(
@@ -105,7 +109,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id", name=op.f("pk_pledges")),
         sa.UniqueConstraint("order_id", name=op.f("uq_pledges_order_id")),
     )
-    for column in ("campaign_id", "status", "authorization_id", "reauthorization_id", "capture_id"):
+    for column in ("campaign_id", "status", "authorization_id", "reauthorization_id", "capture_id", "limits_jti"):
         op.create_index(op.f(f"ix_pledges_{column}"), "pledges", [column])
     op.create_index(op.f("ix_pledges_receipt_hash"), "pledges", ["receipt_hash"], unique=True)
 

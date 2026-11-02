@@ -178,6 +178,7 @@ class PayPalClient:
         description: str,
         custom_id: str,
         reference_id: str | None = None,
+        invoice_id: str | None = None,
         brand_name: str = "Walk-in",
         request_id: str,
         return_url: str | None = None,
@@ -192,6 +193,8 @@ class PayPalClient:
             raise ValueError("custom_id must be 1 to 255 characters.")
         if reference_id is not None and not 1 <= len(reference_id) <= 256:
             raise ValueError("reference_id must be 1 to 256 characters.")
+        if invoice_id is not None and not 1 <= len(invoice_id) <= 127:
+            raise ValueError("invoice_id must be 1 to 127 characters.")
         currency = currency.upper()
         unit: dict[str, Any] = {
             "amount": {"currency_code": currency, "value": money(amount, currency)},
@@ -202,6 +205,8 @@ class PayPalClient:
             unit["description"] = text[:127]  # PayPal keeps 127 characters of it
         if reference_id:
             unit["reference_id"] = reference_id
+        if invoice_id:
+            unit["invoice_id"] = invoice_id
         context: dict[str, Any] = {
             "brand_name": brand_name[:127],
             "shipping_preference": "NO_SHIPPING",

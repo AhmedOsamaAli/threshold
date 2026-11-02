@@ -5,21 +5,19 @@ from __future__ import annotations
 
 import logging
 import uuid
-from typing import Any, Literal
+from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import ConfigDict, Field
 
 from .. import auth
 from ..payments import pledges
-from ..payments.records import CURRENCY, Problem, email_problem, minor
+from ..payments.records import CURRENCY, BusinessKind, Problem, email_problem, minor
 from ..ratelimit import client_ip
 from .campaigns import MoneyTerms, check_terms
 
 log = logging.getLogger("walkin")
 router = APIRouter(prefix="/api")
-BusinessKind = Literal["cafe", "restaurant", "bakery", "bar", "gym", "studio", "salon", "barber",
-                       "bookstore", "shop", "grocery", "kids", "services", "other"]
 
 
 class BusinessTerms(MoneyTerms):

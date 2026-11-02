@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Any
+from typing import Any, Literal, get_args
 
 from fastapi import HTTPException, Request
 from fastapi.responses import JSONResponse
@@ -14,6 +14,9 @@ from . import pledges
 from .paypal import ZERO_DECIMAL, PayPalClient, PayPalError, money
 
 CURRENCY = "USD"
+BusinessKind = Literal["cafe", "restaurant", "bakery", "bar", "gym", "studio", "salon", "barber",
+                       "bookstore", "shop", "grocery", "kids", "services", "other"]
+KINDS: tuple[str, ...] = get_args(BusinessKind)
 PROGRESS_KEYS = ("supporters", "goal", "remaining", "percent", "total", "funded")
 # PayPal's receiver email for a payout is at most 127 characters.
 EMAIL = re.compile(

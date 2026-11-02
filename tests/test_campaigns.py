@@ -26,6 +26,7 @@ from tests.founders_fakes import (
     business_terms,
     configure,
     dev_sign_in,
+    limits_header,
     make_client,
     race,
     webhook,
@@ -240,7 +241,7 @@ def test_supporters_pledge_with_the_buttons_or_a_redirect_and_are_held_once(worl
     assert (row["status"], row["flow"], row["amount_cents"]) == ("created", "buttons", 2500)
     assert client.post(f"/api/campaigns/{campaign_id}/pledges").json()["approve_url"] is None  # buttons by default
 
-    redirect = client.post(f"/api/campaigns/{campaign_id}/pledges", json={"flow": "redirect"}).json()
+    redirect = client.post(f"/api/campaigns/{campaign_id}/pledges", json={"flow": "redirect"}, headers=limits_header(client)).json()
     assert redirect["approve_url"] == f"https://www.sandbox.paypal.com/checkoutnow?token={redirect['order_id']}"
     assert client.post(f"/api/campaigns/{campaign_id}/pledges", json={"flow": "carrier pigeon"}).status_code == 422
 

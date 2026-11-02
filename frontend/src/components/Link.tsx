@@ -5,8 +5,8 @@ import { preloadLink } from "../preload";
 type LinkProps = AnchorHTMLAttributes<HTMLAnchorElement> & { href: string };
 
 /**
- * A link to another page of the app: a plain click changes the page in place; a modified click opens it as usual. What
- * the page needs (its code, its survey or kit) starts loading as the link is pointed at, touched or focused.
+ * A link to another page of the app: a plain click changes the page in place; a modified click opens it as usual. The
+ * page's code starts loading as the link is pointed at, touched or focused.
  */
 export function Link({ href, onClick, onPointerEnter, onFocus, ...rest }: LinkProps) {
   const navigate = useNavigate();

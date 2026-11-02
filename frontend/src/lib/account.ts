@@ -1,19 +1,5 @@
-/* Plain-language helpers for accounts: dates, initials, errors, and how a saved survey reads in My places. */
+/* Plain-language helpers for accounts: initials and errors. */
 import { ApiError } from "../api/client";
-import type { PlacesSurvey } from "../api/account";
-import type { RunStatus } from "../api/types";
-
-interface Zoned {
-  locale?: string;
-  timeZone?: string;
-}
-
-/** "Oct 22, 2026", in the reader's time zone unless another is given. */
-export function dateText(iso: string, { locale, timeZone }: Zoned = {}): string {
-  const when = new Date(iso);
-  if (Number.isNaN(when.getTime())) return "";
-  return when.toLocaleDateString(locale, { month: "short", day: "numeric", year: "numeric", timeZone });
-}
 
 /** "Ahmed Osama" -> "AO"; an account without a name falls back to its email's first letter. */
 export function initials(name: string, email: string): string {
@@ -37,13 +23,4 @@ export function plainError(error: unknown, fallback = "Something went wrong. Try
   }
   if (error instanceof TypeError) return "Walk-in can't be reached. Check your connection and try again.";
   return fallback;
-}
-
-export const SURVEY_STATUS: Record<RunStatus, string> = { running: "Running", complete: "Complete", failed: "Stopped" };
-
-/** What a saved survey came to, in a line: the concept or gap it leads with, or how far it got. */
-export function surveyOutcome(survey: Pick<PlacesSurvey, "status" | "headline">): string {
-  if (survey.status === "running") return "Still running";
-  if (survey.status === "failed") return survey.headline ? `Stopped early; leads with ${survey.headline}` : "Stopped before it finished";
-  return survey.headline ? `Leads with ${survey.headline}` : "Finished without a clear lead";
 }

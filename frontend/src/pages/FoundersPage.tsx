@@ -10,7 +10,7 @@ import { plainError } from "../lib/account";
 import { cssVars } from "../lib/css";
 import { heldText, inSandbox, moneyText, timeLeft } from "../lib/founders";
 import { useNow } from "../lib/useNow";
-import { EXAMPLES_URL, PLACES_URL } from "../lib/routes";
+import { MY_CAMPAIGNS_URL, START_CAMPAIGN_URL } from "../lib/routes";
 import { useSession } from "../state/session";
 
 type ListLoad = { state: "loading" } | { state: "shown"; campaigns: CampaignCard[] } | { state: "failed"; message: string };
@@ -173,9 +173,9 @@ function OpenCampaigns() {
         ) : (
           <div className="places-empty">
             <p>{order.by === "nearest" ? `No open campaigns within ${NEAR_KM} km of you yet.` : "No open campaigns yet."}</p>
-            <a className="text-link" href="#fd-start">
-              Start one from a launch kit <span aria-hidden="true">→</span>
-            </a>
+            <Link className="text-link" href={START_CAMPAIGN_URL}>
+              Start one <span aria-hidden="true">→</span>
+            </Link>
           </div>
         )
       ) : null}
@@ -183,7 +183,7 @@ function OpenCampaigns() {
   );
 }
 
-/** How an owner starts one: any ready launch kit, the finished examples' included. */
+/** How an owner starts one. */
 function StartOne() {
   const { user } = useSession();
   return (
@@ -191,13 +191,13 @@ function StartOne() {
       <SectionHead
         id="fd-start"
         no="02"
-        title="Start one from a launch kit"
-        note="Any ready launch kit can be the basis: yours from My places, or one of the finished examples."
+        title="Opening something? Start a campaign"
+        note="Describe your business, set your terms and share a page your neighbors can back with PayPal."
       />
       <ol className="fd-steps">
         <li>
-          <b>Open a launch kit</b>
-          <span>Its Founders tab starts a campaign for the business it was made for. Signing in with Google comes first.</span>
+          <b>Describe your business</b>
+          <span>What you are opening and where. Signing in with Google comes first.</span>
         </li>
         <li>
           <b>Set your terms</b>
@@ -205,17 +205,16 @@ function StartOne() {
         </li>
         <li>
           <b>Let AI write the page</b>
-          <span>It drafts the words from the survey&apos;s evidence. You edit them, and every line is checked again before it is published.</span>
+          <span>It drafts the words from your description. You edit them, and every line is checked again before it is published.</span>
         </li>
         <li>
           <b>Share it and print the poster</b>
-          <span>The kit&apos;s window poster carries a QR code to your campaign, with its terms in plain words.</span>
+          <span>The poster carries a QR code to your campaign, with its terms in plain words.</span>
         </li>
       </ol>
       <div className="fd-start-go">
-        <Link className="go" href="/founders/start">Opening your own business? Start without a survey</Link>
-        <Link className="go" href={EXAMPLES_URL}>
-          <span>Open a launch kit from the examples</span>
+        <Link className="go" href={START_CAMPAIGN_URL}>
+          <span>Start a campaign</span>
           <i aria-hidden="true">
             <svg viewBox="0 0 24 24">
               <path d="M4 12h15M13 6l6 6-6 6" />
@@ -223,8 +222,8 @@ function StartOne() {
           </i>
         </Link>
         {user ? (
-          <Link className="text-link" href={PLACES_URL}>
-            Or one of your own, in My places <span aria-hidden="true">→</span>
+          <Link className="text-link" href={MY_CAMPAIGNS_URL}>
+            Or follow the ones you run, in My campaigns <span aria-hidden="true">→</span>
           </Link>
         ) : null}
       </div>

@@ -59,7 +59,7 @@ export function StartCampaignPage() {
   return (
     <Page>
       <PageHead eyebrow="Founders your business" title="Opening something? Let the neighbors back it."
-        titleRef={titleRef} standfirst="Start with your own business, not a survey. Describe it, set the terms and share a campaign your neighbors can back with PayPal." />
+        titleRef={titleRef} standfirst="Describe your business, set the terms and share a campaign your neighbors can back with PayPal." />
       <section className="pg-sec start-campaign" aria-label="Start your campaign">
         {phase === "loading" ? <p role="status">Checking your sign-in...</p> : !user ? (
           <div className="prompt-card">
@@ -74,7 +74,7 @@ export function StartCampaignPage() {
             <div className="cp-said">
               <b>{business.name}</b> · {business.address}
               <p>{business.description}</p>
-              <p>Your description is not survey-verified evidence. AI may help write it, but cannot prove local demand.</p>
+              <p>Walk-in has not verified your description. AI may help write it, but cannot prove local demand.</p>
               <button type="button" className="text-button" onClick={() => { setBusiness(null); }}>
                 Change the business details and start a fresh draft
               </button>

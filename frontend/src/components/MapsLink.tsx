@@ -1,6 +1,6 @@
-import { googleMapsUrl } from "../lib/fullmap";
+import { googleMapsUrl } from "../lib/url";
 
-/** "Google Maps ↗" beside the site's name, in the brief and the survey's header: the spot itself, in a new tab. */
+/** "Google Maps ↗" beside a campaign's place: the spot itself, in a new tab. */
 export function MapsLink({ lat, lon }: { lat: number; lon: number }) {
   return (
     <a className="maps-link mono" href={googleMapsUrl(lat, lon)} target="_blank" rel="noopener noreferrer">

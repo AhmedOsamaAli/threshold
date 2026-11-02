@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { absoluteUrl } from "../../lib/kit";
+import { absoluteUrl } from "../../lib/url";
 import { receiptUrl } from "../../lib/routes";
 import { CopyButton } from "../CopyButton";
 

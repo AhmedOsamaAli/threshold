@@ -36,7 +36,7 @@ export interface SessionStore {
   signInWithGoogle: (credential: string) => Promise<boolean>;
   signInDev: (email: string, name: string) => Promise<boolean>;
   signOut: () => Promise<boolean>;
-  /** Deletes the account and the surveys saved to it; the session is then signed out. */
+  /** Deletes the account; the session is then signed out. */
   deleteAccount: () => Promise<boolean>;
   clearError: () => void;
 }

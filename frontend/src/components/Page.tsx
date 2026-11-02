@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, type ReactNode, type Ref } from "react";
 import { PRIVACY_URL } from "../lib/routes";
 import { Link } from "./Link";
-import type { TitleField } from "./SiteHeader";
 
 /** Focuses a page's title once, when the page appears, so screen readers start there; the page does not scroll. */
 export function useFocusOnMount(): (node: HTMLElement | null) => void {
@@ -13,7 +12,7 @@ export function useFocusOnMount(): (node: HTMLElement | null) => void {
   }, []);
 }
 
-/** "My places · Walk-in" in the tab while the page shows; back to "Walk-in" after. */
+/** "My campaigns · Walk-in" in the tab while the page shows; back to "Walk-in" after. */
 export function useDocumentTitle(title: string | null): void {
   useEffect(() => {
     if (!title) return;
@@ -24,8 +23,17 @@ export function useDocumentTitle(title: string | null): void {
   }, [title]);
 }
 
+/** One fact in a page's title block, like a drawing's. */
+export interface TitleField {
+  label: string;
+  /** One entry per line, so a value breaks where it should. */
+  lines: readonly string[];
+  /** Measured values read best in the drafting face. */
+  mono?: boolean;
+}
+
 interface PageHeadProps {
-  /** "Account · My places": the first word is set bold, like the survey's eyebrow. */
+  /** "Account · My campaigns": the first word is set bold. */
   eyebrow: string;
   title: string;
   titleRef?: Ref<HTMLHeadingElement>;
@@ -76,11 +84,7 @@ export function Page({ children, className }: { children: ReactNode; className?:
         {children}
         <footer className="page-foot mono">
           <p>
-            Walk-in · Taste data by{" "}
-            <a href="https://www.qloo.com" target="_blank" rel="noopener">
-              Qloo
-            </a>{" "}
-            · <Link href={PRIVACY_URL}>Privacy</Link>
+            Walk-in · <Link href={PRIVACY_URL}>Privacy</Link>
           </p>
         </footer>
       </div>

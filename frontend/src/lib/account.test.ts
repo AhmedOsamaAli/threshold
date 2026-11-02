@@ -1,14 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { ApiError } from "../api/client";
-import { dateText, initials, plainError, SURVEY_STATUS, surveyOutcome } from "./account";
+import { initials, plainError } from "./account";
 
 describe("account helpers", () => {
-  it("writes a date in the reader's time zone", () => {
-    expect(dateText("2026-10-22T23:30:00Z", { locale: "en-US", timeZone: "UTC" })).toBe("Oct 22, 2026");
-    expect(dateText("2026-10-22T23:30:00Z", { locale: "en-US", timeZone: "Africa/Cairo" })).toBe("Oct 23, 2026");
-    expect(dateText("nope")).toBe("");
-  });
-
   it("draws an account's initials", () => {
     expect(initials("Ada Lovelace", "ada@example.com")).toBe("AL");
     expect(initials("  ada  ", "ada@example.com")).toBe("A");
@@ -24,15 +18,6 @@ describe("account helpers", () => {
     expect(plainError(new ApiError("Request failed (502).", 502))).toBe("Walk-in's server had a problem. Try again in a moment.");
     expect(plainError(new ApiError("Too many requests. Try again in a while.", 429))).toBe("Too many requests. Try again in a while.");
     expect(plainError(new TypeError("Failed to fetch"))).toBe("Walk-in can't be reached. Check your connection and try again.");
-    expect(plainError(new Error("boom"), "Your places could not be loaded.")).toBe("Your places could not be loaded.");
-  });
-
-  it("says what a saved survey came to", () => {
-    expect(surveyOutcome({ status: "complete", headline: "Golden Hour" })).toBe("Leads with Golden Hour");
-    expect(surveyOutcome({ status: "complete", headline: null })).toBe("Finished without a clear lead");
-    expect(surveyOutcome({ status: "running", headline: "Golden Hour" })).toBe("Still running");
-    expect(surveyOutcome({ status: "failed", headline: "Bakery" })).toBe("Stopped early; leads with Bakery");
-    expect(surveyOutcome({ status: "failed", headline: null })).toBe("Stopped before it finished");
-    expect(SURVEY_STATUS).toEqual({ running: "Running", complete: "Complete", failed: "Stopped" });
+    expect(plainError(new Error("boom"), "Your campaigns could not be loaded.")).toBe("Your campaigns could not be loaded.");
   });
 });

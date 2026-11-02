@@ -130,7 +130,7 @@ export function SignInOptions({ why }: SignInOptionsProps) {
     return (
       <div className="signin" aria-busy="true">
         <div className="sk sk-pill" />
-        {note === "waking" ? <p className="signin-wait">Sign-in will be ready as soon as the survey engine wakes.</p> : null}
+        {note === "waking" ? <p className="signin-wait">Sign-in will be ready as soon as the server wakes.</p> : null}
       </div>
     );
   }
@@ -159,7 +159,7 @@ export function SignInOptions({ why }: SignInOptionsProps) {
       {google ? <GoogleButton clientId={google} /> : null}
       {!google && config.dev_login ? <DevSignIn busy={busy} /> : null}
       {!google && !config.dev_login ? (
-        <p className="signin-off">Sign-in isn&apos;t set up on this server yet, so nothing can be saved to an account here.</p>
+        <p className="signin-off">Sign-in isn&apos;t set up on this server yet, so no campaign can be started here.</p>
       ) : null}
       <p className="signin-status mono" role="status">
         {busy ? "Signing you in…" : ""}
@@ -172,8 +172,8 @@ export function SignInOptions({ why }: SignInOptionsProps) {
       {google || config.dev_login ? (
         <p className="signin-privacy">
           {google
-            ? "Walk-in keeps your Google account id, email, name and picture link, only to list your surveys. "
-            : "Walk-in keeps your email and name, only to list your surveys. "}
+            ? "Walk-in keeps your Google account id, email, name and picture link, only to show you're signed in and to list your campaigns. "
+            : "Walk-in keeps your email and name, only to show you're signed in and to list your campaigns. "}
           <Link className="text-link" href={PRIVACY_URL}>
             How Walk-in handles your data
           </Link>

@@ -6,10 +6,10 @@ import { engine, useEngine, type EngineNote as Note } from "../state/engine";
 /** What a screen reader hears as the note changes: each change once, never the seconds. */
 const SAID: Record<Note, string> = {
   none: "",
-  waking: "Waking the survey engine. It naps when nobody's around; waking takes about 30 seconds.",
-  ready: "The survey engine is ready.",
-  leaving: "The survey engine is ready.",
-  asleep: "The survey engine is still asleep. Try again to give it another nudge.",
+  waking: "Waking the server. It naps when nobody's around; waking takes about 30 seconds.",
+  ready: "The server is ready.",
+  leaving: "The server is ready.",
+  asleep: "The server is still asleep. Try again to give it another nudge.",
 };
 
 /** The seconds so far, and a track that creeps on toward the end without claiming to know when it comes. */
@@ -87,11 +87,11 @@ export function EngineNote() {
           {done ? "✓" : null}
         </span>
         {note === "asleep" ? (
-          <Words lead="The survey engine is still asleep" rest="give it another nudge" />
+          <Words lead="The server is still asleep" rest="give it another nudge" />
         ) : done ? (
           <Words lead="Ready" />
         ) : (
-          <Words lead="Waking the survey engine" rest={"it naps when nobody's around, about 30\u00a0s"} />
+          <Words lead="Waking the server" rest={"it naps when nobody's around, about 30\u00a0s"} />
         )}
         {note === "waking" ? <Waking since={since} /> : null}
         {done ? (

@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import type { User } from "../api/account";
 import { forgetGoogleChoice } from "../lib/google";
-import { PLACES_URL } from "../lib/routes";
+import { MY_CAMPAIGNS_URL } from "../lib/routes";
 import { session, useSession } from "../state/session";
 import { Avatar } from "./Avatar";
 import { Link } from "./Link";
@@ -60,7 +60,7 @@ function AccountControl({
       if (node && (trigger.current?.contains(node) || popup.current?.contains(node))) return;
       setOpen(false);
     };
-    // A link inside it (My places, the privacy note) moves the page on: the popup goes with the page it opened on.
+    // A link inside it (My campaigns, the privacy note) moves the page on: the popup goes with the page it opened on.
     const moved = () => {
       setOpen(false);
     };
@@ -140,12 +140,12 @@ function AccountControl({
                 role="menuitem"
                 tabIndex={-1}
                 className="account-item"
-                href={PLACES_URL}
+                href={MY_CAMPAIGNS_URL}
                 onClick={() => {
                   close(false);
                 }}
               >
-                <span>My places</span>
+                <span>My campaigns</span>
                 <span aria-hidden="true">→</span>
               </Link>
               <button
@@ -211,7 +211,7 @@ function AccountControl({
           }}
         >
           <p className="account-title">Sign in to Walk-in</p>
-          <SignInOptions why="Your surveys are then saved to My places, on any device. Running a survey never needs an account." />
+          <SignInOptions why="Sign in to start a campaign and follow the ones you run. Backing a campaign never needs an account." />
         </div>
       ) : null}
     </div>
@@ -220,7 +220,7 @@ function AccountControl({
 
 /**
  * The account control in the top bar. Signed out, "Sign in" opens the ways to sign in; signed in, the avatar opens a
- * menu with My places and Sign out, operated with the keyboard like any menu button. Until the server says who is
+ * menu with My campaigns and Sign out, operated with the keyboard like any menu button. Until the server says who is
  * signed in (a napping engine can take a minute), it shows signed out.
  */
 export function AccountMenu() {

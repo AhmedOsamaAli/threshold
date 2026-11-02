@@ -1,6 +1,6 @@
 import { useEffect, useId, useMemo, useState, type Ref } from "react";
 import { posterLine, SANDBOX_NOTICE } from "../../lib/founders";
-import { shortLink } from "../../lib/kit";
+import { shortLink } from "../../lib/url";
 import { fitLines, layoutPoster, POSTER_FONTS, POSTER_H, POSTER_M, POSTER_W, roughMeasure, type Block, type Measure, type PosterCampaign, type PosterInput } from "../../lib/poster";
 import { brandForPoster, DEFAULT_POSTER_APPEARANCE, type PosterAppearance } from "../../lib/posterBrand";
 import { qrPath } from "../../lib/qr";

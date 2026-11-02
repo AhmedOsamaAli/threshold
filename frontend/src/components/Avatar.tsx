@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { User } from "../api/account";
 import { initials } from "../lib/account";
 import { cx } from "../lib/css";
-import { safeUrl } from "../lib/format";
+import { safeUrl } from "../lib/url";
 
 /** The account's Google picture, or its initials on the highlighter when there is none or it fails to load. */
 export function Avatar({ user, className }: { user: User; className?: string }) {

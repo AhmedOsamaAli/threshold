@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { founders, paypalOf, type Campaign, type KitCampaign } from "../../api/founders";
 import { inSandbox } from "../../lib/founders";
-import { absoluteUrl, shortLink } from "../../lib/kit";
+import { absoluteUrl, shortLink } from "../../lib/url";
 import { isPlainClick } from "../../lib/navigation";
 import {
   brandForPoster, DEFAULT_POSTER_APPEARANCE, isPosterChoice, POSTER_DIRECTIONS, readPosterAppearance, type PosterAppearance,

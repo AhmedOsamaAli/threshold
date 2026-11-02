@@ -27,7 +27,7 @@ import {
   statusText,
   timeLeft,
 } from "../lib/founders";
-import { absoluteUrl } from "../lib/kit";
+import { absoluteUrl } from "../lib/url";
 import { useNavigate } from "../lib/navigation";
 import { campaignUrl, FOUNDERS_URL, type CampaignRoute } from "../lib/routes";
 import { useNow } from "../lib/useNow";

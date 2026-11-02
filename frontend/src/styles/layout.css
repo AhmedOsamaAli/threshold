@@ -1,5 +1,5 @@
 /* ---------- Top bar ---------- */
-/* Above Leaflet's controls (z-index 1000), so what drops from the bar, such as the account menu, covers the map. */
+/* Above the page, so what drops from the bar, such as the account menu, covers it. */
 .bar {
   position: sticky; top: 0; z-index: 1001;
   height: var(--bar-h);
@@ -12,33 +12,19 @@
 .mark { display: inline-flex; align-items: flex-end; gap: 9px; text-decoration: none; }
 .mark-word { font: 560 23px/1 var(--f-serif); letter-spacing: -.02em; white-space: nowrap; transform: translateY(1px); }
 
-/* ---------- The mark: footsteps that end at a door, following the survey (BrandMark.tsx) ---------- */
+/* ---------- The mark: footsteps that end at an open door (BrandMark.tsx) ---------- */
 .brand-mark { flex: none; width: 32px; height: 32px; overflow: visible; }
 .bm-ink { fill: none; stroke: var(--ink); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.bm-step { fill: var(--ink); opacity: .22; transition: opacity .5s var(--ease); }
-.bm-step[data-lit] { opacity: 1; }
-.bm-step[data-next] { animation: bmPulse 1.2s ease-in-out infinite; }
-.bm-light { fill: var(--yellow); opacity: 0; transition: opacity .5s ease; }
-.bm-spill { opacity: 0; transition: opacity .6s ease; }
+.bm-step { fill: var(--ink); }
+.bm-light { fill: var(--yellow); }
 .bm-spill-near { stop-color: var(--yellow); stop-opacity: .8; }
 .bm-spill-far { stop-color: var(--yellow); stop-opacity: 0; }
 .bm-leaf { fill: var(--blue-fill); }
 .bm-pane { fill: var(--on-blue); opacity: .4; }
 .bm-knob { fill: var(--yellow); }
 /* Closed, the door fills its frame; open, it folds onto its hinge and swings out to the right in perspective. */
-.bm-shut { transform-box: fill-box; transform-origin: right center; transition: transform .45s var(--ease); }
-.bm-open { transform-box: fill-box; transform-origin: left center; transform: scaleX(0); transition: transform .5s var(--ease); }
-.brand-mark:is([data-state="rest"], [data-state="arrived"]) .bm-shut { transform: scaleX(0); }
-.brand-mark:is([data-state="rest"], [data-state="arrived"]) .bm-open { transform: none; transition-delay: .3s; }
-.brand-mark:is([data-state="rest"], [data-state="arrived"]) .bm-light { opacity: 1; }
-.brand-mark:is([data-state="rest"], [data-state="arrived"]) .bm-spill { opacity: 1; transition-delay: .35s; }
-.brand-mark[data-state="arrived"] .bm-shut { transition-delay: .4s; }
-.brand-mark[data-state="arrived"] .bm-open { transition-delay: .7s; }
-.brand-mark[data-state="arrived"] .bm-light { transition-delay: .5s; }
-.brand-mark[data-state="arrived"] .bm-spill { transition-delay: .8s; }
-/* At the door while the agent works: ajar, the light glowing on and off through the gap. */
-.brand-mark[data-at-door] .bm-shut { transform: scaleX(.62); }
-.brand-mark[data-at-door] .bm-light { opacity: 1; animation: bmGlow 1.6s ease-in-out infinite; }
+.bm-shut { transform-box: fill-box; transform-origin: right center; transform: scaleX(0); }
+.bm-open { transform-box: fill-box; transform-origin: left center; }
 /* The walk-in, played on load, on every click or tap of the mark, and previewed on a mouse hover or keyboard focus
    (TopBar.tsx gives the mark a fresh element each time): each step lands in turn, the door closes behind the last one,
    then swings open and the light spills out. Reduced motion shows the open door at once (responsive.css). */
@@ -51,21 +37,9 @@
 @keyframes bmShut { from { transform: none; } }
 @keyframes bmOpen { from { transform: scaleX(0); } }
 @keyframes bmFade { from { opacity: 0; } }
-@keyframes bmPulse { 0%, 100% { opacity: .22; } 50% { opacity: 1; } }
-/* The light brightens rather than dims: see-through yellow over the dark theme's navy reads as olive, not light. */
-@keyframes bmGlow { 0%, 100% { fill: var(--yellow); } 50% { fill: #fff2b3; } }
 
-.bar-nav { display: flex; justify-content: center; gap: 24px; }
-.bar-nav a { position: relative; text-decoration: none; color: var(--fog); pointer-events: none; transition: color .4s; }
-.bar-nav a.ready { color: var(--ink); pointer-events: auto; }
-.bar-nav a.ready:hover { color: var(--blue); }
-.bar-nav a::after {
-  content: ""; position: absolute; left: 0; right: 0; bottom: -8px; height: 2px;
-  background: var(--blue-fill); transform: scaleX(0); transform-origin: left; transition: transform .5s var(--ease);
-}
-.bar-nav a.current::after { transform: scaleX(1); }
 .bar-end { display: flex; align-items: center; gap: 18px; }
-/* The finished examples, on every page: a word in the bar's drafting face, underlined in the pen on their own page. */
+/* Browse and Start a campaign, on every page: a word in the bar's drafting face, underlined in the pen on its own page. */
 .bar-link {
   position: relative; display: inline-flex; align-items: center; min-height: 36px; padding: 0 2px;
   color: var(--ink); text-decoration: none; white-space: nowrap; transition: color .3s;
@@ -76,29 +50,35 @@
   background: var(--blue-fill); transform: scaleX(0); transform-origin: left; transition: transform .5s var(--ease);
 }
 .bar-link[aria-current="page"]::after { transform: scaleX(1); }
-/* "See examples": an outlined pill, so it reads as a way in rather than a label; filled on the examples' own page. */
-.bar-examples {
+/* "Start a campaign": an outlined pill, so it reads as a way in rather than a label; filled on its own page. */
+.bar-start {
   gap: .55em; min-height: 32px; padding: 0 12px; border: 1px solid var(--ink); border-radius: 999px;
   transition: color .3s, background .3s, border-color .3s;
 }
-.bar-examples::after { display: none; }
-.bar-examples:hover { background: var(--ink); color: var(--on-ink); }
-.bar-examples[aria-current="page"] { background: var(--blue-fill); border-color: var(--blue-fill); color: var(--on-blue); }
-/* Phones: the mark, the examples, the account and the theme share the bar. */
+.bar-start::after { display: none; }
+.bar-start:hover { background: var(--ink); color: var(--on-ink); }
+.bar-start[aria-current="page"] { background: var(--blue-fill); border-color: var(--blue-fill); color: var(--on-blue); }
+/* Phones and the narrowest tablets: the pill says only "Start" (the link is named in full for screen readers either
+   way), and below 520 px the mark keeps its door without its word. */
+@media (max-width: 600px) {
+  .bar-start-more { display: none; }
+}
+@media (max-width: 520px) {
+  .bar .mark-word { display: none; }
+}
+/* Phones: the mark, Browse, Start, the account and the theme share the bar. */
 @media (max-width: 420px) {
   .bar { gap: 12px; }
   .bar-link { font-size: 10.5px; letter-spacing: .03em; }
-  .bar-examples { padding: 0 9px; min-height: 30px; }
-  .bar-examples-verb { display: none; }
+  .bar-start { padding: 0 9px; min-height: 30px; }
 }
 /* The narrowest phones (320 px): everything a little tighter, so nothing in the bar touches. */
 @media (max-width: 340px) {
   .bar { gap: 8px; }
   .bar .bar-end { gap: 6px; }
-  .mark { gap: 6px; }
-  .mark .mark-word { font-size: 19px; }
   .bar-end .account-signin { padding: 0 9px; }
-  .bar-examples { padding: 0 5px; letter-spacing: 0; font-size: 10px; }
+  .bar-link { letter-spacing: 0; font-size: 10px; }
+  .bar-start { padding: 0 5px; }
   .theme-toggle { width: 32px; height: 32px; }
 }
 .theme-toggle {

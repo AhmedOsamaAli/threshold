@@ -1,20 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { homeMove, isPlainClick } from "./navigation";
-
-describe("homeMove", () => {
-  it("goes back to the top of the brief, keeping it, when the brief is showing", () => {
-    expect(homeMove("brief")).toBe("top");
-  });
-
-  it("starts over on a fresh brief from a survey or a survey's link still loading", () => {
-    expect(homeMove("survey")).toBe("fresh");
-    expect(homeMove("opening")).toBe("fresh");
-  });
-
-  it("shows the brief as it was left from another page", () => {
-    expect(homeMove("page")).toBe("brief");
-  });
-});
+import { isPlainClick } from "./navigation";
 
 describe("isPlainClick", () => {
   const click = { button: 0, metaKey: false, ctrlKey: false, shiftKey: false, altKey: false };

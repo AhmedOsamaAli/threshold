@@ -1,6 +1,6 @@
 import { useEffect, useId, useState } from "react";
+import { WALK_IN_MS } from "../lib/brand";
 import { cssVars, cx } from "../lib/css";
-import { litSteps, MARK_STEPS, WALK_IN_MS, type MarkState } from "../lib/brand";
 
 /** Where each footstep falls on the way to the door: the ball of the foot, then the heel behind it. */
 const STEPS = [
@@ -11,19 +11,15 @@ const STEPS = [
 ] as const;
 
 interface BrandMarkProps {
-  state: MarkState;
-  progress: number;
   /** Counts the walks asked for after the one played on load; each new count plays the walk-in again from the start. */
   replay?: number;
 }
 
 /**
- * Footsteps that end at a door. On the brief the door stands open, swung out on its hinge, with light spilling onto
- * the sidewalk. A survey closes it and lights one step per fifth of its progress, the next one pulsing; at the door,
- * while the agent works, the door stands ajar with the light glowing; it swings open when the survey is done. The
- * walk-in plays on load and on each replay, then the mark follows the survey's state.
+ * Footsteps that end at an open door, with light spilling onto the sidewalk. The walk-in plays on load and on each
+ * replay: the steps land, the door shuts behind the last one, then swings open.
  */
-export function BrandMark({ state, progress, replay = 0 }: BrandMarkProps) {
+export function BrandMark({ replay = 0 }: BrandMarkProps) {
   // The walk that has played to its end: the mark plays the walk-in while a newer one is asked for.
   const [played, setPlayed] = useState(-1);
   useEffect(() => {
@@ -35,20 +31,11 @@ export function BrandMark({ state, progress, replay = 0 }: BrandMarkProps) {
     };
   }, [replay]);
   const intro = played !== replay;
-  const lit = litSteps(state, progress);
-  const atDoor = state === "walking" && lit === MARK_STEPS;
   const spill = `bm-spill${useId().replace(/[^\w-]/g, "")}`;
 
   return (
     // A new element for each walk, so its animations start again from the first step.
-    <svg
-      key={replay}
-      className={cx("brand-mark", intro && "intro")}
-      data-state={state}
-      data-at-door={atDoor ? "" : undefined}
-      viewBox="0 0 40 40"
-      aria-hidden="true"
-    >
+    <svg key={replay} className={cx("brand-mark", intro && "intro")} viewBox="0 0 40 40" aria-hidden="true">
       <defs>
         <linearGradient id={spill} x1="0" y1="0" x2="0" y2="1">
           <stop className="bm-spill-near" offset="0" />
@@ -58,13 +45,7 @@ export function BrandMark({ state, progress, replay = 0 }: BrandMarkProps) {
       <polygon className="bm-spill" points="22.5,33.5 32.5,33.5 36,39 19,39" fill={`url(#${spill})`} />
       <path className="bm-ink" d="M20.5 33.5H39" />
       {STEPS.map(({ ball, heel }, index) => (
-        <g
-          key={ball[0]}
-          className="bm-step"
-          data-lit={index < lit ? "" : undefined}
-          data-next={state === "walking" && index === lit ? "" : undefined}
-          style={cssVars({ "--i": index })}
-        >
+        <g key={ball[0]} className="bm-step" style={cssVars({ "--i": index })}>
           <ellipse cx={ball[0]} cy={ball[1]} rx="1.7" ry="1.3" />
           <circle cx={heel[0]} cy={heel[1]} r=".95" />
         </g>

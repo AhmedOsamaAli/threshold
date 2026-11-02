@@ -104,8 +104,8 @@ export interface KitCampaign {
   deadline: string;
 }
 
-/** A campaign as My places lists it (GET /api/me/places). */
-export interface PlacesCampaign {
+/** A campaign as My campaigns lists it (GET /api/me/campaigns). */
+export interface MyCampaign {
   id: string;
   title: string;
   status: CampaignStatus;

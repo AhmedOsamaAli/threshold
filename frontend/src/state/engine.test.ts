@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ENGINE_ASLEEP, sleep, WAKE_BUDGET_MS, type EngineProbe } from "../api/client";
+import { sleep, WAKE_BUDGET_MS, type EngineProbe } from "../api/client";
 import {
   createEngineStore,
   FADE_MS,
@@ -119,10 +119,7 @@ describe("the engine store", () => {
   it("gives up after two minutes, and Try again starts over", async () => {
     const { engine, look } = store(answering("waking"));
     engine.start();
-    const waiting = engine.whenReady();
-    const failed = expect(waiting).rejects.toThrow(ENGINE_ASLEEP);
     await vi.advanceTimersByTimeAsync(WAKE_BUDGET_MS);
-    await failed;
     expect(engine.get()).toMatchObject({ phase: "asleep", note: "asleep" });
     expect(look.mock.calls.length).toBeLessThanOrEqual(WAKE_BUDGET_MS / POLL_MS);
     look.mockImplementation(answering("ready", 500));
@@ -130,42 +127,6 @@ describe("the engine store", () => {
     expect(engine.get()).toMatchObject({ phase: "waking", note: "waking", since: WAKE_BUDGET_MS });
     await vi.advanceTimersByTimeAsync(500);
     expect(engine.get()).toMatchObject({ phase: "ready", note: "ready" });
-  });
-
-  it("is ready at once when the engine answered lately, and looks again first after a quiet spell", async () => {
-    const { engine, look } = store(answering("ready"));
-    engine.start();
-    await vi.advanceTimersByTimeAsync(0);
-    await expect(engine.whenReady()).resolves.toBeUndefined();
-    expect(look).toHaveBeenCalledTimes(1);
-    await vi.advanceTimersByTimeAsync(FRESH_MS + 1);
-    const ready = engine.whenReady();
-    expect(engine.get().phase).toBe("checking");
-    await vi.advanceTimersByTimeAsync(0);
-    await expect(ready).resolves.toBeUndefined();
-    expect(look).toHaveBeenCalledTimes(2);
-  });
-
-  it("waits for a nap to end before a survey starts, without failing it", async () => {
-    // The front door says "waking" until the engine is up, 40 s in.
-    const { engine } = store(() => Promise.resolve(Date.now() >= 40_000 ? "ready" : "waking"));
-    const order: string[] = [];
-    void engine.whenReady().then(() => order.push("survey starts"));
-    await vi.advanceTimersByTimeAsync(39_999);
-    expect(order).toEqual([]);
-    expect(engine.get().note).toBe("waking");
-    await vi.advanceTimersByTimeAsync(1);
-    expect(order).toEqual(["survey starts"]);
-  });
-
-  it("lets go of a wait that is abandoned, and keeps looking for everyone else", async () => {
-    const { engine } = store(hanging);
-    engine.start();
-    const abort = new AbortController();
-    const waiting = engine.whenReady(abort.signal);
-    abort.abort();
-    await expect(waiting).rejects.toMatchObject({ name: "AbortError" });
-    expect(engine.get().phase).toBe("checking");
   });
 
   it("learns from other requests: an answer settles a wake at once, a napping answer shows the note", async () => {

@@ -1,8 +1,7 @@
 import "../styles/founders.css";
 import { useRef, useState, type SyntheticEvent } from "react";
-import { api } from "../api/client";
+import { api, type GeocodeResult } from "../api/client";
 import { BUSINESS_KINDS, paypalOf, type BusinessDescription, type BusinessKind } from "../api/founders";
-import type { GeocodeResult } from "../api/types";
 import { Page, PageHead, useDocumentTitle, useFocusOnMount } from "../components/Page";
 import { SignInOptions } from "../components/SignIn";
 import { CampaignForm } from "../components/founders/CampaignForm";

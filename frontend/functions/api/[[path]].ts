@@ -1,10 +1,10 @@
 /**
  * Walk-in's front door. Cloudflare Pages serves the web app, which never sleeps, and this function hands every /api
- * request to the backend on Render, so the app, its sign-in cookie and the survey stream share one origin.
+ * request to the backend on Render, so the app and its sign-in cookie share one origin.
  *
  * Render's free instance sleeps after 15 idle minutes and takes about a minute to wake. Until it answers, API calls get
  * 503 {"waking": true} from here instead of Render's own page, and the app shows its own note while it retries; the
- * answers the backend marks shareable (examples, kits, presets, config) are kept at the edge meanwhile, and still open.
+ * answers the backend marks shareable (the public settings) are kept at the edge meanwhile, and still open.
  * How: ../_lib/proxy.ts; what is kept, and for how long: ../_lib/cache.ts.
  */
 import type { EdgeCache } from "../_lib/cache";

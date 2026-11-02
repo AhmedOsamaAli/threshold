@@ -99,17 +99,6 @@ export function progressShare(progress: Pick<CampaignProgress, "supporters" | "g
   return Math.max(0, Math.min(1, progress.supporters / progress.goal));
 }
 
-/** "12 of 40 neighbors". */
-export function supportersText(progress: Pick<CampaignProgress, "supporters" | "goal">): string {
-  return `${progress.supporters} of ${progress.goal} neighbors`;
-}
-
-/** "28 more by Nov 30", or "Goal met". */
-export function neededText(progress: Pick<CampaignProgress, "remaining" | "funded">, deadline: string, zone: Zoned = {}): string {
-  if (progress.funded) return "Goal met";
-  return `${progress.remaining} more by ${dayText(deadline, zone)}`;
-}
-
 /**
  * The money behind a campaign, as its state has it, for the campaign's card: held by PayPal while it is open, being
  * collected once it met its goal, collected at the end, released when it missed its goal or was cancelled. `total` is

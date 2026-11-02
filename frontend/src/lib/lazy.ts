@@ -1,5 +1,5 @@
 /* The parts of the app that load when first needed, in chunks of their own (chunks.ts), so the first screen loads only
-   what it shows; and the idle moments the app uses to load the next part before it is asked for. */
+   what it shows. */
 import { createElement, lazy, useState, type ComponentType } from "react";
 
 /** A module loaded on first use, once: a later call joins the load under way, and one after a failure tries again. */
@@ -80,18 +80,4 @@ export function lazyComponent<M, P extends object>(module: LazyModule<M>, pick: 
     return loaded ? createElement(pick(loaded), props) : createElement(Lazy as ComponentType<P>, props);
   }
   return LazyPart;
-}
-
-/** Runs `work` once the browser is idle, or after `timeout` ms at the latest; the function it returns cancels that. */
-export function whenIdle(work: () => void, timeout = 3000): () => void {
-  if (typeof window.requestIdleCallback === "function") {
-    const handle = window.requestIdleCallback(work, { timeout });
-    return () => {
-      window.cancelIdleCallback(handle);
-    };
-  }
-  const timer = window.setTimeout(work, 500);
-  return () => {
-    window.clearTimeout(timer);
-  };
 }

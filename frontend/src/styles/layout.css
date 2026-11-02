@@ -91,29 +91,9 @@
 .theme-toggle svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 
 /* ---------- Stage: the sheet on the left, the map pinned on the right ---------- */
-.stage { display: grid; grid-template-columns: minmax(460px, 46%) minmax(0, 1fr); min-height: calc(100vh - var(--bar-h)); }
 /* Once a survey runs, the results take the width and the map docks beside them, small and sticky (map.css). On phones
    and tablets it is a strip at the top of the results instead. The results sit above the map, so the sticky status
    line covers the strip as it scrolls away rather than going under it. */
-@media (min-width: 981px) {
-  .stage[data-mode="survey"] { grid-template-columns: minmax(0, 1fr) 360px; }
-}
-.stage[data-mode="survey"] > .sheet { z-index: 1; }
-.stage[data-mode="survey"] > .map-frame { isolation: isolate; }
-.sheet {
-  container: sheet / inline-size;
-  position: relative;
-  min-width: 0;
-  border-right: var(--rule);
-  background-color: var(--paper);
-  background-image:
-    linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
-    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
-  background-size: 32px 32px;
-  background-position: -1px -1px;
-}
-.sec { padding: 56px var(--pad) 64px; border-bottom: var(--rule); }
-.sec.reveal { animation: secIn .9s var(--ease) both; }
 @keyframes secIn { from { opacity: 0; transform: translateY(28px); } }
 
 /* ---------- Section heads: number in the margin, a broadsheet headline, a serif standfirst ---------- */
@@ -122,17 +102,7 @@
 .sec-title { font: 400 clamp(34px, 3.3vw, 52px)/1.02 var(--f-serif); letter-spacing: -.024em; text-wrap: balance; }
 .sec-note { grid-column: 2; max-width: 46ch; margin-top: 12px; font-size: 18px; line-height: 1.4; color: var(--text-2); }
 
-.sheet-foot {
-  display: grid; gap: 8px; padding: 30px var(--pad) 44px;
-  color: var(--ash); font-size: 11px; text-transform: none; letter-spacing: .01em; line-height: 1.6;
-}
-.sheet-foot a { color: var(--blue); text-decoration: none; }
-.sheet-foot a:hover { text-decoration: underline; text-underline-offset: 3px; }
-.section-error { color: var(--red); text-transform: none; letter-spacing: .01em; }
-
 /* ---------- The site's name: in the brief's site line and the survey's header, with its link to Google Maps ---------- */
-.site-name { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 16px; margin: 12px 0 18px; }
-.site-name .site-title { margin: 0; }
 .maps-link {
   flex: none; color: var(--blue); text-transform: none; letter-spacing: .02em; white-space: nowrap;
   text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--blue) 35%, transparent); text-underline-offset: 3px;
@@ -141,44 +111,15 @@
 .maps-link:hover { color: var(--ink); text-decoration-color: currentColor; }
 .maps-link:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; border-radius: 2px; }
 /* A pin placed by hand goes by its coordinates until its address comes: in the drafting face, as on the map's card. */
-.chosen strong.coords { font: 500 15px/1.3 var(--f-mono); letter-spacing: .04em; font-variant-numeric: tabular-nums; }
 
 /* ---------- The brief's next step, once a site is chosen (Brief.tsx, NextStep.tsx, SearchBox.tsx) ---------- */
 /* The card scrolls into view under the bar, whole when it fits; its primary action stays at the foot of the screen
    while the card is on it, so it is never a scroll away. */
-.brief-card { scroll-margin: calc(var(--bar-h) + 14px) 0 14px; }
-.brief-card .go-row {
-  position: sticky; bottom: 0; z-index: 1;
-  margin: -12px 0; padding: 12px 0 calc(12px + env(safe-area-inset-bottom, 0px));
-  background: linear-gradient(to bottom, color-mix(in srgb, var(--card) 0%, transparent), var(--card) 12px);
-}
 /* The site line takes focus once a site is picked in the brief; it is not a control, so it draws no ring. */
 .chosen:focus { outline: none; }
 /* A search box that says the site set: its arrow steps back to an outline, leaving the next step the one primary action.
    Typing something new brings it back. */
-.capsule[data-settled] .capsule-go { background: transparent; box-shadow: inset 0 0 0 1.5px var(--ink); }
-.capsule[data-settled] .capsule-go svg { stroke: var(--ink); }
 /* Phones and tablets: "Use this spot" at the foot of the screen while the brief is out of sight below the map. */
-.next-pill { display: none; }
-@media (max-width: 980px) {
-  .next-pill {
-    position: fixed; z-index: 1000; left: 16px; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px));
-    display: flex; align-items: center; gap: 14px; width: fit-content; max-width: calc(100% - 32px); height: 58px;
-    margin: 0 auto; padding: 0 7px 0 22px;
-    background: var(--blue-fill); color: var(--on-blue); border-radius: 999px; box-shadow: var(--shadow);
-    text-align: left;
-    animation: nextIn .3s var(--ease) both;
-  }
-  .next-pill-text { display: grid; gap: 2px; min-width: 0; }
-  .next-pill b { font: 500 16px/1.15 var(--f-sans); white-space: nowrap; }
-  .next-pill-site { overflow: hidden; font: 400 12.5px/1.25 var(--f-sans); white-space: nowrap; text-overflow: ellipsis; opacity: .85; }
-  .next-pill i { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: var(--on-blue); }
-  .next-pill svg { width: 20px; height: 20px; fill: none; stroke: var(--blue-fill); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-  .next-pill:hover { background: var(--ink); color: var(--on-ink); }
-  .next-pill:hover i { background: var(--on-ink); }
-  .next-pill:hover svg { stroke: var(--ink); }
-  .next-pill:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
-}
 @keyframes nextIn { from { opacity: 0; transform: translateY(14px); } }
 
 /* ---------- View transitions ---------- */

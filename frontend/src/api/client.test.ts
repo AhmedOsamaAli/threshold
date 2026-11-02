@@ -1,22 +1,20 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  ahead,
+  api,
   ApiError,
   ENGINE_ASLEEP,
   fetchAwake,
-  fetched,
   fromEdge,
   isWaking,
   probeEngine,
   request,
   retryAfterMs,
-  runPath,
   WAKE_BUDGET_MS,
   watchEngine,
   type WakeDeps,
 } from "./client";
 
-const NAP = { detail: "The survey engine is waking up; after a quiet spell that takes up to a minute.", waking: true };
+const NAP = { detail: "The server is waking up; after a quiet spell that takes up to a minute.", waking: true };
 
 function json(body: unknown, status = 200, headers: Record<string, string> = {}): Response {
   return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", ...headers } });
@@ -93,7 +91,7 @@ describe("fetchAwake", () => {
 
   it("passes every other answer through at once, errors included", async () => {
     const { deps, slept } = fakeDeps(json({ detail: "Sign in first." }, 401), json({ detail: "Busy" }, 503));
-    expect((await fetchAwake("/api/me/places", {}, deps)).status).toBe(401);
+    expect((await fetchAwake("/api/me/campaigns", {}, deps)).status).toBe(401);
     expect((await fetchAwake("/api/auth/google", {}, deps)).status).toBe(503);
     expect(slept).toEqual([]);
   });
@@ -170,59 +168,29 @@ describe("fromEdge", () => {
 describe("request", () => {
   it("sleeps through a nap, then reads the answer", async () => {
     vi.useFakeTimers();
-    const fetchMock = vi.fn().mockResolvedValueOnce(napping("3")).mockResolvedValueOnce(json([{ id: "ues" }]));
+    const fetchMock = vi.fn().mockResolvedValueOnce(napping("3")).mockResolvedValueOnce(json([{ id: "c1" }]));
     vi.stubGlobal("fetch", fetchMock);
-    const answer = request<{ id: string }[]>("/api/presets");
+    const answer = request<{ id: string }[]>("/api/campaigns");
     await vi.advanceTimersByTimeAsync(2999);
     expect(fetchMock).toHaveBeenCalledTimes(1);
     await vi.advanceTimersByTimeAsync(1);
-    await expect(answer).resolves.toEqual([{ id: "ues" }]);
+    await expect(answer).resolves.toEqual([{ id: "c1" }]);
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it("turns any other failure into an ApiError in the server's words", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(json({ detail: "Sign in first." }, 401)));
-    await expect(request("/api/me/places")).rejects.toMatchObject({ status: 401, message: "Sign in first." });
+    await expect(request("/api/me/campaigns")).rejects.toMatchObject({ status: 401, message: "Sign in first." });
   });
 });
 
-describe("answers fetched ahead", () => {
-  // `ahead` is the app's one cache: each test reads paths of its own.
-  it("opens a finished survey from the one answer fetched ahead, then from memory", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(json({ id: "a1", status: "complete", events: [] }));
+describe("address search", () => {
+  it("asks the server for the matches of what was typed, its words encoded", async () => {
+    const matches = [{ label: "14 Cedar Street, Brooklyn", lat: 40.6782, lon: -73.9442 }];
+    const fetchMock = vi.fn().mockResolvedValue(json(matches));
     vi.stubGlobal("fetch", fetchMock);
-    ahead.prefetch(runPath("a1"));
-    ahead.prefetch(runPath("a1"));
-    await expect(fetched(runPath("a1"))).resolves.toMatchObject({ id: "a1", status: "complete" });
-    await expect(fetched(runPath("a1"))).resolves.toMatchObject({ id: "a1" });
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-  });
-
-  it("takes a 404 fetched ahead as the server's last word, without asking again", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(json({ detail: "Not found." }, 404));
-    vi.stubGlobal("fetch", fetchMock);
-    ahead.prefetch(runPath("gone"));
-    await expect(fetched(runPath("gone"))).rejects.toMatchObject({ status: 404 });
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-  });
-
-  it("asks again, in full, when the early ask met the engine napping", async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce(napping()).mockResolvedValueOnce(json({ id: "nap", status: "complete" }));
-    vi.stubGlobal("fetch", fetchMock);
-    ahead.prefetch(runPath("nap"));
-    await expect(fetched(runPath("nap"))).resolves.toMatchObject({ id: "nap" });
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-  });
-
-  it("asks the server when nothing was fetched ahead, and stops at once when the view goes", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(json({ id: "cold", status: "complete" }));
-    vi.stubGlobal("fetch", fetchMock);
-    await expect(fetched(runPath("cold"))).resolves.toMatchObject({ id: "cold" });
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    ahead.prefetch(runPath("left"));
-    const view = new AbortController();
-    view.abort();
-    await expect(fetched(runPath("left"), view.signal)).rejects.toMatchObject({ name: "AbortError" });
+    await expect(api.geocode("14 Cedar St & Co")).resolves.toEqual(matches);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/geocode?q=14+Cedar+St+%26+Co");
   });
 });
 

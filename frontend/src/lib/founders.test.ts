@@ -19,7 +19,6 @@ import {
   moneyFact,
   moneyTermsOf,
   moneyText,
-  neededText,
   normalizeAmount,
   payoutText,
   perkProblem,
@@ -28,7 +27,6 @@ import {
   progressNews,
   progressShare,
   statusText,
-  supportersText,
   termsProblems,
   timeLeft,
   wordsProblems,
@@ -88,12 +86,6 @@ describe("the deadline in words", () => {
 
 describe("progress in words", () => {
   const progress = { supporters: 12, goal: 40, remaining: 28, percent: 30, total: "300.00", funded: false };
-
-  it("says how many have joined and how many more are needed by when", () => {
-    expect(supportersText(progress)).toBe("12 of 40 neighbors");
-    expect(neededText(progress, NOV_30, UTC)).toBe("28 more by Nov 30");
-    expect(neededText({ remaining: 0, funded: true }, NOV_30, UTC)).toBe("Goal met");
-  });
 
   it("fills the bar from the count, never past full", () => {
     expect(progressShare(progress)).toBe(0.3);

@@ -87,7 +87,7 @@ export function backendAsleep(response: Response): boolean {
 
 export function wakingResponse(): Response {
   return Response.json(
-    { detail: "The survey engine is waking up; after a quiet spell that takes up to a minute.", waking: true },
+    { detail: "The server is waking up; after a quiet spell that takes up to a minute.", waking: true },
     { status: 503, headers: { "retry-after": "3", "cache-control": "no-store" } },
   );
 }
@@ -121,7 +121,7 @@ const SLOW = Symbol("slow");
 /**
  * Answers an /api request. `x-walkin-cache` says how: "hit" from the edge's fresh copy, "stale" from its stale copy
  * while the backend could not answer, "miss" from the backend with an answer now kept at the edge, and "bypass" for
- * everything the edge does not keep (other methods, the survey stream, receipts, private answers, errors, the waking
+ * everything the edge does not keep (other methods, receipts, private answers, errors, the waking
  * note).
  */
 export async function frontDoor(request: Request, deps: FrontDoorDeps): Promise<Response> {

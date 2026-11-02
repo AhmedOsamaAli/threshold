@@ -108,7 +108,6 @@
 /* ---------- My places: who is signed in, and the ways out ---------- */
 .place-kicker { display: block; margin-bottom: 5px; font-size: 10px; color: var(--blue); transition: color .6s var(--ease); }
 .place-row:hover .place-kicker, .place-row:focus-visible .place-kicker { color: var(--on-yellow-3); }
-.place-row:hover .hl, .place-row:focus-visible .hl { background: linear-gradient(transparent 56%, rgba(255, 255, 255, .55) 56%); }
 .account-card {
   display: grid; gap: 18px; max-width: 720px; padding: 22px 24px;
   background: var(--card); border: var(--rule); border-radius: var(--r-l);
@@ -140,24 +139,6 @@
 }
 
 /* ---------- "Keep your surveys": an optional offer under a finished survey ---------- */
-.keep { padding-top: 40px; padding-bottom: 44px; }
-.keep-card {
-  display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); gap: 20px 28px; align-items: start;
-  padding: 22px 24px; background: var(--card); border: 1px dashed var(--ink); border-radius: var(--r-l);
-  animation: fadeUp .7s var(--ease) both;
-}
-.keep-kicker { font-size: 10.5px; color: var(--blue); }
-.keep-title { margin: 6px 0 8px; font: 400 30px/1.05 var(--f-serif); letter-spacing: -.02em; }
-.keep-lead { max-width: 46ch; font-size: 15px; line-height: 1.5; color: var(--text-2); }
-.keep-sign { display: grid; gap: 10px; }
-.keep-later { justify-self: start; font-size: 14px; }
-.keep-done { font-size: 15px; line-height: 1.5; color: var(--text-2); }
-.keep-done::before { content: "\2713"; margin-right: 10px; font: 600 14px/1 var(--f-mono); color: var(--blue); }
-.keep.saved { padding-top: 26px; padding-bottom: 28px; }
-@container sheet (max-width: 640px) {
-  .keep-card { grid-template-columns: minmax(0, 1fr); padding: 20px 18px; }
-}
-.sheet-foot a + a, .sheet-foot p a { margin-left: 2px; }
 
 /* ---------- Confirmation before an action that cannot be undone ---------- */
 .confirm {

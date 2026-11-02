@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { ENGINE_ASLEEP, probeEngine, sleep, WAKE_BUDGET_MS, watchEngine, type EngineProbe, type EngineWatcher } from "../api/client";
+import { probeEngine, sleep, WAKE_BUDGET_MS, watchEngine, type EngineProbe, type EngineWatcher } from "../api/client";
 
 /** Where the backend stands, as far as the app knows: not asked yet, being asked, napping, awake, or not waking. */
 export type EnginePhase = "unknown" | "checking" | "waking" | "ready" | "asleep";
@@ -29,11 +29,6 @@ export interface EngineStore {
   start: () => void;
   /** Looks again after the store gave up: the Retry button. */
   retry: () => void;
-  /**
-   * Resolves once the engine is awake: at once when it answered in the last few minutes, otherwise after a fresh look
-   * (and a wait while it wakes). Rejects with ENGINE_ASLEEP if it does not wake, or as the signal aborts.
-   */
-  whenReady: (signal?: AbortSignal) => Promise<void>;
   /** What every request tells the store (api/client.ts). */
   watcher: EngineWatcher;
 }
@@ -52,13 +47,6 @@ export const FADE_MS = 700;
 
 export const INITIAL_ENGINE: Engine = { phase: "unknown", note: "none", since: 0 };
 
-interface Waiter {
-  resolve: () => void;
-  reject: (error: Error) => void;
-}
-
-const aborted = () => new DOMException("The wait was aborted.", "AbortError");
-
 export function createEngineStore(deps: EngineDeps): EngineStore {
   let state = INITIAL_ENGINE;
   /** When the engine last answered anything, on the store's clock. */
@@ -69,7 +57,6 @@ export function createEngineStore(deps: EngineDeps): EngineStore {
   let cancelNote: (() => void) | null = null;
   let cancelFade: (() => void) | null = null;
   const listeners = new Set<() => void>();
-  const waiters = new Set<Waiter>();
 
   function set(patch: Partial<Engine>): void {
     state = { ...state, ...patch };
@@ -98,8 +85,6 @@ export function createEngineStore(deps: EngineDeps): EngineStore {
     stop();
     heardAt = deps.now();
     set({ phase: "ready", note: shown ? "ready" : "none" });
-    for (const waiter of waiters) waiter.resolve();
-    waiters.clear();
     if (!shown) return;
     cancelFade = deps.later(READY_MS, () => {
       set({ note: "leaving" });
@@ -113,8 +98,6 @@ export function createEngineStore(deps: EngineDeps): EngineStore {
   function giveUp(): void {
     stop();
     set({ phase: "asleep", note: "asleep" });
-    for (const waiter of waiters) waiter.reject(new Error(ENGINE_ASLEEP));
-    waiters.clear();
   }
 
   /** Asks /api/health every POLL_MS until it answers, for up to WAKE_BUDGET_MS. */
@@ -179,29 +162,6 @@ export function createEngineStore(deps: EngineDeps): EngineStore {
     },
     retry: () => {
       if (state.phase === "asleep") check(true);
-    },
-    whenReady: (signal) => {
-      if (signal?.aborted) return Promise.reject(aborted());
-      if (fresh()) return Promise.resolve();
-      check(state.phase === "asleep");
-      return new Promise<void>((resolve, reject) => {
-        const onAbort = () => {
-          waiters.delete(waiter);
-          reject(aborted());
-        };
-        const waiter: Waiter = {
-          resolve: () => {
-            signal?.removeEventListener("abort", onAbort);
-            resolve();
-          },
-          reject: (error) => {
-            signal?.removeEventListener("abort", onAbort);
-            reject(error);
-          },
-        };
-        waiters.add(waiter);
-        signal?.addEventListener("abort", onAbort, { once: true });
-      });
     },
     watcher: {
       asking: () => {

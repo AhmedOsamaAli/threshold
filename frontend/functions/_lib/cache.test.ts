@@ -68,15 +68,13 @@ describe("edgeSeconds", () => {
 
 describe("cacheableRequest", () => {
   it.each([
-    ["GET", "/api/presets", true],
-    ["GET", "/api/runs/099134cbfaec", true],
-    ["GET", "/api/kits/Av7v5rcNyjXToUQ9JyFkEyHFEHJ_jijsedhKYeMtO4E", true],
-    ["GET", "/api/run?lat=1&lon=2", false],
-    ["GET", "/api/run/", false],
+    ["GET", "/api/config", true],
+    ["GET", "/api/campaigns/c4f1e2a9b3d77410", true],
+    ["GET", "/api/campaigns?lat=1&lon=2", true],
     ["GET", "/api/receipts/Kq3vX9_pL2mN8rT4wY6zA1bC5dE7fG0h", false],
     ["POST", "/api/receipts/Kq3vX9_pL2mN8rT4wY6zA1bC5dE7fG0h/withdraw", false],
-    ["HEAD", "/api/presets", false],
-    ["POST", "/api/design", false],
+    ["HEAD", "/api/config", false],
+    ["POST", "/api/campaigns/c4f1e2a9b3d77410/pledges", false],
     ["DELETE", "/api/me", false],
   ])("%s %s: %s", (method, path, expected) => {
     expect(cacheableRequest(new Request(`${FRONT}${path}`, { method }))).toBe(expected);
@@ -84,16 +82,16 @@ describe("cacheableRequest", () => {
 });
 
 describe("keys", () => {
-  const url = new URL(`${FRONT}/api/runs/abc?x=1`);
+  const url = new URL(`${FRONT}/api/campaigns/abc?x=1`);
 
   it("are the URL alone, the fresh and the stale copy apart", () => {
-    expect(freshKey(url)).toBe(`${FRONT}/__edge/v3/fresh/api/runs/abc?x=1`);
-    expect(staleKey(url)).toBe(`${FRONT}/__edge/v3/stale/api/runs/abc?x=1`);
+    expect(freshKey(url)).toBe(`${FRONT}/__edge/v4/fresh/api/campaigns/abc?x=1`);
+    expect(staleKey(url)).toBe(`${FRONT}/__edge/v4/stale/api/campaigns/abc?x=1`);
   });
 
   it("can never be the URL of a request the function answers", () => {
     for (const key of [freshKey(url), staleKey(url)]) expect(new URL(key).pathname.startsWith("/api/")).toBe(false);
-    const visitor = new URL(`${FRONT}/api/runs/abc?x=1&__stale=1`);
+    const visitor = new URL(`${FRONT}/api/campaigns/abc?x=1&__stale=1`);
     expect(freshKey(visitor)).not.toBe(staleKey(url));
   });
 });
@@ -132,7 +130,7 @@ describe("staleIfError", () => {
 describe("keep", () => {
   it("stores the answer as it came, and a stale copy for as long as its stale-if-error allows", async () => {
     const { cache, puts } = recordingCache();
-    const url = new URL(`${FRONT}/api/presets`);
+    const url = new URL(`${FRONT}/api/config`);
     await keep(cache, url, answer("public, max-age=300, s-maxage=3600, stale-if-error=604800"));
     const fresh = puts.get(freshKey(url));
     const stale = puts.get(staleKey(url));
@@ -143,9 +141,9 @@ describe("keep", () => {
     expect(await stale?.text()).toBe('{"ok":true}');
   });
 
-  it("keeps no stale copy of an answer without stale-if-error, such as an owner's own survey", async () => {
+  it("keeps no stale copy of an answer without stale-if-error, such as a campaign's own page", async () => {
     const { cache, puts } = recordingCache();
-    const url = new URL(`${FRONT}/api/runs/mine`);
+    const url = new URL(`${FRONT}/api/campaigns/mine`);
     await keep(cache, url, answer("public, max-age=60, s-maxage=600"));
     expect(puts.has(freshKey(url))).toBe(true);
     expect(puts.has(staleKey(url))).toBe(false);
@@ -153,7 +151,7 @@ describe("keep", () => {
 
   it("lets a copy go when the cache refuses it", async () => {
     const cache: EdgeCache = { match: () => Promise.resolve(undefined), put: () => Promise.reject(new Error("413")) };
-    await expect(keep(cache, new URL(`${FRONT}/api/presets`), answer("public, s-maxage=60"))).resolves.toBeUndefined();
+    await expect(keep(cache, new URL(`${FRONT}/api/config`), answer("public, s-maxage=60"))).resolves.toBeUndefined();
   });
 });
 

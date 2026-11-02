@@ -5,7 +5,7 @@ export function CrashScreen() {
   return (
     <main className="crash" role="alert">
       <h1>Something went wrong on this screen.</h1>
-      <p>Reload the page to try again. A survey that has started keeps running on the server.</p>
+      <p>Reload the page to try again. A pledge that was already placed stays held by PayPal.</p>
       <div className="crash-actions">
         <button
           className="ink-button"

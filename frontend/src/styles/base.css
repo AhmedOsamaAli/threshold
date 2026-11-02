@@ -33,25 +33,8 @@ legend { padding: 0; }
 .serif { font-family: var(--f-serif); font-style: italic; font-weight: 380; }
 .muted { color: var(--ash); }
 .nowrap { white-space: nowrap; }
-.ink-blue { color: var(--blue); }
 .label { display: block; margin: 30px 0 12px; }
 .label .muted { margin-left: 6px; text-transform: none; letter-spacing: .01em; }
-.hl {
-  padding: 0 2px;
-  background: linear-gradient(transparent 56%, var(--marker) 56%);
-  -webkit-box-decoration-break: clone;
-  box-decoration-break: clone;
-}
-
-.tags { display: flex; flex-wrap: wrap; gap: 8px; }
-.tag {
-  display: inline-flex; align-items: baseline; gap: 8px;
-  padding: 6px 13px; background: var(--card);
-  border: 1px solid var(--edge); border-radius: 999px;
-  font-size: 13.5px; font-weight: 500; line-height: 1.35;
-}
-.tag small { font: 500 11px var(--f-mono); color: var(--ash); }
-.tag.blue { color: var(--blue); background: var(--blue-wash); border-color: transparent; }
 
 @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } }
 @keyframes rise { to { transform: none; } }

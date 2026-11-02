@@ -4,9 +4,8 @@
  *
  * - A fresh copy is kept for the answer's s-maxage, and answers the same URL at the edge without asking the backend.
  * - A stale copy of the same answer is kept only when the answer allows it with `stale-if-error=N` (RFC 5861), for N
- *   seconds and a week at most, and answers only while the backend is waking, down or failing, so presets, config, the
- *   examples and their kits still open then. The backend sends it on those alone: an owner's own surveys and kits get
- *   no stale copy, so their links stop working once their fresh copy expires (the privacy page promises it).
+ *   seconds and a week at most, and answers only while the backend is waking, down or failing, so the public settings
+ *   still open then. The backend sends it on those alone: nothing that depends on who asks gets a stale copy.
  *
  * Both keys are the request's URL alone (no cookie or header goes into them), under a path no visitor can ask for: only
  * /api/* reaches the function, so nothing under /__edge/ is ever requested directly.
@@ -23,12 +22,11 @@ export const STALE_MAX_SECONDS = 7 * 24 * 60 * 60;
 /**
  * Bumped to drop every copy the edge holds at the next deploy, should a stored answer ever need to go at once. v2: stale
  * copies are kept only for answers with stale-if-error; none kept under the earlier rule can answer. v3: /api/config
- * gained PayPal's settings with Founders, and a kit's page lost its campaigns to their own endpoint.
+ * gained PayPal's settings with Founders. v4: /api/config lost its survey switch, and the answers of the endpoints the
+ * app no longer has are gone.
  */
-const KEY_VERSION = "v3";
+const KEY_VERSION = "v4";
 
-/** The survey stream: never kept, whatever its headers say. */
-const STREAM = /^\/api\/run\/?$/;
 /**
  * A pledge's private receipt: its holder's alone, and its URL is the key to it, so it is never looked up or kept here,
  * whatever its headers say (the backend sends no-store), and no copy of it can answer another visitor.
@@ -41,10 +39,9 @@ export interface EdgeCache {
   put: (key: string, response: Response) => Promise<void>;
 }
 
-/** Whether the edge may answer this request from a copy: a GET of an API path other than the survey stream or a receipt. */
+/** Whether the edge may answer this request from a copy: a GET of an API path other than a receipt. */
 export function cacheableRequest(request: Request): boolean {
-  const path = new URL(request.url).pathname;
-  return request.method === "GET" && !STREAM.test(path) && !path.startsWith(RECEIPT_PREFIX);
+  return request.method === "GET" && !new URL(request.url).pathname.startsWith(RECEIPT_PREFIX);
 }
 
 /** A Cache-Control header's directives, by lower-case name, with their values unquoted ("" for a bare directive). */

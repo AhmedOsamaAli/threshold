@@ -2,19 +2,12 @@
 /* --wake-h is the band's height while it shows (EngineNote measures it): what it hangs over moves down to make room,
    and back up as it fades, so it covers nothing. */
 :root { --wake-h: 0px; }
-.page, .stage, .sheet { transition: padding-top .6s var(--ease); }
+.page { transition: padding-top .6s var(--ease); }
 .page { padding-top: var(--wake-h); }
 @media print {
   .page { padding-top: 0; }
 }
-@media (max-width: 980px) {
-  .stage { padding-top: var(--wake-h); }
-}
-@media (min-width: 981px) {
-  .sheet { padding-top: var(--wake-h); }
-}
 /* The survey's own status sticks under the band while there is one, rather than sliding beneath it. */
-.live-status { top: calc(var(--bar-h) + var(--wake-h)); }
 
 .wake {
   container-type: inline-size;
@@ -31,9 +24,6 @@
 }
 .wake:focus { outline: none; }
 /* Beside the map, the note spans the sheet only, as the survey's own status does, and leaves the map's controls free. */
-@media (min-width: 981px) {
-  :root:has(.stage:not([hidden])) .wake { right: auto; width: max(460px, 46%); border-right: var(--rule); }
-}
 .wake[data-note="leaving"] { opacity: 0; transform: translateY(-6px); pointer-events: none; }
 @keyframes wakeIn { from { opacity: 0; transform: translateY(-8px); } }
 /* The porch light left on while the engine naps: it breathes until the engine answers, and is out if it never does. */

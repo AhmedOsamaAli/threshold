@@ -191,17 +191,17 @@
   font-size: 16px; line-height: 1.42;
 }
 .cp-perks li::before { content: "\2713"; position: absolute; left: 18px; top: 13px; font: 600 14px/1.42 var(--f-mono); color: var(--blue); }
-.cp-steps, .fk-how, .fd-steps { counter-reset: step; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-.cp-steps li, .fk-how li, .fd-steps li {
+.cp-steps, .fd-steps { counter-reset: step; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.cp-steps li, .fd-steps li {
   display: grid; align-content: start; gap: 6px; padding: 14px 16px 16px;
   background: var(--card); border: 1px solid var(--edge); border-radius: var(--r-m);
 }
-.cp-steps li::before, .fk-how li::before, .fd-steps li::before {
+.cp-steps li::before, .fd-steps li::before {
   content: counter(step, decimal-leading-zero); counter-increment: step; font: 500 11px var(--f-mono); color: var(--blue);
 }
-.cp-steps b, .fk-how b, .fd-steps b { font: 400 20px/1.15 var(--f-serif); letter-spacing: -.01em; }
-.cp-steps li > span, .fk-how li > span, .fd-steps li > span { font-size: 14px; line-height: 1.45; color: var(--text-3); }
-.cp-steps li:last-child, .fk-how li:last-child { border-style: dashed; }
+.cp-steps b, .fd-steps b { font: 400 20px/1.15 var(--f-serif); letter-spacing: -.01em; }
+.cp-steps li > span, .fd-steps li > span { font-size: 14px; line-height: 1.45; color: var(--text-3); }
+.cp-steps li:last-child { border-style: dashed; }
 .cp-how { max-width: 64ch; margin-top: 16px; font-size: 15px; line-height: 1.55; color: var(--text-2); }
 .cp-genre { font-size: 10.5px; color: var(--blue); }
 .cp-summary { max-width: 60ch; margin-top: 8px; font: 400 19px/1.45 var(--f-serif); color: var(--text-2); text-wrap: pretty; }
@@ -209,7 +209,7 @@
 /* A campaign that is not there, or could not be read: what the page says in its place. */
 .cp-unavailable { max-width: 56ch; margin-top: 12px; font-size: 17px; line-height: 1.5; color: var(--text-2); }
 @container page (max-width: 640px) {
-  .cp-steps, .fk-how { grid-template-columns: minmax(0, 1fr); }
+  .cp-steps { grid-template-columns: minmax(0, 1fr); }
   .cp-count b { font-size: 56px; }
 }
 
@@ -257,35 +257,6 @@
 }
 
 /* ---------- The kit's Founders tab ---------- */
-.fk { display: grid; gap: 22px; max-width: 920px; }
-.fk-yours {
-  display: grid; gap: 14px; padding: 22px 24px 22px;
-  background: var(--card); border: var(--rule); border-top: 6px solid var(--yellow); border-radius: var(--r-l); box-shadow: var(--shadow-s);
-}
-.fk-kicker { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 10.5px; color: var(--blue); }
-.fk-kicker .state { font-size: 9.5px; }
-.fk-title { font: 400 clamp(26px, 2.6vw, 34px)/1.05 var(--f-serif); letter-spacing: -.02em; text-wrap: balance; }
-.fk-standing { display: grid; gap: 12px; max-width: 560px; }
-.fk-count { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; font-size: 16.5px; color: var(--text-2); }
-.fk-count b { font: 300 46px/.9 var(--f-sans); letter-spacing: -.045em; color: var(--ink); }
-.fk-count .mono { font-size: 10.5px; color: var(--blue); }
-.fk-terms { font-size: 14.5px; line-height: 1.45; color: var(--text-3); }
-.fk-actions { display: flex; flex-wrap: wrap; gap: 10px; }
-.fk-label { margin-top: 4px; font-size: 10px; color: var(--text-4); }
-.fk-note { max-width: 66ch; font-size: 14px; line-height: 1.5; color: var(--text-4); }
-.fk-others { display: grid; gap: 10px; }
-.fk-other-list { border-top: var(--rule); border-bottom: var(--rule); }
-.fk-other-list li + li { border-top: var(--hair); }
-.fk-other {
-  display: grid; grid-template-columns: minmax(0, 1fr) 22px; align-items: center; gap: 12px;
-  padding: 12px 6px; text-decoration: none; transition: background .3s, color .3s;
-}
-.fk-other:hover, .fk-other:focus-visible { background: var(--yellow); color: var(--on-yellow); }
-.fk-other-main { display: grid; gap: 2px; }
-.fk-other-main b { font: 400 20px/1.2 var(--f-serif); }
-.fk-other-main span { font-size: 14px; color: var(--text-3); }
-.fk-other:is(:hover, :focus-visible) .fk-other-main span { color: var(--on-yellow-3); }
-.fk-signin { max-width: 640px; }
 
 /* ---------- The campaign form: the owner's terms, the AI's draft to edit, publishing ---------- */
 .campaign-form { display: grid; gap: 18px; }

@@ -1,15 +1,15 @@
-/* One customer-first layout for launch and Founders posters. Art yields space to the offer, perks and payment terms. */
+/* One customer-first layout for a campaign's poster. Art yields space to the perks and the payment terms. */
 import type { Campaign } from "../api/founders";
-import type { KitPoster } from "../api/kit";
-import type { PosterMap } from "../api/sitemap";
 
-export type PosterInput = Pick<KitPoster, "name" | "tagline" | "headline" | "subline" | "hours" | "claim"> &
-  Partial<Pick<KitPoster, "site" | "neighborhoods">> & {
-    map?: PosterMap | null;
-    location_label?: string;
-    identity?: { kind: string; keywords: readonly string[] };
-    messages?: readonly string[];
-  };
+/** What the poster says about the business, from its campaign. */
+export interface PosterInput {
+  name: string;
+  tagline: string | null;
+  /** Where the business will be, as the campaign names it. */
+  location: string;
+  /** The kind of business and the words that guide its original artwork, never advertising claims. */
+  identity: { kind: string; keywords: readonly string[] };
+}
 export type PosterCampaign = Pick<Campaign, "id" | "amount" | "goal" | "deadline" | "perks" | "accepting">;
 
 export const POSTER_W = 600;
@@ -34,32 +34,26 @@ export interface Box { x: number; y: number; width: number; height: number }
 export interface PosterText {
   name: string;
   tagline: string | null;
+  /** The perk the poster leads with. */
   headline: string | null;
-  subline: string | null;
-  hours: string | null;
-  /** Source proof is shown in the editor, not printed as customer advertising. */
-  proof: string | null;
-  back?: string | null;
+  /** The pledge's terms, word for word. */
+  back: string;
   /** Every actual perk is kept; none is silently shortened to fit. */
-  perks?: readonly string[];
-  location?: string | null;
-  sandbox?: boolean;
+  perks: readonly string[];
+  location: string | null;
 }
 export interface PosterLayout {
   name: Block;
   tagline: Block | null;
   headline: Block | null;
   headlineLabelY: number | null;
-  subline: Block | null;
   art: Box;
   perks: Block[];
   perksLabelY: number | null;
-  map: Box | null;
   location: Block | null;
   bandTop: number;
   back: Block | null;
-  hours: Block | null;
-  qr: { x: number; y: number; size: number } | null;
+  qr: { x: number; y: number; size: number };
   fits: boolean;
   problem: string | null;
 }
@@ -111,25 +105,22 @@ function named(name: string, face: Face, measure: Measure): Block {
     widths: pair.map((line) => measure(line, face, size)) };
 }
 
-export function layoutPoster(text: PosterText, measure: Measure, options: { qr?: boolean; locator?: boolean; face?: Face } = {}): PosterLayout {
+export function layoutPoster(text: PosterText, measure: Measure, options: { face?: Face } = {}): PosterLayout {
   const face = options.face ?? "serif";
   const name = named(text.name, face, measure);
   let y = bottom(name, 76) + 10;
   const tagline = block(text.tagline, 17.5, y, INNER, "serif", measure);
   y = bottom(tagline, y) + (tagline ? 12 : 0);
-  const headlineLabelY = text.back && text.headline ? y + 11 : null;
+  const headlineLabelY = text.headline ? y + 11 : null;
   if (headlineLabelY !== null) y += 24;
   const headline = block(text.headline, 29, y, INNER, face, measure, 1.12);
   y = bottom(headline, y) + (headline ? 14 : 0);
-  const subline = block(text.subline, 16, y, INNER, "sans", measure);
-  y = bottom(subline, y) + (subline ? 12 : 0);
   const bandTop = POSTER_H - 200;
-  const perkValues = (text.perks ?? []).filter((line) => line.trim());
+  const perkValues = text.perks.filter((line) => line.trim());
   const perkHeight = perkValues.reduce((sum, line) => sum + (block(line, 16.5, 0, INNER - 24, "sans", measure)?.y.length ?? 0) * 20.8 + 9, 0);
   const locationHeight = text.location ? bottom(block(text.location, 11.5, 0, INNER, "sans", measure), 0) + 8 : 0;
-  const mapHeight = options.locator ? 94 : 0;
-  const room = bandTop - 42 - y - perkHeight - (perkValues.length ? 28 : 0) - locationHeight - mapHeight;
-  const artHeight = room < 48 ? 0 : Math.min(text.back ? 142 : 226, room);
+  const room = bandTop - 42 - y - perkHeight - (perkValues.length ? 28 : 0) - locationHeight;
+  const artHeight = room < 48 ? 0 : Math.min(142, room);
   const art = { x: POSTER_M, y, width: INNER, height: artHeight };
   y += artHeight + (artHeight ? 15 : 0);
   const perksLabelY = perkValues.length ? y + 11 : null;
@@ -140,20 +131,16 @@ export function layoutPoster(text: PosterText, measure: Measure, options: { qr?:
     y = bottom(perk, y) + 10;
     return perk;
   });
-  const map = options.locator ? { x: POSTER_M, y, width: INNER, height: 94 } : null;
-  if (map) y += map.height + 8;
-  const location = block(text.location ?? null, 11.5, y, INNER, "sans", measure);
+  const location = block(text.location, 11.5, y, INNER, "sans", measure);
   y = bottom(location, y);
-  const qr = options.qr === false ? null : { x: POSTER_W - POSTER_M - 132, y: bandTop + 29, size: 132 };
-  const footerWidth = qr ? INNER - qr.size - 24 : INNER;
-  const back = block(text.back ?? null, 12.5, bandTop + 44, footerWidth, "sans", measure);
-  const hours = !back ? block(text.hours, 12, bandTop + 47, footerWidth, "sans", measure) : null;
-  const blocks = [name, tagline, headline, subline, ...perks, location];
+  const qr = { x: POSTER_W - POSTER_M - 132, y: bandTop + 29, size: 132 };
+  const back = block(text.back, 12.5, bandTop + 44, INNER - qr.size - 24, "sans", measure);
+  const blocks = [name, tagline, headline, ...perks, location];
   const contentFits = y < bandTop - 4 && blocks.every((item) => (item?.widths ?? []).every((width) => width <= INNER + .5));
-  const footerFits = bottom(back ?? hours, bandTop) <= POSTER_H - 66;
+  const footerFits = bottom(back, bandTop) <= POSTER_H - 66;
   const fits = contentFits && footerFits && name.size >= 26;
   return {
-    name, tagline, headline, headlineLabelY, subline, art, perks, perksLabelY, map, location, bandTop, back, hours, qr, fits,
-    problem: fits ? null : "This copy does not fit legibly. Turn off the locator or shorten the poster copy; no perks or terms have been omitted.",
+    name, tagline, headline, headlineLabelY, art, perks, perksLabelY, location, bandTop, back, qr, fits,
+    problem: fits ? null : "This copy does not fit legibly. Shorten the poster copy; no perks or terms have been omitted.",
   };
 }

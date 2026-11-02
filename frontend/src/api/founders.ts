@@ -48,9 +48,6 @@ export interface Campaign {
   status: CampaignStatus;
   /** Still takes pledges. */
   accepting: boolean;
-  kit_token: string | null;
-  kit_url: string | null;
-  survey_url: string | null;
   /** The business, as its owner describes it. */
   name: string;
   place: { label: string; lat: number; lon: number; area: string };
@@ -81,20 +78,6 @@ export interface CampaignCard {
   place: { label: string; lat: number; lon: number };
   /** From the point asked about; null when none was. */
   distance_km: number | null;
-  amount: string;
-  goal: number;
-  supporters: number;
-  /** What the pledges PayPal holds add up to: "75.00". */
-  total: string;
-  deadline: string;
-}
-
-/** A kit's open campaign: the viewer's own first, then newest first. */
-export interface KitCampaign {
-  id: string;
-  url: string;
-  is_owner: boolean;
-  status: CampaignStatus;
   amount: string;
   goal: number;
   supporters: number;

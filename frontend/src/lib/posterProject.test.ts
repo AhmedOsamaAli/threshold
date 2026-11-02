@@ -1,33 +1,29 @@
 import { describe, expect, it } from "vitest";
-import type { Kit } from "../api/kit";
-import { completePosterCopy, posterForKit } from "./posterProject";
+import { posterForCampaign } from "./posterProject";
 
-const pastry: Kit = {
-  concept: { index: 0, name: "The Daily Grind", genre: "Patisserie" }, claims: [],
-  poster: { name: "The Daily Grind", tagline: "Enjoy artisanal coffee and freshly",
-    headline: "Freshly Baked Pastries", subline: "The Daily Grind: your new coffee shop. Enjoy artisanal coffee and freshly",
-    claim: null, hours: null, minutes: 10, ring: [], site: [30, 31], neighborhoods: ["Test neighborhood"] },
-  copy: { google_search: { channel: "Search", claims: [], source: "agent",
-    headlines: ["Freshly Baked Pastries", "Your New Coffee Shop"],
-    descriptions: ["Enjoy artisanal coffee and freshly", "Butter croissants and fruit tarts."] } },
-  dossier: { sections: [] }, links: [], rejected: [], notes: [], mode: "agent", model: "test", built_at: "2026-10-31",
+const business = {
+  name: "Golden Hour Bakery",
+  concept: { genre: "bakery", summary: "A neighborhood bakery with sourdough and pastries. Baked on site from 6 am." },
+  place: { label: "14 Cedar Street, Brooklyn, New York, USA", lat: 40.6782, lon: -73.9442, area: "" },
+  pitch: "Back it now and be a founding neighbor.",
 };
 
-describe("customer-facing complete poster copy", () => {
-  it("reproduces and repairs the Daily Grind pastry example without making up new claims", () => {
-    const poster = posterForKit(pastry);
-    expect(poster.headline).toBe("Freshly Baked Pastries");
-    expect(poster.tagline).toBeNull();
-    expect(poster.subline).toBe("Butter croissants and fruit tarts.");
-    expect(poster.messages).not.toContain("Your New Coffee Shop");
+describe("what a poster takes from a campaign", () => {
+  it("takes the business's name and place, and its description's first sentence as the tagline", () => {
+    expect(posterForCampaign(business)).toEqual({
+      name: "Golden Hour Bakery",
+      tagline: "A neighborhood bakery with sourdough and pastries.",
+      location: "14 Cedar Street, Brooklyn, New York, USA",
+      identity: { kind: "bakery", keywords: [business.concept.summary, business.pitch] },
+    });
   });
-  it.each(["Freshly baked and", "Enjoy artisanal coffee and freshly", "A place for", "Try something…"])(
-    "does not print an unfinished line: %s", (text) => { expect(completePosterCopy(text)).toBeNull(); },
-  );
-  it("keeps an existing complete sentence rather than completing a clipped second sentence", () => {
-    expect(completePosterCopy("Butter croissants. Try our freshly", true)).toBe("Butter croissants.");
-    expect(completePosterCopy("Butter croissants and fruit tarts", true)).toBeNull();
-    expect(completePosterCopy("Pastries people come for.", true)).toBe("Pastries people come for.");
-    expect(completePosterCopy("Kouign amann no bakery nearby is known for.", true)).toBe("Kouign amann no bakery nearby is known for.");
+
+  it("falls back to the kind of business when the first sentence is too long to print", () => {
+    const long = `${"A bakery with sourdough, laminated pastries and coffee ".repeat(3)}baked on site.`;
+    expect(posterForCampaign({ ...business, concept: { genre: "bakery", summary: long } }).tagline).toBe("bakery");
+  });
+
+  it("prints no tagline from an empty description beyond the kind of business", () => {
+    expect(posterForCampaign({ ...business, concept: { genre: "gym", summary: "  " } }).tagline).toBe("gym");
   });
 });

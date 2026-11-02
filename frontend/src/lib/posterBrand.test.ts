@@ -42,12 +42,12 @@ describe("art direction from the business, not a global app template", () => {
   });
 
   it("restores only well-formed per-project design settings", () => {
-    expect(readPosterAppearance(null)).toEqual({ choice: "auto", locator: false });
-    expect(readPosterAppearance('{"choice":"coastal","locator":true,"accent":"#123456"}')).toEqual({
-      choice: "coastal", locator: true, accent: "#123456",
-    });
-    for (const value of ['{}', '{"choice":"unknown","locator":false}', '{"choice":"auto","locator":"yes"}',
-      '{"choice":"auto","locator":false,"accent":"url(evil)"}', '{"choice":"auto","locator":false,"logo":"https://external/logo"}']) {
+    expect(readPosterAppearance(null)).toEqual({ choice: "auto" });
+    expect(readPosterAppearance('{"choice":"coastal","accent":"#123456"}')).toEqual({ choice: "coastal", accent: "#123456" });
+    // A design saved before posters lost their street locator and launch wording still reads, without them.
+    expect(readPosterAppearance('{"choice":"auto","locator":true,"stage":"open","message":"Now open"}')).toEqual({ choice: "auto" });
+    for (const value of ['{}', '{"choice":"unknown"}', '{"choice":"auto","accent":"url(evil)"}',
+      '{"choice":"auto","logo":"https://external/logo"}', '{"choice":"auto","leadPerk":" "}']) {
       expect(() => readPosterAppearance(value)).toThrow();
     }
   });

@@ -4,7 +4,7 @@ import { DEFAULT_POSTER_APPEARANCE, readPosterAppearance, type PosterAppearance 
 const KEY = "walk-in-poster:";
 type PosterStorage = Pick<Storage, "getItem" | "setItem">;
 
-/** One saved design for the editor, report preview and report document, including when storage is unavailable. */
+/** One saved design per campaign, kept for this visit when the browser refuses storage. */
 export function createPosterDesignStore(storage: () => PosterStorage | null) {
   const drafts = new Map<string, string>();
   const listeners = new Set<() => void>();

@@ -105,16 +105,13 @@ export interface PosterAppearance {
   logo?: string;
   logoBackground?: string;
   leadPerk?: string;
-  message?: string;
-  stage?: "planned" | "open";
-  locator: boolean;
 }
 
-export const DEFAULT_POSTER_APPEARANCE: PosterAppearance = { choice: "auto", locator: false };
+export const DEFAULT_POSTER_APPEARANCE: PosterAppearance = { choice: "auto" };
 
 export function brandForPoster(poster: PosterInput, appearance: PosterAppearance): PosterBrand {
-  const keywords = [poster.tagline ?? "", poster.headline ?? "", poster.subline ?? "", ...(poster.identity?.keywords ?? [])];
-  return posterBrand(poster.name, poster.identity?.kind ?? "", keywords, appearance.choice, appearance.accent);
+  const keywords = [poster.tagline ?? "", ...poster.identity.keywords];
+  return posterBrand(poster.name, poster.identity.kind, keywords, appearance.choice, appearance.accent);
 }
 
 export function posterLogoMime(bytes: Uint8Array): "image/png" | "image/jpeg" | "image/webp" | null {
@@ -127,16 +124,13 @@ export function posterLogoMime(bytes: Uint8Array): "image/png" | "image/jpeg" | 
 export function readPosterAppearance(text: string | null): PosterAppearance {
   if (text === null) return { ...DEFAULT_POSTER_APPEARANCE };
   const value: unknown = JSON.parse(text);
-  if (typeof value !== "object" || value === null || !("choice" in value) || !isPosterChoice(value.choice) ||
-      !("locator" in value) || typeof value.locator !== "boolean") {
+  if (typeof value !== "object" || value === null || !("choice" in value) || !isPosterChoice(value.choice)) {
     throw new Error("The saved poster design could not be read.");
   }
   const accent = "accent" in value ? value.accent : undefined;
   const logo = "logo" in value ? value.logo : undefined;
   const logoBackground = "logoBackground" in value ? value.logoBackground : undefined;
   const leadPerk = "leadPerk" in value ? value.leadPerk : undefined;
-  const message = "message" in value ? value.message : undefined;
-  const stage = "stage" in value ? value.stage : undefined;
   if (accent !== undefined && !isPosterColor(accent)) throw new Error("The saved poster color could not be read.");
   if (logo !== undefined && (typeof logo !== "string" || logo.length > 720_000 ||
       !/^data:image\/(?:png|jpeg|webp);base64,[a-z\d+/=]+$/i.test(logo))) {
@@ -151,9 +145,6 @@ export function readPosterAppearance(text: string | null): PosterAppearance {
   if (leadPerk !== undefined && (typeof leadPerk !== "string" || !leadPerk.trim() || leadPerk.length > 80)) {
     throw new Error("The saved headline perk could not be read.");
   }
-  if (message !== undefined && (typeof message !== "string" || !message.trim() || message.length > 150)) throw new Error("The saved poster message could not be read.");
-  if (stage !== undefined && stage !== "planned" && stage !== "open") throw new Error("The saved poster wording could not be read.");
-  return { choice: value.choice, locator: value.locator, ...(accent ? { accent } : {}), ...(logo ? { logo } : {}),
-    ...(logoBackground ? { logoBackground } : {}), ...(leadPerk ? { leadPerk } : {}),
-    ...(message ? { message } : {}), ...(stage ? { stage } : {}) };
+  return { choice: value.choice, ...(accent ? { accent } : {}), ...(logo ? { logo } : {}),
+    ...(logoBackground ? { logoBackground } : {}), ...(leadPerk ? { leadPerk } : {}) };
 }

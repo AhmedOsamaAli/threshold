@@ -51,12 +51,11 @@ export interface Campaign {
   kit_token: string | null;
   kit_url: string | null;
   survey_url: string | null;
-  source?: "owner";
-  /** The business, from the kit. */
+  /** The business, as its owner describes it. */
   name: string;
   place: { label: string; lat: number; lon: number; area: string };
   concept: { genre: string; summary: string };
-  /** Up to three lines from the survey: why this, why here. */
+  /** Why here, in the owner's words. */
   evidence: string[];
   title: string;
   pitch: string;
@@ -90,7 +89,7 @@ export interface CampaignCard {
   deadline: string;
 }
 
-/** A kit's open campaign (GET /api/kits/{token}/campaigns): the viewer's own first, then newest first. */
+/** A kit's open campaign: the viewer's own first, then newest first. */
 export interface KitCampaign {
   id: string;
   url: string;
@@ -126,10 +125,6 @@ export interface MoneyTerms {
   perk: string | null;
 }
 
-export interface CampaignTerms extends MoneyTerms {
-  kit_token: string;
-}
-
 export const BUSINESS_KINDS = ["cafe", "restaurant", "bakery", "bar", "gym", "studio", "salon", "barber",
   "bookstore", "shop", "grocery", "kids", "services", "other"] as const;
 export type BusinessKind = (typeof BUSINESS_KINDS)[number];
@@ -143,22 +138,15 @@ export interface BusinessDescription {
   lon: number;
 }
 export type BusinessTerms = BusinessDescription & MoneyTerms;
+/** POST /api/business-campaigns: the business, the terms, the payout email and the words as the owner edited them. */
 export type NewBusinessCampaign = BusinessTerms & { payout_email: string; title: string; pitch: string; perks: string[] };
-/** POST /api/campaigns/draft: the words, or the reasons the terms are not allowed (then nothing is drafted). */
+/** POST /api/business-campaigns/draft: the words, or the reasons the terms are not allowed (then nothing is drafted). */
 export interface CampaignDraft {
   title: string;
   pitch: string;
   perks: string[];
   how_it_works: string;
   problems: string[];
-}
-
-/** POST /api/campaigns: the terms, the payout email and the words as the owner edited them. */
-export interface NewCampaign extends CampaignTerms {
-  payout_email: string;
-  title: string;
-  pitch: string;
-  perks: string[];
 }
 
 export type PledgeFlow = "buttons" | "redirect";
@@ -214,21 +202,13 @@ export function campaignsPath(near: Near | null): string {
 }
 
 export const founders = {
-  draftBusiness: (terms: BusinessTerms) => request<CampaignDraft>("/api/business-campaigns/draft", post(terms)),
-  publishBusiness: (campaign: NewBusinessCampaign) => request<{ id: string; url: string }>("/api/business-campaigns", post(campaign)),
-  /** The AI's words for the terms, or why the terms are not allowed. Signed in. */
-  draft: (terms: CampaignTerms) => request<CampaignDraft>("/api/campaigns/draft", post(terms)),
-  /** 422 with `problems` when a term or an edited line breaks a rule; 409 with `url` when one is already open. */
-  publish: (campaign: NewCampaign) => request<{ id: string; url: string }>("/api/campaigns", post(campaign)),
+  /** The AI's words for the business and its terms, or why the terms are not allowed. Signed in. */
+  draft: (terms: BusinessTerms) => request<CampaignDraft>("/api/business-campaigns/draft", post(terms)),
+  /** 422 with `problems` when a term or an edited line breaks a rule. Signed in. */
+  publish: (campaign: NewBusinessCampaign) => request<{ id: string; url: string }>("/api/business-campaigns", post(campaign)),
   campaign: (id: string, signal?: AbortSignal) => request<Campaign>(`/api/campaigns/${segment(id)}`, { signal }),
   /** Open campaigns: the nearest first around a point, else the newest first; at most 50. */
   list: (near: Near | null, signal?: AbortSignal) => request<{ campaigns: CampaignCard[] }>(campaignsPath(near), { signal }),
-  /**
-   * A kit's campaigns that take pledges, the viewer's own first. Apart from the kit's page, which is the same for
-   * everyone and may come from a cache; these depend on who asks and change with every pledge.
-   */
-  forKit: async (token: string, signal?: AbortSignal) =>
-    (await request<{ campaigns: KitCampaign[] }>(`/api/kits/${segment(token)}/campaigns`, { signal })).campaigns,
   /** Starts a pledge: PayPal's order for the campaign's amount, with intent AUTHORIZE; 409 once it takes no more. */
   pledge: (id: string, flow: PledgeFlow = "buttons") =>
     request<PledgeStarted>(`/api/campaigns/${segment(id)}/pledges`, post({ flow })),
@@ -273,13 +253,6 @@ function lines(value: unknown): string[] {
 /** A 402 the buttons recover from by letting the supporter choose another way to pay (PayPal declined theirs). */
 export function canRetry(error: unknown): boolean {
   return error instanceof ApiError && error.status === 402 && field(error, "retry") === true;
-}
-
-/** The campaign a 409 points to: the one this user already has open for the kit. */
-export function conflictUrl(error: unknown): string | null {
-  if (!(error instanceof ApiError) || error.status !== 409) return null;
-  const url = field(error, "url");
-  return typeof url === "string" && url.startsWith("/") ? url : null;
 }
 
 /** Why a 422 refused the campaign: its `problems`, a `detail` that lists them, or its one message. */

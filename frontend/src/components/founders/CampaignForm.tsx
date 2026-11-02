@@ -1,6 +1,6 @@
 import { useId, useState, type ReactNode, type SyntheticEvent } from "react";
 import { ApiError } from "../../api/client";
-import { conflictUrl, founders, problemsOf, type BusinessDescription } from "../../api/founders";
+import { founders, problemsOf, type BusinessDescription } from "../../api/founders";
 import { plainError } from "../../lib/account";
 import { cx } from "../../lib/css";
 import {
@@ -19,7 +19,6 @@ import {
 import { useNavigate } from "../../lib/navigation";
 import { useNow } from "../../lib/useNow";
 import { session } from "../../state/session";
-import { Link } from "../Link";
 import { SandboxNotice } from "./SandboxNotice";
 
 interface Draft extends Words {
@@ -28,17 +27,13 @@ interface Draft extends Words {
   terms: string;
 }
 
-interface CampaignFormBase {
-  /** The business, as the kit names it. */
-  name: string;
+interface CampaignFormProps {
+  /** The business the campaign is for, as its owner described it. */
+  business: BusinessDescription;
   /** The signed-in owner's email, the payout email's first guess. */
   email: string;
   sandbox: boolean;
 }
-type CampaignFormProps = CampaignFormBase & (
-  | { token: string; business?: never }
-  | { business: BusinessDescription; token?: never }
-);
 
 function Counter({ text, max }: { text: string; max: number }) {
   const length = text.trim().length;
@@ -77,10 +72,10 @@ function Field({ id, label, aside, hint, problem, className, children }: FieldPr
 }
 
 /**
- * Starting a campaign: the owner's money terms (theirs alone), then words AI drafts from the kit's evidence, which the
- * owner edits, then publishing; the server checks the terms and every edited line again.
+ * Starting a campaign: the owner's money terms (theirs alone), then words AI drafts from the business's description,
+ * which the owner edits, then publishing; the server checks the terms and every edited line again.
  */
-export function CampaignForm({ token, business, name, email, sandbox }: CampaignFormProps) {
+export function CampaignForm({ business, email, sandbox }: CampaignFormProps) {
   const navigate = useNavigate();
   const ids = useId();
   const now = useNow(60_000);
@@ -99,12 +94,11 @@ export function CampaignForm({ token, business, name, email, sandbox }: Campaign
   const [draft, setDraft] = useState<Draft | null>(null);
   const [busy, setBusy] = useState<"drafting" | "publishing" | null>(null);
   const [problems, setProblems] = useState<{ when: "draft" | "publish"; lines: string[] } | null>(null);
-  const [conflict, setConflict] = useState<string | null>(null);
 
   const termProblems = termsProblems(form, now);
   const shown = (field: TermsField) => (tried || touched[field] ? termProblems[field] : null);
   const terms = moneyTermsOf(form, now);
-  const termsKey = JSON.stringify(terms ? [terms.amount, terms.goal, terms.deadline, terms.perk, business ?? token] : null);
+  const termsKey = JSON.stringify(terms ? [terms.amount, terms.goal, terms.deadline, terms.perk, business] : null);
   const stale = draft !== null && draft.terms !== termsKey;
 
   function patch(field: keyof TermsForm, value: string) {
@@ -117,12 +111,6 @@ export function CampaignForm({ token, business, name, email, sandbox }: Campaign
 
   function fail(error: unknown, when: "draft" | "publish", fallback: string) {
     if (error instanceof ApiError && error.status === 401) void session.refresh();
-    const url = conflictUrl(error);
-    if (url) {
-      setConflict(url);
-      setProblems(null);
-      return;
-    }
     const listed = error instanceof ApiError && error.status === 422 ? problemsOf(error) : [];
     setProblems({ when, lines: listed.length ? listed : [plainError(error, fallback)] });
   }
@@ -130,7 +118,6 @@ export function CampaignForm({ token, business, name, email, sandbox }: Campaign
   async function writeDraft(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
     setTried(true);
-    setConflict(null);
     const asked = terms;
     if (!asked) {
       setProblems({ when: "draft", lines: Object.values(termProblems).filter((line): line is string => line !== null) });
@@ -139,8 +126,7 @@ export function CampaignForm({ token, business, name, email, sandbox }: Campaign
     setBusy("drafting");
     setProblems(null);
     try {
-      const written = business ? await founders.draftBusiness({ ...asked, ...business }) :
-        await founders.draft({ ...asked, kit_token: token });
+      const written = await founders.draft({ ...asked, ...business });
       if (written.problems.length) setProblems({ when: "draft", lines: written.problems });
       else {
         setDraft({
@@ -161,7 +147,6 @@ export function CampaignForm({ token, business, name, email, sandbox }: Campaign
   async function publish() {
     if (!draft) return;
     setTried(true);
-    setConflict(null);
     const words = cleanWords(draft);
     const wrong = [...Object.values(termProblems).filter((line): line is string => line !== null), ...wordsProblems(words)];
     if (!terms || wrong.length) {
@@ -171,9 +156,7 @@ export function CampaignForm({ token, business, name, email, sandbox }: Campaign
     setBusy("publishing");
     setProblems(null);
     try {
-      const payload = { ...terms, payout_email: form.email.trim(), ...words };
-      const { url } = business ? await founders.publishBusiness({ ...payload, ...business }) :
-        await founders.publish({ ...payload, kit_token: token });
+      const { url } = await founders.publish({ ...terms, payout_email: form.email.trim(), ...words, ...business });
       navigate(url);
     } catch (error) {
       fail(error, "publish", "The campaign could not be published. Try again.");
@@ -364,14 +347,14 @@ export function CampaignForm({ token, business, name, email, sandbox }: Campaign
             </button>
           )}
           <p className="cf-note">
-            AI writes a title, a pitch and perks from {name}&apos;s {business ? "description" : "evidence"}. It never sets a number: your terms go in
+            AI writes a title, a pitch and perks from {business.name}&apos;s description. It never sets a number: your terms go in
             unchanged, and you edit the words before anything is published.
           </p>
         </div>
       </form>
 
       <div className="cf-feedback" role="status" aria-live="polite">
-        {busy === "drafting" ? <p className="cf-busy mono">Writing the page from the evidence</p> : null}
+        {busy === "drafting" ? <p className="cf-busy mono">Writing the page from your description</p> : null}
         {busy === "publishing" ? <p className="cf-busy mono">Publishing</p> : null}
       </div>
       {problems?.lines.length ? (
@@ -383,14 +366,6 @@ export function CampaignForm({ token, business, name, email, sandbox }: Campaign
             ))}
           </ul>
         </div>
-      ) : null}
-      {conflict ? (
-        <p className="cf-problems" role="alert">
-          You already have an open campaign for this kit.{" "}
-          <Link className="text-link" href={conflict}>
-            Open it <span aria-hidden="true">→</span>
-          </Link>
-        </p>
       ) : null}
 
       {draft ? (
@@ -495,7 +470,7 @@ export function CampaignForm({ token, business, name, email, sandbox }: Campaign
                 </svg>
               </i>
             </button>
-            <p className="cf-note">The page goes live at its own link, ready to share; the kit&apos;s poster then points to it.</p>
+            <p className="cf-note">The page goes live at its own link, ready to share, and its poster points to it.</p>
           </div>
         </section>
       ) : null}

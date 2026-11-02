@@ -321,16 +321,13 @@ function OwnerPanel({ campaign, onCampaign }: { campaign: Campaign; onCampaign: 
               ))}
             </dl>
           ) : (
-            <p className="cp-owner-empty">No pledges yet. Share the page, and print the poster from your launch kit.</p>
+            <p className="cp-owner-empty">No pledges yet. Share the page, and print its poster below.</p>
           )}
           <p className="cp-owner-label mono">Share this page</p>
           <p className="cp-share">
             <code ref={box}>{share}</code>
             <CopyButton text={share} what="the campaign's link" target={box} />
           </p>
-          {campaign.kit_url ? <Link className="text-link cp-owner-kit" href={`${campaign.kit_url}#poster`}>
-            The window poster, with its QR code to this page <span aria-hidden="true">→</span>
-          </Link> : null}
         </div>
         <div className="cp-owner-col">
           {owner?.report?.length ? (
@@ -429,7 +426,7 @@ function Story({ campaign }: { campaign: Campaign }) {
       {campaign.evidence.length ? (
         <section className="cp-sec" aria-labelledby="cp-why">
           <h2 className="cp-h" id="cp-why">
-            {campaign.source === "owner" ? "Why here, in the owner's words" : "Why this, why here"}
+            Why here, in the owner&apos;s words
           </h2>
           <ol className="cp-evidence">
             {campaign.evidence.map((line) => (
@@ -438,14 +435,7 @@ function Story({ campaign }: { campaign: Campaign }) {
               </li>
             ))}
           </ol>
-          {campaign.source === "owner" ? (
-            <p className="cp-source">Provided by the owner. Not verified by a Walk-in survey.</p>
-          ) : campaign.survey_url ? <p className="cp-source">
-            From Walk-in&apos;s survey of the {campaign.place.area} around the door, with Qloo&apos;s taste data.{" "}
-            <Link className="text-link" href={campaign.survey_url}>
-              See the survey <span aria-hidden="true">→</span>
-            </Link>
-          </p> : null}
+          <p className="cp-source">Provided by the owner. Walk-in has not verified it.</p>
         </section>
       ) : null}
       {campaign.perks.length ? (
@@ -489,12 +479,6 @@ function Story({ campaign }: { campaign: Campaign }) {
         <p className="cp-genre mono">{campaign.concept.genre}</p>
         <p className="cp-summary">{campaign.concept.summary}</p>
         <p className="cp-plan-links">
-          {campaign.kit_url ? <Link className="text-link" href={campaign.kit_url}>
-            The launch kit <span aria-hidden="true">→</span>
-          </Link> : null}
-          {campaign.survey_url ? <Link className="text-link" href={campaign.survey_url}>
-            The survey <span aria-hidden="true">→</span>
-          </Link> : null}
           <MapsLink lat={campaign.place.lat} lon={campaign.place.lon} />
         </p>
       </section>
@@ -521,7 +505,7 @@ function Unavailable({ load, onRetry }: { load: { state: "loading" } | { state: 
             <div className="sk sk-block" />
           </>
         ) : load.state === "missing" ? (
-          <p className="kit-state-lead">
+          <p className="cp-unavailable">
             The link may be mistyped, or the campaign was removed.{" "}
             <Link className="text-link" href={FOUNDERS_URL}>
               See the open campaigns <span aria-hidden="true">→</span>
@@ -633,7 +617,7 @@ export function CampaignPage({ route }: { route: CampaignRoute }) {
           <span className="cp-name">{campaign.name}</span>
           <span className="cp-where">
             {campaign.place.label}
-            <span className="cp-area mono">{campaign.place.area}</span>
+            {campaign.place.area ? <span className="cp-area mono">{campaign.place.area}</span> : null}
           </span>
         </p>
       </header>

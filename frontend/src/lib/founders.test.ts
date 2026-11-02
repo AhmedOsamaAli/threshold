@@ -17,6 +17,7 @@ import {
   inSandbox,
   LIMITS,
   moneyFact,
+  moneyTermsOf,
   moneyText,
   neededText,
   normalizeAmount,
@@ -28,7 +29,6 @@ import {
   progressShare,
   statusText,
   supportersText,
-  termsOf,
   termsProblems,
   timeLeft,
   wordsProblems,
@@ -253,16 +253,15 @@ describe("the campaign form, as the server checks it", () => {
       email: "owner@example.com",
     };
     expect(Object.values(termsProblems(form, NOW)).every((problem) => problem === null)).toBe(true);
-    expect(termsOf(form, "tok_1", NOW)).toEqual({
-      kit_token: "tok_1",
+    expect(moneyTermsOf(form, NOW)).toEqual({
       amount: "25.00",
       goal: 40,
       deadline: deadlineFrom(form.date, form.time),
       perk: "10% off every visit",
     });
-    expect(termsOf({ ...form, perk: " " }, "tok_1", NOW)?.perk).toBeNull();
-    expect(termsOf({ ...form, goal: "2" }, "tok_1", NOW)).toBeNull();
-    expect(termsOf({ ...form, email: "nope" }, "tok_1", NOW)).toBeNull();
+    expect(moneyTermsOf({ ...form, perk: " " }, NOW)?.perk).toBeNull();
+    expect(moneyTermsOf({ ...form, goal: "2" }, NOW)).toBeNull();
+    expect(moneyTermsOf({ ...form, email: "nope" }, NOW)).toBeNull();
     expect(termsProblems({ ...form, amount: "500" }, NOW).amount).toContain("$5 to $200");
   });
 

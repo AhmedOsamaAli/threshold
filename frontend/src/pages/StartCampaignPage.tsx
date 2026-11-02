@@ -79,7 +79,7 @@ export function StartCampaignPage() {
                 Change the business details and start a fresh draft
               </button>
             </div>
-            <CampaignForm business={business} name={business.name} email={user.email} sandbox={inSandbox(paypal)} />
+            <CampaignForm business={business} email={user.email} sandbox={inSandbox(paypal)} />
           </>
         ) : (
           <form onSubmit={continueToTerms} className="business-form">

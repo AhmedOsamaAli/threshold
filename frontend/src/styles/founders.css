@@ -158,7 +158,6 @@
   max-width: 100%; padding: 6px 10px; background: var(--card); border: 1px dashed var(--edge); border-radius: 10px;
   font: 500 12.5px/1.4 var(--f-mono); overflow-wrap: anywhere;
 }
-.cp-owner-kit { justify-self: start; font-size: 14.5px; }
 .cp-report { display: grid; gap: 6px; padding-left: 18px; list-style: disc; font-size: 15px; line-height: 1.5; color: var(--text-2); }
 .cp-payout { font-size: 15px; line-height: 1.5; color: var(--text-2); }
 .cp-payout[data-status="paid"] { font-weight: 500; color: var(--ink); }
@@ -208,6 +207,8 @@
 .cp-genre { font-size: 10.5px; color: var(--blue); }
 .cp-summary { max-width: 60ch; margin-top: 8px; font: 400 19px/1.45 var(--f-serif); color: var(--text-2); text-wrap: pretty; }
 .cp-plan-links { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px; margin-top: 16px; font-size: 15px; }
+/* A campaign that is not there, or could not be read: what the page says in its place. */
+.cp-unavailable { max-width: 56ch; margin-top: 12px; font-size: 17px; line-height: 1.5; color: var(--text-2); }
 @container page (max-width: 640px) {
   .cp-steps, .fk-how { grid-template-columns: minmax(0, 1fr); }
   .cp-count b { font-size: 56px; }

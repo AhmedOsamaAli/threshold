@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "./client";
-import { campaignsPath, canRetry, conflictUrl, founders, paypalOf, problemsOf, type Campaign } from "./founders";
+import { campaignsPath, canRetry, founders, paypalOf, problemsOf, type Campaign } from "./founders";
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
@@ -13,12 +13,12 @@ const CAMPAIGN: Campaign = {
   id: "c4f1e2",
   status: "open",
   accepting: true,
-  kit_token: "tok_1",
-  kit_url: "/k/tok_1",
-  survey_url: "/s/b21ec69b0e92?sheet=0",
+  kit_token: null,
+  kit_url: null,
+  survey_url: null,
   name: "Golden Hour",
-  place: { label: "Zamalek, Cairo", lat: 30.0626, lon: 31.2197, area: "10-minute walk" },
-  concept: { genre: "Bakery", summary: "Morning bread and coffee for the island." },
+  place: { label: "Zamalek, Cairo", lat: 30.0626, lon: 31.2197, area: "" },
+  concept: { genre: "bakery", summary: "Morning bread and coffee for the island." },
   evidence: ["No bakery inside the walk.", "Locals cross the river for croissants."],
   title: "Help open Golden Hour on the island",
   pitch: "Bread before eight, a block from the river.",
@@ -58,20 +58,23 @@ afterEach(() => {
 });
 
 describe("the campaign API", () => {
-  it("drafts and publishes an owner's business without inventing a kit", async () => {
+  it("drafts an owner's business and publishes it with the edited words", async () => {
     const business = {
       name: "Morning Table", kind: "cafe" as const, description: "Breakfast and coffee for our neighbors.",
       why_here: "Somewhere to meet.", address: "East Austin, Texas", lat: 30.26, lon: -97.71,
       amount: "25.00", goal: 3, deadline: "2026-11-16T18:00:00Z", perk: null,
     };
     const draft = { title: "Morning Table", pitch: "Breakfast and coffee.", perks: ["A founders' preview"], how_it_works: "Held, not charged.", problems: [] };
-    const calls = stubFetch(json(draft), json({ id: "c1", url: "/p/c1" }));
-    await expect(founders.draftBusiness(business)).resolves.toEqual(draft);
-    await expect(founders.publishBusiness({ ...business, payout_email: "owner@example.com",
+    const calls = stubFetch(json(draft), json({ id: "c1", url: "/p/c1" }, 201));
+    await expect(founders.draft(business)).resolves.toEqual(draft);
+    await expect(founders.publish({ ...business, payout_email: "owner@example.com",
       title: draft.title, pitch: draft.pitch, perks: draft.perks })).resolves.toEqual({ id: "c1", url: "/p/c1" });
-    expect(calls.map((call) => call.url)).toEqual(["/api/business-campaigns/draft", "/api/business-campaigns"]);
-    expect(sent(calls[0])).not.toHaveProperty("kit_token");
-    expect(sent(calls[1])).toMatchObject({ name: "Morning Table", kind: "cafe", payout_email: "owner@example.com" });
+    expect(calls.map((call) => [call.url, call.init?.method])).toEqual([
+      ["/api/business-campaigns/draft", "POST"],
+      ["/api/business-campaigns", "POST"],
+    ]);
+    expect(sent(calls[0])).toEqual(business);
+    expect(sent(calls[1])).toMatchObject({ name: "Morning Table", kind: "cafe", payout_email: "owner@example.com", perks: draft.perks });
   });
   it("reads a private receipt without caching or sending its URL as a referrer", async () => {
     const token = "x".repeat(32);
@@ -95,22 +98,6 @@ describe("the campaign API", () => {
     expect(campaignsPath(null)).toBe("/api/campaigns");
     expect(campaignsPath({ lat: 30.06261, lon: 31.21974, km: 25 })).toBe("/api/campaigns?lat=30.0626&lon=31.2197&km=25");
     expect(campaignsPath({ lat: 30, lon: 31 })).toBe("/api/campaigns?lat=30.0000&lon=31.0000");
-  });
-
-  it("drafts with the terms alone, and publishes them with the edited words", async () => {
-    const terms = { kit_token: "tok_1", amount: "25.00", goal: 40, deadline: "2026-11-16T18:00:00.000Z", perk: null };
-    const draft = { title: "T", pitch: "P", perks: ["a"], how_it_works: "H", problems: [] };
-    const calls = stubFetch(json(draft), json({ id: "c4f1e2", url: "/p/c4f1e2" }, 201));
-    await expect(founders.draft(terms)).resolves.toEqual(draft);
-    await expect(
-      founders.publish({ ...terms, payout_email: "owner@example.com", title: "T", pitch: "P", perks: ["a"] }),
-    ).resolves.toEqual({ id: "c4f1e2", url: "/p/c4f1e2" });
-    expect(calls.map((call) => [call.url, call.init?.method])).toEqual([
-      ["/api/campaigns/draft", "POST"],
-      ["/api/campaigns", "POST"],
-    ]);
-    expect(sent(calls[0])).toEqual(terms);
-    expect(sent(calls[1])).toMatchObject({ payout_email: "owner@example.com", perks: ["a"] });
   });
 
   it("starts a pledge for the buttons, holds it once approved, and withdraws it", async () => {
@@ -157,13 +144,6 @@ describe("what an error's body adds", () => {
     expect(canRetry(failure(402, { detail: "Declined." }))).toBe(false);
     expect(canRetry(failure(409, { detail: "Closed.", retry: true }))).toBe(false);
     expect(canRetry(new Error("402"))).toBe(false);
-  });
-
-  it("points a 409 to the campaign already open, when it names one", () => {
-    expect(conflictUrl(failure(409, { detail: "Open already.", url: "/p/c4f1e2" }))).toBe("/p/c4f1e2");
-    expect(conflictUrl(failure(409, { detail: "Open already.", url: "https://elsewhere.example/p/x" }))).toBeNull();
-    expect(conflictUrl(failure(409, { detail: "Closed." }))).toBeNull();
-    expect(conflictUrl(failure(422, { url: "/p/c4f1e2" }))).toBeNull();
   });
 
   it("reads a 422's problems wherever the server put them", () => {

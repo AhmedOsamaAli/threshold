@@ -1,15 +1,9 @@
 /* Founders in plain words: money, progress, the deadline, the pledge's terms and the poster's line, and the campaign
    form's checks, which mirror the server's limits (app/payments/pledges.py). Pure, so they are tested without a browser. */
-import type { CampaignOwner, CampaignProgress, CampaignStatus, CampaignTerms, PayPalConfig } from "../api/founders";
-import type { KitView } from "../api/kit";
+import type { CampaignOwner, CampaignProgress, CampaignStatus, MoneyTerms, PayPalConfig } from "../api/founders";
 
 /** Shown wherever money appears while PayPal runs in its sandbox. */
 export const SANDBOX_NOTICE = "Demo payments — no real money.";
-
-/** Only the viewer's own open campaign replaces this kit's launch invitation. */
-export function ownCampaign(view: KitView) {
-  return view.campaigns?.find((campaign) => campaign.is_owner && campaign.status === "open") ?? null;
-}
 
 /**
  * The owner's terms and words as the server allows them. A campaign runs at most 27 days: PayPal holds an
@@ -349,7 +343,7 @@ export function termsProblems(form: TermsForm, now: number): Record<TermsField, 
 }
 
 /** The terms as the API takes them, once every one of them is fine; else null. */
-export function moneyTermsOf(form: TermsForm, now: number): Omit<CampaignTerms, "kit_token"> | null {
+export function moneyTermsOf(form: TermsForm, now: number): MoneyTerms | null {
   const amount = normalizeAmount(form.amount);
   const goal = goalValue(form.goal);
   const deadline = deadlineFrom(form.date, form.time);
@@ -359,11 +353,6 @@ export function moneyTermsOf(form: TermsForm, now: number): Omit<CampaignTerms, 
   }
   const perk = form.perk.trim().replace(/\s+/g, " ");
   return { amount, goal, deadline, perk: perk || null };
-}
-
-export function termsOf(form: TermsForm, kitToken: string, now: number): CampaignTerms | null {
-  const terms = moneyTermsOf(form, now);
-  return terms ? { kit_token: kitToken, ...terms } : null;
 }
 
 /** The words as the owner edited them. */

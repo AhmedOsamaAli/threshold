@@ -47,7 +47,7 @@ describe("the same poster renderer in different scenarios", () => {
         perk: "An invitation to the first book-club evening", amount: "15.00", goal: 6, direction: "editorial" },
     ])("builds $name from its own name, description, perk and terms without a kit", (project) => {
       const record: Campaign = {
-        id: project.id, status: "open", accepting: true, source: "owner", kit_token: null, kit_url: null, survey_url: null,
+        id: project.id, status: "open", accepting: true, kit_token: null, kit_url: null, survey_url: null,
         name: project.name, place: { label: "East Austin, Texas", lat: 30.26, lon: -97.72, area: "" },
         concept: { genre: project.kind, summary: project.summary }, evidence: [],
         title: `Help open ${project.name}`, pitch: project.summary, perks: [project.perk],

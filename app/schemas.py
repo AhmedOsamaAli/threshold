@@ -1,56 +1,15 @@
-"""Typed shapes of the JSON API, so responses are validated and documented at /docs.
-
-The survey itself streams server-sent events (GET /api/run); their payloads are documented in the README.
-"""
+"""Typed shapes of the JSON API that need one, so responses are validated and documented at /docs."""
 from __future__ import annotations
 
-from typing import Any
-
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
 
 class Health(BaseModel):
     ok: bool
-    qloo: bool = Field(description="A Qloo key is configured (cached responses work without one)")
-    llm: bool = Field(description="The agent's language model is configured")
+    llm: bool = Field(description="The language model that drafts campaign words is configured")
     model: str | None
     models: list[str] = Field(description="The model and its fallbacks, in order")
     resting: dict[str, float] = Field(description="Models resting after rate limits, with seconds left")
-
-
-class Preset(BaseModel):
-    id: str
-    label: str
-    lat: float
-    lon: float
-    blurb: str
-
-
-class ExampleKit(BaseModel):
-    token: str
-    index: int = Field(description="The concept the kit was made for")
-    name: str | None = None
-    url: str = Field(description="The kit's page, /k/{token}")
-    report_url: str = Field(description="Its printable report, /k/{token}/dossier")
-
-
-class Example(BaseModel):
-    """A finished survey anyone can open: replayed from what was saved, so opening it spends nothing."""
-
-    run_id: str
-    url: str = Field(description="The survey's page, /s/{run_id}")
-    label: str = Field(description="The site, as the survey named it")
-    intent: str = Field(description="'explore', 'open' or 'improve'")
-    business: str | None = Field(None, description="The business tested, for 'open'")
-    area: str = Field(description="'10-minute walk', '30-minute drive', '25 km drive'")
-    ages: str | None = Field(None, description="The age focus, '25–34'; None for everyone")
-    llm: bool = Field(description="Whether the concepts were written with the AI agent")
-    headline: str | None = Field(None, description="The top concept's name, or the top gap")
-    verdict: str | None = Field(None, description="The verdict's headline, for 'open'")
-    concepts: list[str]
-    gaps: int = Field(description="Categories ranked")
-    top_gaps: list[str]
-    kit: ExampleKit | None = Field(None, description="The first concept with a ready launch kit")
 
 
 class Catchment(BaseModel):
@@ -65,17 +24,6 @@ class Catchment(BaseModel):
     short: str = Field("", description="'10-min walk', '30-min drive', '25 km drive'")
 
 
-class HeatCell(BaseModel):
-    lat: float
-    lon: float
-    geohash: str | None
-    affinity: float
-
-
-class Heatmap(BaseModel):
-    cells: list[HeatCell]
-
-
 class GeocodeHit(BaseModel):
     label: str | None
     lat: float
@@ -85,160 +33,3 @@ class GeocodeHit(BaseModel):
 class ReverseHit(BaseModel):
     label: str = Field(description="The street address and the part of town: '110 Bedford Avenue, Williamsburg'")
     address: str = Field(description="OpenStreetMap's full address line")
-
-
-class PlaceHit(BaseModel):
-    id: str
-    name: str | None
-    address: str | None
-    genres: list[str]
-    rating: float | None
-    lat: float
-    lon: float
-    distance_m: int
-
-
-class OsmPlace(BaseModel):
-    """A place of the gap's kind that OpenStreetMap shows inside the walk and Qloo does not list there."""
-
-    name: str
-    lat: float
-    lon: float
-    url: str = Field(description="Its OpenStreetMap page, such as https://www.openstreetmap.org/node/123")
-    tag: str | None = Field(None, description="What OpenStreetMap says it is ('shop=bakery')")
-    distance_m: int | None = Field(None, description="Straight-line distance from the site")
-
-
-class OsmCheck(BaseModel):
-    """The gap's OpenStreetMap cross-check. Data © OpenStreetMap contributors, under the Open Database License (ODbL)."""
-
-    checked: bool = Field(description="False when OpenStreetMap did not answer or no tag reliably marks this kind of place")
-    count: int = Field(description="Places of this kind OpenStreetMap shows inside the walk, Qloo's included")
-    extra: list[OsmPlace] = Field(description="The ones Qloo does not list there, nearest first; they count as supply")
-    reason: str | None = Field(None, description="Why it was not checked: 'unavailable', 'unmapped' or 'off'")
-    note: str | None = Field(None, description="The reason, or why the places are not compared one by one, in words")
-    as_of: str | None = Field(None, description="When the OpenStreetMap data the Overpass instance served was updated")
-    credit: str | None = Field(None, description="'© OpenStreetMap contributors', to show wherever its places do")
-
-
-class GapRow(BaseModel):
-    """One category of the gap table, as the `gaps` event streams it (also `explored`, and the `row` of a verdict or an
-    improvement). Only the main fields are listed; rows carry more evidence."""
-
-    model_config = ConfigDict(extra="allow")
-
-    genre_id: str
-    genre: str
-    demand_rank: int
-    ref_rank: float | None
-    nearby_count: int = Field(description="Places of this kind Qloo lists inside the walk")
-    nearby_capped: bool = Field(description="Qloo has more inside the walk than it returns")
-    expected_nearby: float | None = Field(None, description="What a block this dense usually holds")
-    relative_supply: float = Field(description="Supply inside the walk (Qloo's and OpenStreetMap's extras) against density")
-    gap_score: int
-    evidence: str = Field(description="'ok', 'thin' or 'atypical'")
-    reading: str | None = Field(None, description="The row in two or three words: 'Clear gap', 'People here travel for it'")
-    why: list[str] = Field(default_factory=list, description="The row in plain sentences, OpenStreetMap's extras included")
-    osm: OsmCheck | None = Field(None, description="The OpenStreetMap cross-check; null in surveys saved before it existed")
-
-
-class LoveItem(BaseModel):
-    """One of the two things a wildcard concept combines, and where the evidence that people here love it comes from."""
-
-    item: str = Field(description="What people here love: a kind of place, in plain words ('coffee shops'), or the theme "
-                                  "of a themed wild card ('reality TV')")
-    genre: str = Field("", description="Its category in the gap table; empty for a themed wild card's theme")
-    source: str = Field(description="The Qloo evidence in words: the trips people here make, how they rank it, or the "
-                                    "titles they over-index on")
-
-
-class ThemeTitle(BaseModel):
-    """A title or brand people here over-index on that a themed wild card is built on (Qloo)."""
-
-    domain: str = Field(description="'tv', 'movies', 'podcasts', 'artists' or 'brands'")
-    id: str = Field(description="Its Qloo entity id")
-    name: str
-    image: str | None = Field(None, description="Qloo's image of it, when there is one")
-
-
-class ThemeDraws(BaseModel):
-    """Who the fans of a theme's titles lean toward, from Qloo's audience data: leans, not head counts."""
-
-    ages: list[str] = Field(description="The age bands they lean toward, youngest first ('25–29', '30–34'); empty when "
-                                        "no age group leans clearly")
-    gender: str | None = Field(None, description="'female' or 'male' when they lean clearly one way")
-    basis: str
-
-
-class Theme(BaseModel):
-    """What a themed wild card is built on: a theme people here over-index on across shows, films, podcasts, artists and
-    brands, what happens there, and the titles behind it."""
-
-    key: str = Field(description="The theme's id: 'reality_tv', 'sports', 'comedy', 'hip_hop'…")
-    label: str = Field(description="The theme in plain words: 'reality TV'")
-    program: list[str] = Field(description="What happens there, each line naming titles from the evidence")
-    built_on: list[ThemeTitle] = Field(description="Three to six titles and brands it stands on, those the program names "
-                                                   "first")
-    draws: ThemeDraws | None = Field(None, description="Who the titles' fans lean toward; null when nothing leans clearly "
-                                                       "or Qloo did not answer")
-    basis: str = Field(description="Where the taste comes from: who over-indexes against which areas (Qloo)")
-
-
-class Concept(BaseModel):
-    """A business concept as the `concepts` event streams it (GET /api/run): the ranked concepts, then at most one
-    wildcard. The event also carries `mode`, `model`, `caution` and `notes`, the list of what the owner's rules repaired
-    or dropped, in plain words."""
-
-    model_config = ConfigDict(extra="allow")
-
-    name: str = Field(description="An original business name, never the category plus the neighborhood")
-    genre: str = Field(description="The gap-table category it is built on; for a wildcard, the kind of place it is")
-    genre_id: str | None = None
-    gap_score: int | None = Field(None, description="The category's gap score; null for the wildcard, which is never ranked")
-    one_liner: str | None = None
-    for_whom: str | None = None
-    why_here: list[str] = Field(default_factory=list)
-    beat_competitors: str | None = None
-    signature: list[str] = Field(default_factory=list, description="What people would come for, within the owner's rules")
-    inspired_by: list[str] = Field(default_factory=list)
-    risk: str | None = None
-    owner_rules: list[str] = Field(
-        default_factory=list,
-        description="How it meets each rule the owner gave, one line each: the unit ('Fits 45 m² (484 ft²): a counter and "
-                    "about 20–24 seats at most.'), the kitchen ('No hood needed: …'), the price band ('Budget prices: "
-                    "nothing in it is called upscale or premium.'), the diet and families",
-    )
-    wildcard: bool = Field(False, description="True for the extra concept after the ranked ones: untested, never ranked")
-    combines: list[LoveItem] | None = Field(None, description="For the wildcard: a kind of place people here love and "
-                                                              "either another one or, when themed, its theme")
-    theme: Theme | None = Field(None, description="For a themed wild card: the theme people here over-index on, its "
-                                                  "program and the titles it is built on")
-    caution: str | None = Field(None, description="For the wildcard: why it is untested")
-
-
-class DesignSheet(BaseModel):
-    """A concept's design sheet, from the evidence: the concept's own name, positioning and signature, what to sell,
-    when to open, what the unit holds, the experience and launch plans, and how it meets each of the owner's rules.
-    Sheets saved before the cuts may carry more fields (interior, mood, renders); they pass through untyped."""
-
-    model_config = ConfigDict(extra="allow")
-
-    # Loosely typed where a sheet saved before the change (written by a model) may have another shape.
-    name: Any = None
-    tagline: Any = Field(None, description="The concept's one-liner")
-    offer: Any = Field(None, description="The concept's signature, then what the places people here love are known for")
-    hours: str | None = Field(None, description="Typical hours of the places locals love of this type")
-    hours_basis: str | None = None
-    capacity: str | None = Field(None, description="Most guests the unit holds, from building-code load factors")
-    capacity_basis: str | None = None
-    unit: dict | None = None
-    experience: dict | None = Field(None, description="Soundtrack, screen and talks from the neighborhood's signature taste")
-    launch: dict | None = Field(
-        None, description="Who to reach, where, when and what can be said, with platform settings and the proof of each claim"
-    )
-    audience: dict | None = Field(
-        None, description="Who the places people here love of this kind draw (Qloo audience leans), and the ad setting it implies"
-    )
-    owner_rules: list[str] = Field(default_factory=list, description="How it meets each rule the owner gave")
-    mode: str = Field("rules", description="'rules': every sheet is assembled from the evidence")
-    model: str | None = None

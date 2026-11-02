@@ -1,13 +1,13 @@
 """Fakes for Walk-in Founders' tests: PayPal's sandbox in memory (an httpx.MockTransport handler) with Orders, Payments,
-Payouts and webhook verification, the payment settings, an app wired to them with the settlement loop off, and two
-requests raced around a PayPal call. Accounts' fakes come from tests.account_fakes."""
+Payouts and webhook verification, the payment settings, an app wired to them with the settlement loop off, a business
+for the campaigns to start from, and two requests raced around a PayPal call. Accounts' fakes come from
+tests.account_fakes."""
 from __future__ import annotations
 
 import asyncio
 import itertools
 import json
 import re
-import time
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
@@ -17,11 +17,11 @@ from fastapi.testclient import TestClient
 
 from app.payments.paypal import PayPalClient
 from tests import account_fakes
-from tests.account_fakes import Clock, dev_sign_in, run_survey
+from tests.account_fakes import Clock, dev_sign_in
 
 __all__ = [
-    "API", "CRON_SECRET", "WEBHOOK_HEADERS", "WEBHOOK_ID", "Clock", "FakePayPal", "configure", "dev_sign_in",
-    "make_client", "race", "ready_kit", "run_survey", "wait_for_kit", "webhook",
+    "API", "BUSINESS", "CRON_SECRET", "OWNER_EMAIL", "WEBHOOK_HEADERS", "WEBHOOK_ID", "Clock", "FakePayPal",
+    "business_terms", "configure", "dev_sign_in", "make_client", "race", "start_campaign", "webhook",
 ]
 
 API = "https://api-m.sandbox.paypal.com"
@@ -29,7 +29,7 @@ CRON_SECRET = "a-long-cron-secret"
 WEBHOOK_ID = "WH-TEST-1"
 PAYMENT_SETTINGS = {
     "cron_secret": CRON_SECRET, "paypal_client_id": "test-paypal-client", "paypal_client_secret": "test-paypal-secret",
-    "paypal_env": "sandbox", "paypal_webhook_id": WEBHOOK_ID, "surveys_paused": False,
+    "paypal_env": "sandbox", "paypal_webhook_id": WEBHOOK_ID,
 }
 # The headers PayPal signs a webhook delivery with; the fake PayPal confirms them (or not, with webhook_genuine).
 WEBHOOK_HEADERS = {
@@ -280,23 +280,31 @@ def make_client(paypal: FakePayPal | None = None, **options) -> TestClient:
     return account_fakes.make_client(services={"paypal": paypal.client() if paypal else None}, **options)
 
 
-def wait_for_kit(client: TestClient, token: str, timeout: float = 30.0) -> dict:
-    """The kit's page once its build has ended."""
-    deadline = time.monotonic() + timeout
-    while True:
-        page = client.get(f"/api/kits/{token}").json()
-        if page["status"] != "building" or time.monotonic() > deadline:
-            return page
-        time.sleep(0.05)
+# The business a test owner describes, and the email their money goes to.
+BUSINESS = {
+    "name": "Morning Table", "kind": "cafe", "description": "A neighborhood cafe serving breakfast and coffee.",
+    "why_here": "A place for neighbors to meet over breakfast.", "address": "East Austin, Texas",
+    "lat": 30.26, "lon": -97.71,
+}
+OWNER_EMAIL = "olive.owner@example.com"
 
 
-def ready_kit(client: TestClient, run_id: str, index: int = 0) -> dict:
-    """The concept's launch kit (free), once built."""
-    made = client.post("/api/kits", json={"run_id": run_id, "index": index})
-    assert made.status_code == 200, made.text
-    page = wait_for_kit(client, made.json()["token"])
-    assert page["status"] == "ready", page
-    return page
+def business_terms(clock: Clock, days: float = 10, **changes) -> dict:
+    """The owner's description and money terms (a $25 pledge, 3 supporters, `days` from the clock's now)."""
+    return {**BUSINESS, "amount": "25.00", "goal": 3, "deadline": (clock.now + timedelta(days=days)).isoformat(),
+            "perk": None, **changes}
+
+
+def start_campaign(client: TestClient, clock: Clock, days: float = 10, **changes) -> str:
+    """Starts a campaign as the signed-in owner does: the AI's draft of the words, then publishing them. Its id."""
+    body = business_terms(clock, days, **changes)
+    drafted = client.post("/api/business-campaigns/draft", json=body).json()
+    assert drafted["problems"] == [], drafted
+    created = client.post("/api/business-campaigns", json={
+        **body, "payout_email": OWNER_EMAIL, **{key: drafted[key] for key in ("title", "pitch", "perks")},
+    })
+    assert created.status_code == 200, created.text
+    return created.json()["id"]
 
 
 def webhook(client: TestClient, event_id: str, kind: str, resource: dict, headers: dict | None = None) -> httpx.Response:

@@ -33,7 +33,7 @@ def test_the_app_imports_and_builds_its_ai_chain_without_openai(tmp_path):
         "print(chain.enabled, 'openai' in sys.modules)\n"
     )
     env = {**os.environ, "DATABASE_URL": f"sqlite:///{(tmp_path / 'walkin.db').as_posix()}", "LLM_API_KEY": "",
-           "GROQ_API_KEY": "", "QLOO_API_KEY": "", "KEEP_AWAKE_URL": "", "EXAMPLES": "", "PUBLIC_URL": ""}
+           "GROQ_API_KEY": "", "KEEP_AWAKE_URL": "", "PUBLIC_URL": ""}
     done = subprocess.run([sys.executable, "-c", probe], cwd=REPO, env=env, capture_output=True, text=True, timeout=300)
     assert done.returncode == 0, done.stderr[-2000:]
     assert done.stdout.split() == ["True", "False"]

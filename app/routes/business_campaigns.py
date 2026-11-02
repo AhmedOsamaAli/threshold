@@ -1,4 +1,6 @@
-"""Campaigns for an owner's business. Their description is never presented as survey-verified evidence."""
+"""Starting a campaign: the owner describes the business and the place, sets the money terms and has the AI draft the
+words, then publishes them once the server's rules accept them. What the owner says about why here is shown as their
+own words, never as measured evidence."""
 from __future__ import annotations
 
 import logging
@@ -44,7 +46,7 @@ def clean(value: str) -> str:
 
 
 def inputs(body: BusinessTerms, deadline) -> tuple[dict, dict]:
-    """Use a kit's drafting and editing checks, but pass no measured claims."""
+    """The inputs of the drafting and editing checks, from the owner's description; no measured claims are passed."""
     name, address = clean(body.name), clean(body.address)
     concept = {"name": name, "genre": body.kind, "signature": [],
                "why_here": [clean(body.why_here)] if clean(body.why_here) else []}
@@ -105,7 +107,7 @@ async def create_business(request: Request, body: NewBusinessCampaign, user: aut
         "evidence": [why] if why else [],
     }
     await state.campaigns.create(
-        id=campaign.id, kit_token=None, survey_id=None, idx=None, user_id=user["id"], status="open",
+        id=campaign.id, user_id=user["id"], status="open",
         title=clean(body.title), offer=offer, amount_cents=minor(campaign.amount, CURRENCY), currency=CURRENCY,
         goal_count=campaign.goal, deadline=deadline, lat=body.lat, lon=body.lon, payout_email=body.payout_email.strip(),
     )

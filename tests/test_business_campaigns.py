@@ -1,18 +1,17 @@
-"""An owner can start without a survey; all money and copy checks still use the existing Founders engine."""
+"""An owner starts a campaign from their own description of the business; all money and copy checks use the Founders
+engine."""
 from __future__ import annotations
-
-from datetime import timedelta
 
 import pytest
 
-from app.db.tables import campaigns, surveys
-from tests.founders_fakes import Clock, FakePayPal, configure, dev_sign_in, make_client
+from app.db.tables import campaigns
+from tests.founders_fakes import BUSINESS, Clock, FakePayPal, business_terms, configure, dev_sign_in, make_client
 from tests.test_campaigns import pledge, table
 
 
 @pytest.fixture
 def business_world(monkeypatch):
-    configure(monkeypatch, surveys_paused=True)
+    configure(monkeypatch)
     clock = Clock()
     paypal = FakePayPal(clock)
     with make_client(paypal=paypal, clock=clock) as client:
@@ -21,13 +20,7 @@ def business_world(monkeypatch):
 
 
 def terms(clock, **changes) -> dict:
-    return {
-        "name": "Morning Table", "kind": "cafe", "description": "A neighborhood cafe serving breakfast and coffee.",
-        "why_here": "A place for neighbors to meet over breakfast.", "address": "East Austin, Texas",
-        "lat": 30.26, "lon": -97.71, "amount": "25.00", "goal": 3,
-        "deadline": (clock.now + timedelta(days=7)).isoformat(), "perk": "10% off every visit in the first year",
-        **changes,
-    }
+    return business_terms(clock, 7, **{"perk": "10% off every visit in the first year", **changes})
 
 
 def drafted(client, body):
@@ -42,20 +35,22 @@ def publish(client, body, **edits):
     return client.post("/api/business-campaigns", json={**body, "payout_email": "owner@example.com", **copy, **edits})
 
 
-def test_an_owner_starts_without_a_survey_and_never_appears_survey_verified(business_world):
+def test_an_owner_starts_a_campaign_and_it_is_never_presented_as_measured_evidence(business_world):
     client, _, clock = business_world
     response = publish(client, terms(clock))
     assert response.status_code == 200, response.text
     campaign_id = response.json()["id"]
     row = table(client, campaigns)[0]
-    assert row["kit_token"] is row["survey_id"] is row["idx"] is None
-    assert table(client, surveys) == []
-    assert client.portal.call(client.app.state.campaigns.survey_ids) == []
+    assert (row["user_id"], row["payout_email"]) == (client.get("/api/me").json()["user"]["id"], "owner@example.com")
     view = client.get(f"/api/campaigns/{campaign_id}").json()
-    assert view["source"] == "owner" and view["kit_url"] is view["survey_url"] is None
-    assert view["evidence"] == [terms(clock)["why_here"]]
+    assert view["source"] == "owner"
+    assert set(view) == {
+        "id", "status", "accepting", "source", "name", "place", "concept", "evidence", "title", "pitch", "perks",
+        "how_it_works", "amount", "currency", "goal", "deadline", "closed_at", "progress", "is_owner", "owner",
+    }
+    assert view["name"] == BUSINESS["name"] and view["evidence"] == [BUSINESS["why_here"]]
     assert client.get("/api/campaigns").json()["campaigns"][0]["id"] == campaign_id
-    assert client.get("/api/me/places").status_code == 200
+    assert client.get("/api/me/campaigns").status_code == 200
     assert client.get("/founders/start").status_code == 200
 
 
@@ -73,7 +68,7 @@ def test_business_campaigns_use_the_same_real_hold_capture_and_payout_code(busin
     assert len(paypal.calls(r"/v1/payments/payouts")) == 1
 
 
-def test_editing_unproven_claims_is_refused_even_when_there_is_no_survey(business_world):
+def test_editing_unproven_claims_is_refused(business_world):
     client, _, clock = business_world
     body = terms(clock)
     for title in ("The best place on the block", "The only cafe in East Austin"):
@@ -85,7 +80,7 @@ def test_editing_unproven_claims_is_refused_even_when_there_is_no_survey(busines
 @pytest.mark.parametrize("changes", [
     {"goal": 0}, {"goal": 1}, {"amount": 25.0}, {"amount": "250.00"},
     {"name": "  "}, {"description": "        "}, {"address": "   "}, {"lat": 91}, {"lon": -181},
-    {"kind": "not-a-kind"}, {"kit_token": "made-up"},
+    {"kind": "not-a-kind"}, {"unknown_field": "made-up"},
 ])
 def test_bad_business_terms_are_refused_before_any_campaign_is_stored(business_world, changes):
     client, _, clock = business_world

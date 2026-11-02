@@ -10,10 +10,11 @@ from datetime import timedelta
 import pytest
 from sqlalchemy import select, update
 
-from app.db.tables import campaigns, payouts, pledges, surveys
+from app.db.tables import campaigns, payouts, pledges
 from app.payments import pledges as rules
 from tests.founders_fakes import (
     CRON_SECRET,
+    OWNER_EMAIL,
     WEBHOOK_HEADERS,
     Clock,
     FakePayPal,
@@ -21,12 +22,11 @@ from tests.founders_fakes import (
     dev_sign_in,
     make_client,
     race,
-    ready_kit,
-    run_survey,
+    start_campaign,
     webhook,
 )
 
-EMAIL = "olive.owner@example.com"
+EMAIL = OWNER_EMAIL
 NET = "23.64"  # $25.00 after the fake PayPal's fee of 3.49% + $0.49
 
 
@@ -40,10 +40,8 @@ def world():
     clock = Clock()
     paypal = FakePayPal(clock)
     with make_client(paypal=paypal, clock=clock) as client:
-        run_id = run_survey(client)
-        kit = ready_kit(client, run_id)
         dev_sign_in(client)
-        yield {"client": client, "paypal": paypal, "clock": clock, "run_id": run_id, "kit": kit}
+        yield {"client": client, "paypal": paypal, "clock": clock}
 
 
 def table(client, which) -> list[dict]:
@@ -62,15 +60,8 @@ def change(client, which, where, **values) -> None:
     client.portal.call(write)
 
 
-def start(world, days: float = 10, goal: int = 3, kit: dict | None = None) -> str:
-    client = world["client"]
-    body = {"kit_token": (kit or world["kit"])["token"], "amount": "25.00", "goal": goal,
-            "deadline": (world["clock"].now + timedelta(days=days)).isoformat(), "perk": None}
-    drafted = client.post("/api/campaigns/draft", json=body).json()
-    created = client.post("/api/campaigns", json={**body, "payout_email": EMAIL,
-                                                  **{key: drafted[key] for key in ("title", "pitch", "perks")}})
-    assert created.status_code == 200, created.text
-    return created.json()["id"]
+def start(world, days: float = 10, goal: int = 3) -> str:
+    return start_campaign(world["client"], world["clock"], days, goal=goal)
 
 
 def pledge(client, campaign_id: str) -> str:
@@ -127,7 +118,7 @@ def test_a_funded_campaign_closed_early_collects_every_hold_and_pays_its_owner_o
     assert client.post(f"/api/campaigns/{campaign_id}/pledges").status_code == 409
     assert client.post(f"/api/campaigns/{campaign_id}/cancel").status_code == 409  # it collected
     assert client.post(f"/api/campaigns/{campaign_id}/close").json()["status"] == "collected"  # idempotent
-    assert client.get("/api/me/places").json()["campaigns"][0]["status"] == "collected"
+    assert client.get("/api/me/campaigns").json()["campaigns"][0]["status"] == "collected"
 
 
 def test_at_the_deadline_old_holds_are_renewed_and_a_refused_capture_leaves_it_partial(world):
@@ -355,9 +346,8 @@ def test_the_app_settles_on_its_own_in_the_background():
     clock = Clock()
     paypal = FakePayPal(clock)
     with make_client(paypal=paypal, clock=clock, settle_every=0.05) as client:
-        run_id = run_survey(client)
-        world = {"client": client, "clock": clock, "kit": ready_kit(client, run_id)}
         dev_sign_in(client)
+        world = {"client": client, "clock": clock}
         campaign_id = start(world, days=1)
         pledge(client, campaign_id)
         clock.advance(days=1, minutes=1)
@@ -366,22 +356,6 @@ def test_the_app_settles_on_its_own_in_the_background():
             time.sleep(0.05)
         assert client.get(f"/api/campaigns/{campaign_id}").json()["status"] == "expired"
         assert len(paypal.calls(r"/v2/payments/authorizations/[^/]+/void")) == 1
-
-
-def test_surveys_behind_campaigns_are_kept_from_the_purge(monkeypatch, database_url):
-    clock = Clock()
-    with make_client(paypal=FakePayPal(clock), clock=clock, database_url=database_url) as client:
-        run_id = run_survey(client)  # signed out: nobody keeps it in My places
-        world = {"client": client, "clock": clock, "kit": ready_kit(client, run_id)}
-        dev_sign_in(client)
-        start(world)
-        other = run_survey(client)
-        change(client, surveys, surveys.c.id.in_([run_id, other]), user_id=None,
-               created_at=clock.now - timedelta(days=90))
-    with make_client(paypal=FakePayPal(clock), clock=clock, database_url=database_url) as client:
-        kept = {row["id"] for row in table(client, surveys)}
-        assert run_id in kept and other not in kept
-        assert len(table(client, campaigns)) == 1
 
 
 def test_paypal_s_clock_running_ahead_never_makes_a_pledge_late(world):

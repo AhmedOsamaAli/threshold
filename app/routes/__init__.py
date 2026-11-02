@@ -1,9 +1,11 @@
-"""The API's endpoints, by resource. Each module has its router; app.main includes them all.
+"""The API's endpoints, by resource. Each module has its router; app.main includes the first three, and
+app.payments.founders installs the rest.
 
-meta       whether the server is up and what it can reach (GET /api/health), the preset sites (GET /api/presets)
-surveys    running a survey and streaming it (GET /api/run), its record (GET /api/runs/{id}), design sheets
-places     the map's lookups: catchment, heatmap, the owner's place on Qloo, addresses both ways
-account    public settings, sign-in and sign-out, the signed-in user, My places and deleting the account
-kits       launch kits (free): making one for a concept, its page and building it again
-examples   the finished example surveys anyone can open (GET /api/examples), loaded into memory at startup
+meta                the server's own facts: whether it is up and what it can reach (GET /api/health)
+maps                the map's lookups: the area people can reach from a point, addresses both ways
+account             public settings, sign-in and sign-out, the signed-in user, their campaigns, deleting the account
+campaigns           Walk-in Founders' campaigns: finding them, pledging, withdrawing, the owner's close and cancel
+business_campaigns  starting a campaign from the owner's description of the business, and the AI's draft of its words
+receipts            a pledge's private receipt: reading it and withdrawing the pledge
+hooks               PayPal's webhooks and the scheduled settlement
 """

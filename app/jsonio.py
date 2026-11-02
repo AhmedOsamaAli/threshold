@@ -1,9 +1,9 @@
 """JSON in and out of the disk caches, fast and off the event loop's way.
 
-Qloo's answers are large (a survey reads 27-66 MB of them), so they are parsed with orjson, about three times as fast
-as the json module on them, to the same values: json reads whatever orjson refuses (NaN, overflowing exponents, lone
-surrogates) and every text with a run of 19 digits or more, since orjson would read an integer past 64 bits as a float
-where json keeps it whole (the check costs a tenth of the parse). Cache files are written whole or not at all (a
+Overpass's answers can be large (a big area runs to tens of MB), so they are parsed with orjson, about three times as
+fast as the json module on them, to the same values: json reads whatever orjson refuses (NaN, overflowing exponents,
+lone surrogates) and every text with a run of 19 digits or more, since orjson would read an integer past 64 bits as a
+float where json keeps it whole (the check costs a tenth of the parse). Cache files are written whole or not at all (a
 temporary file, then a rename), since readers in other threads may open them at any moment. Callers run read and write
 in a worker thread.
 """

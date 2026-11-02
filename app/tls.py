@@ -1,4 +1,4 @@
-"""One TLS setup for every outgoing HTTPS client: Qloo, Valhalla, Overpass, Nominatim, OpenFreeMap, Google and the AI
+"""One TLS setup for every outgoing HTTPS client: Valhalla, Overpass, Nominatim, OpenFreeMap, Google and the AI
 providers. Reading the CA bundle takes a noticeable moment on a small server (0.1 CPU), and each httpx client would
 read it again as the server starts. The context is httpx's own default: certifi's bundle, or SSL_CERT_FILE or
 SSL_CERT_DIR when set.

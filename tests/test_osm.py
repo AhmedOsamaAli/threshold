@@ -1,5 +1,5 @@
-"""The OpenStreetMap cross-check: which kinds of place OpenStreetMap's tags pin down, when one of its places is a place Qloo
-already lists, and how the Overpass client asks, caches and fails without stopping the survey."""
+"""OpenStreetMap places: which kinds of place OpenStreetMap's tags pin down, how names are matched, and how the Overpass
+client asks, caches and fails without stopping its caller."""
 import asyncio
 import json
 import math
@@ -11,7 +11,7 @@ import pytest
 
 from app import osm
 from app.catchment import circle_catchment, ring_area_m2
-from tests.fakes import SITE, offset, place
+from tests.fakes import SITE, offset
 
 ENDPOINTS = ("https://first.test/api/interpreter", "https://second.test/api/interpreter", "https://third.test/api/interpreter")
 
@@ -87,21 +87,17 @@ def test_osm_tags_that_do_not(genre, tags):
     "New American", "Bar + Grill", "Bar & grill", "Takeout Restaurant", "Family restaurant", "Lunch restaurant",
     "Cultural center", "Board Game Cafe", "Wedding Bakery", "Snack bar", "Restaurant or cafe", "Club",
 ])
-def test_kinds_no_tag_pins_down_are_not_checked(genre):
+def test_kinds_no_tag_pins_down_are_not_mapped(genre):
     assert osm.kind_of(genre) is None
-    check = osm.CrossCheck(osm.Scan(True, [osm_place(1, "Somewhere", amenity="restaurant")]))
-    assert check.check(genre) == {"checked": False, "count": 0, "extra": [], "reason": "unmapped",
-                                  "note": osm.NOTES["unmapped"]}
 
 
-def test_genre_names_are_read_like_qloo_writes_them():
+def test_genre_names_are_read_as_people_write_them():
     assert osm.kind_key("Bar + Grill") == osm.kind_key("Bar & grill") == "barandgrill"
     assert osm.kind_key("Southern restaurant (US)") == "southern"
     assert osm.kind_of("Book store") is osm.kind_of("Bookstore")
     assert osm.kind_of("Night Club") is osm.kind_of("Night club")
-    # A name the table does not know falls back to Qloo's tag id.
-    assert osm.kind_of("Ice-cream place", "urn:tag:genre:place:restaurant:ice_cream_shop") is osm.kind_of("Ice cream shop")
-    assert osm.kind_of("Test", "urn:tag:genre:place:test_bakery") is None
+    assert osm.kind_of("Ice cream shop") is osm.kind_of("ice-cream  shop")
+    assert osm.kind_of("A kind nobody maps") is None and osm.kind_of("") is None
 
 
 def test_every_rule_reads_tags_the_query_keeps():
@@ -143,92 +139,38 @@ def test_a_name_in_another_script_shows_in_english_and_matches_in_both():
     assert osm.display_name({"name": "Café de Flore", "name:en": "Flore Cafe"}) == "Café de Flore"
 
 
-# ---------- Matching against Qloo ----------
+# ---------- Places ----------
 
 def osm_place(index: int, name: str, at: tuple[float, float] = SITE, kind: str = "node", **tags) -> dict:
     return {"id": f"{kind}/{index}", "name": name, "names": [name], "lat": at[0], "lon": at[1],
             "tags": {"name": name, **tags}}
 
 
-def test_an_osm_place_is_known_when_qloo_lists_it_nearby_under_any_category():
-    walk = circle_catchment(*SITE, 10)
-    joes_at, insomnia_at, chain_at = offset(300, 90), offset(200, 180), offset(400, 0)
+def test_the_places_of_a_kind_are_the_scanned_places_its_tags_match():
     scan = osm.Scan(True, [
-        osm_place(1, "Joe’s Bakery & Coffee Shop", joes_at, shop="bakery"),
-        osm_place(2, "Insomnia Cookies", insomnia_at, shop="pastry"),
-        osm_place(3, "Crumb Chain", chain_at, shop="bakery"),
-        osm_place(4, "Gone Bakery", offset(500, 270), shop="bakery"),
-        osm_place(5, "Corner Tacos", offset(100, 45), amenity="restaurant", cuisine="mexican"),
+        osm_place(1, "Joe’s Bakery & Coffee Shop", offset(300, 90), shop="bakery"),
+        osm_place(2, "Insomnia Cookies", offset(200, 180), shop="pastry"),
+        osm_place(3, "Corner Tacos", offset(100, 45), amenity="restaurant", cuisine="mexican"),
     ], as_of="2026-10-22T20:00:00Z")
-    check = osm.CrossCheck(scan, walk)
-    # Qloo lists Joe's as a Tex-Mex restaurant 40 m from where OpenStreetMap has it, a Crumb Chain branch 300 m from
-    # this one, and the closed bakery; a favorite far outside the walk says nothing about it.
-    check.learn([place("Joe's Bakery", "Tex-Mex", *offset(340, 90))])
-    row = {"genre": "Bakery", "genre_id": "urn:tag:genre:place:test_bakery",
-           "_nearby_entities": [place("Crumb Chain", "Bakery", *offset(400, 180))],
-           "_closed_nearby": [place("Gone Bakery", "Bakery", *offset(510, 270))],
-           "_favorite_entities": [place("Insomnia Cookies", "Bakery", *offset(9000, 180))]}
-    result = check.apply(row)
-    assert row["osm"] is result
-    assert result["checked"] and result["count"] == 4 and result["as_of"] == "2026-10-22T20:00:00Z"
-    assert [p["name"] for p in result["extra"]] == ["Insomnia Cookies", "Crumb Chain"]  # nearest first
-    insomnia = result["extra"][0]
-    assert insomnia["url"] == "https://www.openstreetmap.org/node/2" and insomnia["tag"] == "shop=pastry"
-    assert insomnia["distance_m"] == 200 and (insomnia["lat"], insomnia["lon"]) == pytest.approx(insomnia_at)
+    bakeries = [place for place in scan.places if osm.kind_of("Bakery").matches(place["tags"])]
+    assert [place["name"] for place in bakeries] == ["Joe’s Bakery & Coffee Shop", "Insomnia Cookies"]
+    assert [osm.main_tag(place["tags"]) for place in bakeries] == ["shop=bakery", "shop=pastry"]
+    assert osm.place_url(bakeries[1]["id"]) == "https://www.openstreetmap.org/node/2"
     # The tacos place is no bakery, whatever it sells.
-    assert check.check("Mexican")["count"] == 1
+    assert [place["name"] for place in scan.places if osm.kind_of("Mexican").matches(place["tags"])] == ["Corner Tacos"]
+    assert osm.main_tag({"name": "Nothing", "building": "yes"}) is None
 
 
-def test_a_favorite_inside_the_walk_is_a_place_qloo_lists_there():
+def test_a_place_is_listed_once_when_it_is_drawn_twice_and_only_inside_the_area():
     walk = circle_catchment(*SITE, 10)
-    scan = osm.Scan(True, [osm_place(1, "Harbor Oyster Bar", offset(250, 10), amenity="restaurant", cuisine="seafood")])
-    check = osm.CrossCheck(scan, walk)
-    row = {"genre": "Seafood", "_favorite_entities": [place("Harbor Oyster Bar", "Seafood", *offset(260, 10))]}
-    assert check.apply(row) == {"checked": True, "count": 1, "extra": [], "as_of": None,
-                                "credit": "© OpenStreetMap contributors"}
-
-
-def test_a_qloo_place_is_known_by_its_other_names_too():
-    check = osm.CrossCheck(osm.Scan(True, [osm_place(1, "Cafe Riche", offset(100, 0), amenity="cafe")]))
-    qloo = place("مقهى ريش", "Cafe", *offset(120, 0))
-    qloo["properties"]["akas"] = [{"language": "", "value": "Cafe Riche, 17 Talaat Harb St, Cairo"}]
-    check.learn([qloo])
-    assert check.check("Cafe")["extra"] == []
-
-
-def test_a_kind_qloo_lists_more_of_than_it_returns_is_counted_not_compared():
-    check = osm.CrossCheck(osm.Scan(True, [osm_place(i, f"Cafe {i}", amenity="cafe") for i in range(3)]))
-    row = {"genre": "Coffee shop", "nearby_capped": True}
-    result = check.apply(row)
-    assert result["checked"] and result["count"] == 3 and result["extra"] == [] and "not compared" in result["note"]
-    assert check.candidates([row]) == []
-
-
-def test_a_qloo_place_without_a_location_matches_only_the_same_name():
-    check = osm.CrossCheck(osm.Scan(True, [
-        osm_place(1, "Joe's Bakery", shop="bakery"), osm_place(2, "Joe's Bakery Annex", shop="bakery"),
-    ]))
-    check.learn([{"entity_id": "x", "name": "Joe’s Bakery"}])
-    assert [p["name"] for p in check.check("Bakery")["extra"]] == ["Joe's Bakery Annex"]
-
-
-def test_rows_say_why_they_were_not_cross_checked():
-    assert osm.CrossCheck(None).check("Bakery")["reason"] == "off"
-    failed = osm.CrossCheck(osm.Scan(False, note=osm.NOTES["unavailable"])).check("Bakery")
-    assert failed == {"checked": False, "count": 0, "extra": [], "reason": "unavailable", "note": osm.NOTES["unavailable"]}
-
-
-def test_a_survey_sees_its_own_cross_check():
-    async def survey(name: str) -> str | None:
-        osm.track(osm.CrossCheck(osm.Scan(True, [osm_place(1, name, shop="bakery")])))
-        await asyncio.sleep(0)
-        return osm.current().check("Bakery")["extra"][0]["name"]
-
-    async def both():
-        return await asyncio.gather(asyncio.create_task(survey("One")), asyncio.create_task(survey("Two")))
-
-    assert asyncio.run(both()) == ["One", "Two"]
-    assert osm.current() is None
+    near, building, far = offset(150, 30), offset(155, 30), offset(5000, 0)
+    elements = osm.compact([
+        {"type": "node", "id": 1, "lat": near[0], "lon": near[1], "tags": {"name": "Corner Crumb", "shop": "bakery"}},
+        {"type": "way", "id": 2, "center": {"lat": building[0], "lon": building[1]},
+         "tags": {"name": "Corner Crumb", "shop": "bakery", "building": "yes"}},
+        {"type": "node", "id": 3, "lat": far[0], "lon": far[1], "tags": {"name": "Far Loaf", "shop": "bakery"}},
+    ])
+    assert [place["id"] for place in osm.places_inside(elements, walk.contains)] == ["node/1"]
 
 
 # ---------- The query ----------
@@ -305,7 +247,7 @@ def test_the_client_asks_the_next_instance_when_one_fails_and_caches_the_answer(
     assert "github.com/AhmedOsamaAli/walk-in" in request.headers["user-agent"]
     assert request.method == "POST" and b"poly%3A" in request.content
     assert len(list(tmp_path.glob("*.json"))) == 1
-    # A second survey of the same walk reads the cache; the instance that failed is asked last next time.
+    # A second scan of the same walk reads the cache; the instance that failed is asked last next time.
     again = asyncio.run(client_.scan(walk))
     assert again.places == scan.places and len(seen) == 2 and client_.cache_hits == 1
     assert client_._order() == [ENDPOINTS[1], ENDPOINTS[2], ENDPOINTS[0]]
@@ -318,14 +260,14 @@ def test_the_client_asks_the_next_instance_when_one_fails_and_caches_the_answer(
     {"error": "no elements"},
     {"elements": [{"type": "node", "lat": 1.0, "lon": 2.0, "tags": {"name": "No id"}}]},
 ])
-def test_when_no_instance_answers_the_survey_goes_on_unchecked(tmp_path, failure):
+def test_when_no_instance_answers_the_scan_goes_on_unchecked(tmp_path, failure):
     client_, seen = client(tmp_path, failure, failure, failure, failure)
     walk = circle_catchment(*SITE, 10)
     scan = asyncio.run(client_.scan(walk))
     assert not scan.checked and scan.note == osm.NOTES["unavailable"] and len(seen) == 3
     assert not list(tmp_path.glob("*.json"))
-    assert osm.CrossCheck(scan).check("Bakery")["reason"] == "unavailable"
-    # While every instance rests, a survey asks only the one that failed longest ago.
+    assert scan.reason == "unavailable" and scan.places == []
+    # While every instance rests, a scan asks only the one that failed longest ago.
     assert client_._order() == [ENDPOINTS[0]]
     asyncio.run(client_.scan(walk))
     assert [str(r.url) for r in seen[3:]] == [ENDPOINTS[0]]

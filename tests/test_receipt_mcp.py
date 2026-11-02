@@ -78,8 +78,8 @@ def test_receipt_error_messages_do_not_repeat_the_private_token():
     assert "/api/receipts/***" in str(failure.value)
 
 
-def test_an_owner_s_claim_is_never_labelled_as_survey_evidence():
-    page = campaign(source="owner", survey_url=None, kit_url=None, evidence=["We would like a cafe on this block."])
+def test_an_owner_s_claim_is_labelled_as_the_owner_s_not_verified():
+    page = campaign(evidence=["We would like a cafe on this block."])
     result = walkin_mcp.campaign_summary(page, CAMPAIGN_ID, founders().walkin(), {})
-    assert "in the owner's words (not survey-verified)" in result
-    assert "from Walk-in's survey of the block" not in result
+    assert "**Why here**, in the owner's words (not verified by Walk-in):" in result
+    assert "- We would like a cafe on this block." in result.splitlines()

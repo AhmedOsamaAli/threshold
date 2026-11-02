@@ -27,9 +27,6 @@ from typing import Any
 
 from ..answers import AnswerCache, fingerprint
 from ..llm import LLM
-from ..survey.concepts import COMMON_NAME_WORDS
-from ..survey.evidence import NATIONAL, PROPER_WORDS, is_walk
-from ..survey.kit import SUPERLATIVE, WALKING, mid_sentence
 from .paypal import (
     AUTHORIZATION_PERIOD,
     HONOR_PERIOD,
@@ -44,6 +41,7 @@ from .paypal import (
     request_key,
     summarize_authorization,
 )
+from .wording import COMMON_NAME_WORDS, NATIONAL, PROPER_WORDS, SUPERLATIVE, WALKING, is_walk, mid_sentence
 
 log = logging.getLogger("walkin")
 
@@ -650,7 +648,6 @@ def _issue(code: str) -> str:
 # The campaign's pitch
 
 TITLE_LIMIT, PITCH_LIMIT, PERK_LIMIT, MAX_PERKS = 60, 300, 80, 4
-MAX_EVIDENCE = 3
 # Seconds the owner waits for the model's draft before the evidence rules write it instead.
 DRAFT_WAIT_S = 30.0
 # Claims that are evidence, strongest first; a "promise" claim is the owner's to make, so the pitch never makes it.
@@ -915,22 +912,6 @@ def _plain(raw: str) -> str:
         return ""
 
 
-def evidence_lines(concept: Mapping[str, Any], claims: Iterable[Mapping[str, Any]], limit: int = MAX_EVIDENCE) -> list[str]:
-    """Up to `limit` lines from the survey that say why this business and why here, for the campaign page: its
-    strongest evidence claim (an "only", else an item new to the area, else "closer"), then the concept's why-here
-    lines, without the caveats about the data. Every line is the survey's own, checked when the survey wrote it."""
-    found = [claim for claim in claims if isinstance(claim, Mapping) and isinstance(claim.get("line"), str)]
-    lead = next((claim for kind in EVIDENCE_CLAIMS for claim in found if claim.get("kind") == kind), None)
-    lines = [_sentence_of(lead["line"])] if lead else []
-    lines += [" ".join(line.split()) for line in _strings(concept.get("why_here")) if line.strip() and not CAVEAT.search(line)]
-    return list(dict.fromkeys(line for line in lines if line))[:limit]
-
-
-def _sentence_of(text: str) -> str:
-    text = " ".join(text.split())
-    return text if not text or text.endswith((".", "!", "?")) else f"{text}."
-
-
 def how_it_works(amount: str | Decimal, goal: int, deadline: datetime, currency: str = "USD") -> str:
     """The hold in fixed words, never the model's."""
     code = currency.upper()
@@ -957,13 +938,13 @@ async def draft_offer(
     avoid: Iterable[str] = (),
     answers: AnswerCache | None = None,
 ) -> dict:
-    """The campaign's title, pitch and perks, written by the model from the concept's design sheet, the survey's
-    evidence (the kit's `claims`, else the launch plan's) and its why-here lines. Any part that breaks a rule is
+    """The campaign's title, pitch and perks, written by the model from the business's description (`design`), the
+    evidence it may cite (`claims`, else the launch plan's) and its why-here lines. Any part that breaks a rule is
     replaced by the evidence rules' version, and so is all of it when no model answers.
 
     The owner's terms go in unchanged: the amount, the goal, the deadline and any founding-supporter `perk`, which
     leads the perks in the owner's own words. `place` is the site's label; `avoid` adds names the pitch must not use,
-    such as every place the survey found. how_it_works explains the hold in fixed words, never the model's.
+    such as every other place known nearby. how_it_works explains the hold in fixed words, never the model's.
     """
     brief = _offer_brief(design, amount, goal, deadline, currency, perk, launch, concept, claims, place, avoid)
     payload, rules, perk = brief.payload, brief.rules, brief.perk
@@ -1064,8 +1045,9 @@ def _offer_brief(
     launch: Mapping[str, Any] | None, concept: Mapping[str, Any] | None, claims: Iterable[Mapping[str, Any]] | None,
     place: str | None, avoid: Iterable[str],
 ) -> _Brief:
-    """The model's brief, from the design sheet, the survey's evidence and the owner's terms, without any real name but
-    the business's own and its neighborhoods; the numbers and words it gives are the only ones the pitch may use."""
+    """The model's brief, from the business's description, the evidence it may cite and the owner's terms, without any
+    real name but the business's own and its neighborhoods; the numbers and words it gives are the only ones the pitch
+    may use."""
     code = currency.upper()
     pledge = money(amount, code)
     amount_text = _amount_text(pledge, code)

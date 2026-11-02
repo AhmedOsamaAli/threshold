@@ -1,6 +1,7 @@
-"""Walk-in Founders' columns hold the longest value the code writes into them, in app/db/tables.py and in migration 0003
-alike. The tests run on SQLite, which ignores VARCHAR lengths; Postgres, in production, refuses a longer value, so a
-column too short fails only there (PayPal's capture status PARTIALLY_REFUNDED, 18 characters, once met a String(16))."""
+"""Walk-in Founders' columns hold the longest value the code writes into them, in app/db/tables.py and in the baseline
+migration alike. The tests run on SQLite, which ignores VARCHAR lengths; Postgres, in production, refuses a longer value,
+so a column too short fails only there (PayPal's capture status PARTIALLY_REFUNDED, 18 characters, once met a
+String(16))."""
 from __future__ import annotations
 
 import asyncio
@@ -11,7 +12,7 @@ import uuid
 from sqlalchemy import String, inspect
 
 from app.db import Database
-from app.db.tables import campaigns, kits, payouts, paypal_events, pledges, surveys, users
+from app.db.tables import campaigns, payouts, paypal_events, pledges, users
 from app.payments import paypal, receipts
 from app.payments import pledges as rules
 from app.payments.records import CURRENCY, EMAIL
@@ -47,8 +48,6 @@ EMAIL_ADDRESS = "o" * 64 + "@" + "a" * 63 + "." + "b" * 52 + ".com"  # the longe
 WRITTEN: dict[str, dict[str, list | int]] = {
     "campaigns": {
         "id": [uuid.uuid4().hex[:16]],
-        "kit_token": kits.c.token.type.length,
-        "survey_id": surveys.c.id.type.length,
         "user_id": users.c.id.type.length,
         "status": list(rules.CampaignStatus),
         "title": rules.TITLE_LIMIT,
@@ -103,7 +102,7 @@ def test_every_founders_column_holds_the_longest_value_the_code_writes():
     assert string_columns(pledges)["capture_status"] >= len("PARTIALLY_REFUNDED")
 
 
-def test_migration_0003_declares_the_same_lengths_as_the_tables(database_url):
+def test_the_baseline_migration_declares_the_same_lengths_as_the_tables(database_url):
     async def reflect() -> dict[str, dict[str, int]]:
         database = Database(database_url)
         await database.migrate()

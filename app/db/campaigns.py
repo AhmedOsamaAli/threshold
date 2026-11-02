@@ -56,26 +56,6 @@ class CampaignStore:
             row = (await connection.execute(select(campaigns).where(campaigns.c.id == campaign_id))).mappings().first()
         return dict(row) if row else None
 
-    async def open_for(self, user_id: str, kit_token: str) -> dict | None:
-        """The user's campaign for this kit that is not settled yet (status open), if any."""
-        query = select(campaigns).where(
-            campaigns.c.user_id == user_id, campaigns.c.kit_token == kit_token, campaigns.c.status == "open",
-        ).order_by(campaigns.c.created_at.desc())
-        async with self._engine.connect() as connection:
-            row = (await connection.execute(query)).mappings().first()
-        return dict(row) if row else None
-
-    async def accepting_for_kit(self, kit_token: str, now: datetime, limit: int = 20) -> list[dict]:
-        """The kit's campaigns that still take pledges, newest first."""
-        query = (
-            select(campaigns)
-            .where(campaigns.c.kit_token == kit_token, accepting_clause(now))
-            .order_by(campaigns.c.created_at.desc(), campaigns.c.id)
-            .limit(limit)
-        )
-        async with self._engine.connect() as connection:
-            return [dict(row) for row in (await connection.execute(query)).mappings()]
-
     async def owned_by(self, user_id: str, limit: int = 100) -> list[dict]:
         query = (
             select(campaigns).where(campaigns.c.user_id == user_id)
@@ -106,12 +86,6 @@ class CampaignStore:
         found = [(row, distance) for row, distance in found if distance <= km]
         found.sort(key=lambda pair: (pair[1], pair[0]["id"]))
         return found[:limit]
-
-    async def survey_ids(self) -> list[str]:
-        """The surveys behind campaigns, kept from the purge of old surveys so their kits and links stay."""
-        async with self._engine.connect() as connection:
-            query = select(campaigns.c.survey_id).where(campaigns.c.survey_id.is_not(None)).distinct()
-            return list((await connection.execute(query)).scalars())
 
     async def update(self, campaign_id: str, **values: object) -> None:
         async with self._engine.begin() as connection:

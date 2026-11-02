@@ -19,7 +19,7 @@ from app.payments import pledges as rules
 from app.payments import receipts
 from app.payments.pledges import PledgeStatus
 from app.routes.receipts import HideReceipts, hidden
-from tests.founders_fakes import CRON_SECRET, configure, make_client, race
+from tests.founders_fakes import BUSINESS, CRON_SECRET, configure, make_client, race
 from tests.test_campaigns import EMAIL, start, table
 from tests.test_campaigns import world as campaign_world
 
@@ -88,7 +88,7 @@ def test_each_pledge_gets_a_private_receipt_once_and_walkin_keeps_only_its_diges
 
 
 def test_a_receipt_tells_its_pledge_in_plain_words_with_the_campaign_and_nothing_about_the_payer(world):
-    client, kit = world["client"], world["kit"]
+    client = world["client"]
     campaign_id = start(world)
     client.post("/api/auth/logout")  # the receipt is the only key: no account, no cookie
     receipt, order_id = started(client, campaign_id)
@@ -110,7 +110,7 @@ def test_a_receipt_tells_its_pledge_in_plain_words_with_the_campaign_and_nothing
     }
     assert view["pledged_at"].endswith("Z")
     assert view["campaign"] == {
-        "id": campaign_id, "url": f"/p/{campaign_id}", "name": kit["name"], "title": page["title"],
+        "id": campaign_id, "url": f"/p/{campaign_id}", "name": BUSINESS["name"], "title": page["title"],
         "place": {"label": page["place"]["label"], "area": page["place"]["area"]}, "status": "open", "accepting": True,
         "amount": "25.00", "currency": "USD", "goal": 3, "deadline": page["deadline"], "closed_at": None,
         "progress": page["progress"],

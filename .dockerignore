@@ -9,7 +9,6 @@
 .pytest_cache
 **/__pycache__
 tests
-scripts
 *.md
 !README.md
 frontend/node_modules

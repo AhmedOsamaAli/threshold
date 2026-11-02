@@ -1,4 +1,4 @@
-"""The kit's street map: what one Overpass query reads around a walk, how its streets, water and parks are cut to a box,
+"""The street map: what one Overpass query reads around a walk, how its streets, water and parks are cut to a box,
 which side of a shore is water, how the client asks and caches, and how the vector tiles stand in when Overpass does not
 answer. Fake Overpass answers and fake tiles only."""
 import asyncio
@@ -274,7 +274,7 @@ def test_one_query_per_walk_asked_like_the_cross_check_and_kept_on_disk(tmp_path
     assert b"out+geom%28" in request.content
     [saved] = tmp_path.glob("*.json")
     assert saved.name.startswith("basemap-")
-    # A second kit for the same walk reads the map from the disk.
+    # A second request for the same walk reads the map from the disk.
     assert asyncio.run(basemap.street_map(client_, WALK)) == streets and len(seen) == 1
     # Another road class is another query.
     main_roads = asyncio.run(basemap.street_map(client_, WALK, ("primary",)))
@@ -351,7 +351,7 @@ def test_overpass_comes_first_and_gets_forty_seconds_before_the_tiles(tmp_path):
     down = DownOverpass()
     assert asyncio.run(basemap.street_map(down, WALK, tiles=tiles))["source"] == "tiles.openfreemap.org"
     assert down.asked == [{"name": "basemap", "timeout": basemap.TIMEOUT_S, "budget": 40.0}]
-    assert basemap.BUDGET_S + vectortiles.BUDGET_S <= 70  # a kit's street map is ready in about a minute at worst
+    assert basemap.BUDGET_S + vectortiles.BUDGET_S <= 70  # a street map is ready in about a minute at worst
 
 
 def test_tiles_first_asks_overpass_only_when_the_tiles_fail(tmp_path):

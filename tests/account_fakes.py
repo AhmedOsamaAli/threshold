@@ -1,5 +1,5 @@
 """Fakes for the accounts tests: Google's signing keys, settings for the app's modules, a clock tests move, a model
-endpoint that records what it is sent, and an app wired to them over the fake Qloo world."""
+endpoint that records what it is sent, and an app wired to them over fake routing and address services."""
 from __future__ import annotations
 
 import json
@@ -16,10 +16,9 @@ from fastapi.testclient import TestClient
 from app.auth import GoogleKeys
 from app.llm import LLM
 from app.main import Services, create_app
-from tests.fakes import SITE, FakeQloo, FakeWalker, StubGeocoder
+from tests.fakes import FakeWalker, StubGeocoder
 
 CLIENT_ID = "1234-test.apps.googleusercontent.com"
-RUN_PARAMS = {"lat": SITE[0], "lon": SITE[1], "label": "Test Corner, Testville", "focus": "any", "minutes": 10}
 ACCOUNT_SETTINGS = {
     "google_client_id": CLIENT_ID, "session_days": 30, "auth_dev_login": True, "allowed_origins": (), "public_url": "",
 }
@@ -98,42 +97,18 @@ def recording_llm(sent: list[dict]) -> LLM:
 
 def make_client(
     google: GoogleSigner | None = None, clock: Clock | None = None, database_url: str | None = None,
-    base_url: str = "http://testserver", llm: LLM | None = None, qloo: FakeQloo | None = None,
-    services: dict | None = None, **app_options,
+    base_url: str = "http://testserver", llm: LLM | None = None, services: dict | None = None, **app_options,
 ) -> TestClient:
-    """The app over the fake Qloo world and a rules-only model (unless `llm`), with this Google and clock; `services`
-    and `app_options` add to Services and create_app."""
+    """The app over fake routing and address services and a rules-only model (unless `llm`), with this Google and
+    clock; `services` and `app_options` add to Services and create_app."""
     built = Services(
-        qloo=qloo or FakeQloo(), walker=FakeWalker(), llm=llm or LLM("", None, "test-model"),
-        geocoder=StubGeocoder(), google=google.keys() if google else GoogleKeys(), **(services or {}),
+        walker=FakeWalker(), llm=llm or LLM("", None, "test-model"), geocoder=StubGeocoder(),
+        google=google.keys() if google else GoogleKeys(), **(services or {}),
     )
     app = create_app(lambda: built, database_url, **app_options)
     if clock is not None:
         app.state.now = clock
     return TestClient(app, base_url=base_url)
-
-
-def sse_events(text: str) -> list[tuple[str, dict]]:
-    events = []
-    for chunk in text.split("\n\n"):
-        name, data = None, []
-        for line in chunk.splitlines():
-            if line.startswith("event:"):
-                name = line[6:].strip()
-            elif line.startswith("data:"):
-                data.append(line[5:].strip())
-        if name and data:
-            events.append((name, json.loads("\n".join(data))))
-    return events
-
-
-def run_survey(client: TestClient, **params) -> str:
-    """Runs a survey of the fake world, as the page does, and returns its id."""
-    response = client.get("/api/run", params={**RUN_PARAMS, **params})
-    assert response.status_code == 200
-    events = sse_events(response.text)
-    assert "error" not in [name for name, _ in events]
-    return next(data for name, data in events if name == "run")["run_id"]
 
 
 def dev_sign_in(client: TestClient, email: str = "owner@example.com", name: str = "Olive Owner") -> dict:

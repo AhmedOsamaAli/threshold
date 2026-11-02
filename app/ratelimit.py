@@ -1,10 +1,9 @@
-"""Rate limits for the public demo: per-client sliding windows and a server-wide daily budget."""
+"""Rate limits for the public demo: per-client sliding windows."""
 from __future__ import annotations
 
 import hmac
 import time
 from collections import defaultdict, deque
-from datetime import UTC, datetime
 
 from fastapi import Request
 
@@ -24,24 +23,6 @@ class RateLimiter:
         if len(hits) >= self.limit:
             return False
         hits.append(now)
-        return True
-
-
-class DailyBudget:
-    """At most `limit` costly operations (model calls) per UTC day across all clients."""
-
-    def __init__(self, limit: int) -> None:
-        self.limit = limit
-        self._day = ""
-        self.used = 0
-
-    def allow(self) -> bool:
-        today = datetime.now(UTC).date().isoformat()
-        if today != self._day:
-            self._day, self.used = today, 0
-        if self.used >= self.limit:
-            return False
-        self.used += 1
         return True
 
 

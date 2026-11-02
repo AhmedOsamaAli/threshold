@@ -2,21 +2,19 @@
 fallback.
 
 Isochrones come from the public Valhalla instance run by FOSSGIS (OpenStreetMap data). One request returns two contours:
-the area itself, and the area a trip twice as long (or far) reaches, which the gap table compares supply with ("around").
-Both follow the streets, so a river, a park or the sea is no part of either unless a bridge or a path crosses it. That
-instance answers trips of at most 60 minutes and 100 km, which is why areas stop there; when twice as long would pass
-that, there is no around outline and the gap table compares supply with a circle instead. Results are cached on disk;
-if the service fails the area falls back to a circle (80 m per minute on foot, 400 m per minute by car, 0.7 of a road
-distance), and the report says so.
+the area itself, and the area a trip twice as long (or far) reaches, which what is inside the area can be compared with
+("around"). Both follow the streets, so a river, a park or the sea is no part of either unless a bridge or a path
+crosses it. That instance answers trips of at most 60 minutes and 100 km, which is why areas stop there; when twice as
+long would pass that, there is no around outline and a circle stands in for it. Results are cached on disk; if the
+service fails the area falls back to a circle (80 m per minute on foot, 400 m per minute by car, 0.7 of a road
+distance), and the answer says so.
 """
 from __future__ import annotations
 
-import asyncio
 import hashlib
 import json
 import math
 from dataclasses import dataclass
-from functools import cached_property
 from pathlib import Path
 
 import httpx
@@ -30,8 +28,7 @@ ROAD_FACTOR = 0.7  # circle fallback for a road distance: roads wind, so a strai
 TRAVEL_MODES = ("walk", "drive", "distance")
 MIN_MINUTES, MAX_MINUTES = 5, 60  # the public Valhalla instance refuses time contours over 60 minutes
 MIN_KM, MAX_KM = 1.0, 100.0  # and distance contours over 100 km
-AROUND_FACTOR = 2  # the area supply is compared with: a trip this many times as long, about twice the area's radius
-QLOO_RING_POINTS = 180  # Qloo reads an area from the URL and refuses long ones (HTTP 414), so outlines are simplified
+AROUND_FACTOR = 2  # the larger area the area is compared with: a trip this many times as long, about twice its radius
 CONTOUR_TOLERANCE = 0.011  # Valhalla writes a contour cut to two decimals: 2.3 comes back as 2.29
 _M_PER_DEG = 111_320.0
 
@@ -142,48 +139,6 @@ def circle_ring(lat: float, lon: float, radius_m: float, vertices: int = 40) -> 
     return ring + [ring[0]]
 
 
-def simplify_ring(ring: list[tuple[float, float]], max_points: int = QLOO_RING_POINTS) -> list[tuple[float, float]]:
-    """The outline with at most `max_points` points (Douglas-Peucker, coarser until it fits); short rings as they are.
-
-    Douglas-Peucker splits each stretch at the point farthest from its chord whatever the tolerance; the tolerance only
-    decides how deep the splitting goes. So the splits are found once, each with the smallest distance on the way to
-    it, and each coarser tolerance keeps the points whose smallest distance is above it: the same points as running
-    the algorithm again at that tolerance, without running it again."""
-    if len(ring) <= max_points:
-        return ring
-    splits = _douglas_peucker_splits(ring)
-    tolerance = 1e-5
-    while True:
-        kept = [0, *sorted(index for index, distance in splits if distance > tolerance), len(ring) - 1]
-        if len(kept) <= max_points:
-            points = [ring[index] for index in kept]
-            return points if points[0] == points[-1] else points + [points[0]]
-        tolerance *= 1.6
-
-
-def _douglas_peucker_splits(points: list[tuple[float, float]]) -> list[tuple[int, float]]:
-    """Every point Douglas-Peucker would keep at some tolerance, with the smallest split distance on the path that leads
-    to it: the point is kept at every tolerance below that distance."""
-    splits: list[tuple[int, float]] = []
-    stack = [(0, len(points) - 1, math.inf)]
-    while stack:
-        first, last, bound = stack.pop()
-        (x1, y1), (x2, y2) = points[first], points[last]
-        dx, dy = x2 - x1, y2 - y1
-        norm = math.hypot(dx, dy)
-        worst, index = 0.0, None
-        for i in range(first + 1, last):
-            px, py = points[i]
-            d = abs(dy * px - dx * py + x2 * y1 - y2 * x1) / norm if norm else math.hypot(px - x1, py - y1)
-            if d > worst:
-                worst, index = d, i
-        if index is not None:
-            reach = min(bound, worst)
-            splits.append((index, reach))
-            stack += [(first, index, reach), (index, last, reach)]
-    return splits
-
-
 @dataclass
 class Catchment:
     lat: float
@@ -192,8 +147,7 @@ class Catchment:
     source: str
     ring: list[tuple[float, float]]
     # The area a trip of AROUND_FACTOR times the minutes (or km) reaches over the streets, as (lon, lat); None when
-    # routing failed or the router cannot go that far, and the gap table then compares supply with a circle twice the
-    # area's radius.
+    # routing failed or the router cannot go that far, and a circle twice the area's radius stands in for it.
     around: list[tuple[float, float]] | None = None
     travel: str = "walk"
     km: float | None = None
@@ -208,8 +162,8 @@ class Catchment:
 
     @property
     def around_label(self) -> str:
-        """The trip supply is compared with: '20-minute walk'. Without its outline (routing failed, or past the
-        router's reach) supply is compared with a circle, named for what it is."""
+        """The trip the area is compared with: '20-minute walk'. Without its outline (routing failed, or past the
+        router's reach) it is a circle, named for what it is."""
         around = self.reach.around
         return around.label if around and self.around else f"area twice as wide as the {self.label}"
 
@@ -222,12 +176,6 @@ class Catchment:
         """Radius of a circle with the same area."""
         return math.sqrt(self.area_m2 / math.pi)
 
-    @cached_property
-    def wkt(self) -> str:
-        """The outline as Qloo reads it, simplified once: a big drive's outline has thousands of points, and every
-        Qloo request of a survey sends it."""
-        return ring_wkt(simplify_ring(self.ring))
-
     @property
     def around_minutes(self) -> int:
         return min(AROUND_FACTOR * self.minutes, MAX_MINUTES)
@@ -235,10 +183,6 @@ class Catchment:
     @property
     def around_area_m2(self) -> float | None:
         return ring_area_m2(self.around, self.lat) if self.around else None
-
-    @cached_property
-    def around_wkt(self) -> str | None:
-        return ring_wkt(simplify_ring(self.around)) if self.around else None
 
     def contains(self, lat: float, lon: float) -> bool:
         return point_in_ring(lat, lon, self.ring)
@@ -252,10 +196,6 @@ class Catchment:
             "radius_m": round(self.radius_m),
             **{key: value for key, value in self.reach.public().items() if key != "minutes"},
         }
-
-
-def ring_wkt(ring: list[tuple[float, float]]) -> str:
-    return "POLYGON((" + ", ".join(f"{lon} {lat}" for lon, lat in ring) + "))"
 
 
 def circle_catchment(lat: float, lon: float, minutes: int, reach: Reach | None = None) -> Catchment:
@@ -311,26 +251,13 @@ def plausible(ring: list[tuple[float, float]] | None, lat: float, minutes: int, 
     return 0.002 * expected <= area <= 1.05 * expected
 
 
-# Outlines with more points than this are simplified on a worker thread: on a small server, a big drive's outline takes
-# seconds, and the server would not answer meanwhile.
-SIMPLIFY_OFF_LOOP_POINTS = 2 * QLOO_RING_POINTS
-
-
-async def simplified(catchment: Catchment) -> Catchment:
-    """The catchment with the outlines Qloo reads already simplified (a survey sends them with every request), a long
-    one on a worker thread."""
-    if len(catchment.ring) + len(catchment.around or ()) > SIMPLIFY_OFF_LOOP_POINTS:
-        await asyncio.to_thread(lambda: (catchment.wkt, catchment.around_wkt))
-    return catchment
-
-
 class CatchmentService:
     def __init__(self, cache_dir: Path, url: str = VALHALLA_URL, timeout: float = 12.0) -> None:
         self._cache_dir = cache_dir
         self._url = url
         self._timeout = timeout
         self._http = httpx.AsyncClient(
-            timeout=timeout, headers={"User-Agent": "Walk-in/0.2 (Qloo Agentic Hackathon)"}, verify=tls.context(),
+            timeout=timeout, headers={"User-Agent": "Walk-in/0.2"}, verify=tls.context(),
         )
 
     async def aclose(self) -> None:

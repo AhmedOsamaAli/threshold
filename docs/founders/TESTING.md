@@ -5,8 +5,7 @@ with PayPal's sandbox, withdraw, close and collect, cancel, and back a campaign 
 about 10 minutes; the assistant path needs Python and an MCP client. How it works is in the [README](../../README.md),
 the product rules and API in [CONTRACT.md](CONTRACT.md).
 
-Live: https://walkin-app.pages.dev (pages `/founders`, `/examples`, `/p/{id}` for a campaign, `/k/{token}` for a
-launch kit).
+Live: https://walkin-app.pages.dev (pages `/founders`, `/founders/start`, and `/p/{id}` for a campaign).
 
 Checked against PayPal's sandbox on Oct 28, 2026. On the live site: pledges through PayPal's button, and a campaign
 funded by three sandbox buyers, closed by its owner, collected and paid out, with each of PayPal's webhooks checked with
@@ -27,10 +26,10 @@ withdrawn on the way.
     password. A goal counts different PayPal accounts, and the smallest goal is 3, so a funded campaign (section 4)
     takes three.
   - Owner: your own Google account. Walk-in keeps its email, name and picture link to show that you are signed in;
-    deleting your account in My places removes them.
+    deleting your account on the account page (`/me`) removes them.
 - **The wake.** The backend runs on Render's free tier and sleeps when idle. The first visit after a quiet spell takes
-  about 40 seconds: the page says "Waking the survey engine" and tries again by itself. The examples' pages still open
-  meanwhile, from the Cloudflare front door.
+  about 40 seconds: the page says the server is waking and tries again by itself. The pages the Cloudflare front door
+  serves itself still open meanwhile.
 - **Two windows.** Be the owner in your normal window, signed in. Be the neighbor in a private (incognito) window,
   signed out: on your own campaign's page you see a preview instead of PayPal's button.
 - **Pop-ups.** PayPal opens in a pop-up, or in its own modal where pop-ups are blocked. A content blocker that blocks
@@ -38,11 +37,11 @@ withdrawn on the way.
 
 ## 1. Start a campaign (owner)
 
-1. Open https://walkin-app.pages.dev/examples. Pick a storefront, such as Milwaukee Avenue, Logan Square, Chicago,
-   and press **Launch kit** under it.
-2. Choose the kit's **Founders** tab (or add `#founders` to the address). Signed out, it says "Sign in with Google to
-   start one". Sign in with Google.
-3. **Step 1, your terms.** Fill in:
+1. Open https://walkin-app.pages.dev/founders/start. Signed out, it says "Sign in with Google to start one". Sign in
+   with Google.
+2. **Step 1, the business.** Describe it: the name (`Crumb Theory`), the kind (`bakery`), what it is in a sentence or
+   two, the address (search for it and pick a match), and, if you like, why this place.
+3. **Your terms.** Fill in:
    - Each neighbor pledges: `5`
    - Neighbors needed: `3`
    - Deadline: any day 1 to 27 days away (the hint shows your time zone)
@@ -52,10 +51,10 @@ withdrawn on the way.
 
    Try a term the rules refuse: Neighbors needed `2` shows "Pick a goal from 3 to 500 supporters." Set it back to `3`.
    Note the yellow "Test mode" line under the terms.
-4. Press **Draft with AI**. "Writing the page from the evidence" shows, and Step 2 appears: a title, a pitch, the perks
+4. Press **Draft with AI**. Step 2 appears: a title, a pitch, the perks
    (yours first, word for word), "How it works · the server's own words" and "Beside the PayPal button, neighbors
    read". Your numbers are unchanged: the AI writes words, never the amount, the goal, the deadline or the perk. When no
-   model answers within 30 seconds, the evidence rules write the draft instead, and the page looks the same.
+   model answers within 30 seconds, the rules write the draft instead, and the page looks the same.
 5. **Try the rules.** Each of these comes back under "Not published yet" when you press **Publish the campaign**, and
    nothing is published:
    - Change the title to `The best place on the block`: "The title says "best", which nothing measured proves."
@@ -67,17 +66,15 @@ withdrawn on the way.
    and watch it fill", "No pledges yet", the link under "Share this page", and "The window poster, with its QR code to
    this page".
 7. Optional:
-   - The kit's **Poster** tab now carries the campaign's line beside a QR code to it: "Back it before it opens: pledge
+   - The window poster carries the campaign's line beside a QR code to it: "Back it before it opens: pledge
      $5, charged only if 3 neighbors join by {date}."
-   - **My places** in the top bar lists your campaign.
-   - Starting a second campaign for the same kit sends you to the first ("You already have an open campaign for this
-     kit").
+   - Your account page (`/me`) lists your campaign.
 
 ## 2. Pledge as a neighbor
 
 1. Copy the link under "Share this page" and open it in a private window.
-2. Read the neighbor's view: the business and the place; "Why this, why here" (up to three lines from the survey, with a
-   link to it); "What founding supporters get"; "How it works"; "The plan", with links to the launch kit and the survey.
+2. Read the neighbor's view: the business and the place; "Why here" (in the owner's words); "What founding supporters
+   get"; "How it works".
    The card beside it reads "0 of 3 neighbors", "Held by PayPal so far: $0", "Pledge $5 with PayPal" and the terms: "PayPal holds $5. You are
    charged only if 3 neighbors join by {date}; otherwise the hold is released.", then PayPal's button and the Test
    mode line.
@@ -128,7 +125,7 @@ show as paid.
 
 ## 5. Cancel (owner)
 
-1. Start a campaign from another example's kit (one open campaign per owner per kit), and pledge once as a neighbor.
+1. Start a second campaign as in section 1, and pledge once as a neighbor.
 2. As the owner, press **Cancel and release every hold**. The dialog says "Every hold is released and nobody pays.
    This can't be undone." Confirm.
 3. The panel says "Cancelled. Every hold is released: nobody pays." and "Released 1". A neighbor reads "The owner
@@ -161,10 +158,7 @@ PayPal; the assistant never sees a card, a login or an email.
        "walkin": {
          "command": "python",
          "args": ["C:\\path\\to\\walk-in-paypal\\mcp_server\\walkin_mcp.py"],
-         "env": {
-           "WALKIN_URL": "https://walkin-app.pages.dev",
-           "WALKIN_WAIT_SECONDS": "50"
-         }
+         "env": { "WALKIN_URL": "https://walkin-app.pages.dev" }
        }
      }
    }
@@ -195,7 +189,7 @@ PayPal; the assistant never sees a card, a login or an email.
 3. Ask, in turn:
    - "Which Walk-in Founders campaigns are open right now?" (`find_campaigns`, the newest), or "Is anyone trying to
      open something near Logan Square, Chicago?" (`find_campaigns` near a place).
-   - "Tell me about the first one: why there, and what do I get?" (`get_campaign`: the survey's evidence, the perks,
+   - "Tell me about the first one: why there, and what do I get?" (`get_campaign`: the owner's words, the perks,
      the terms in plain words).
    - "Back it for me." (`back_campaign`).
 4. The assistant answers with PayPal's sandbox link (`https://www.sandbox.paypal.com/…`), the terms, the progress, the
@@ -232,7 +226,7 @@ answers carry `Cache-Control: no-store`: they change with every pledge. The endp
 
 ## If something goes wrong
 
-- **"Waking the survey engine"**: wait about 40 seconds; the page tries again by itself.
+- **The page says the server is waking**: wait about 40 seconds; the page tries again by itself.
 - **"Pledging is off on this server: PayPal isn't set up here."**: the server has no PayPal keys, so nothing can be
   pledged. If the live site says it, please tell us on the project's Devpost page.
 - **"PayPal could not load"**: a blocker stops paypal.com, or the connection dropped. Allow paypal.com and press
@@ -245,8 +239,7 @@ answers carry `Cache-Control: no-store`: they change with every pledge. The endp
 
 ## Run the checks yourself
 
-From a clone, after `pip install -r requirements-dev.txt`: `python -m pytest -q` runs the 965 server tests, PayPal's
-in-memory fake included, and `cd frontend; npm ci; npm test` runs the 515 front-end tests. Running Walk-in locally, the
-PayPal sandbox setup and the two scripts that run the money flows against the real sandbox
-(`docs/founders/sandbox_money_flows.py` and `docs/founders/e2e_campaign.py`) are in the README's
-[Run it yourself](../../README.md#run-it-yourself).
+From a clone, after `pip install -r requirements-dev.txt`: `python -m pytest -q` runs the server tests, PayPal's
+in-memory fake included, and `cd frontend; npm ci; npm test` runs the front-end tests. The two scripts that run the
+money flows against the real PayPal sandbox are `docs/founders/sandbox_money_flows.py` and
+`docs/founders/e2e_campaign.py`.

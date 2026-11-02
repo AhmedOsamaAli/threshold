@@ -8,7 +8,7 @@ name: Keep the demo awake
 on:
   schedule:
     - cron: "*/10 * 26-31 10 *"  # submitted: open to judges and Devpost's eligibility check
-    - cron: "*/10 * 1-8 11 *"  # Qloo hackathon judging, November 2-5 (ET), and a margin
+    - cron: "*/10 * 1-8 11 *"  # judging, November 2-5 (ET), and a margin
   workflow_dispatch:
 
 permissions: {}

@@ -1,10 +1,10 @@
-"""Walk-in Founders' campaigns. A signed-in owner starts one from any ready launch kit (the examples' included): the
-owner sets the money terms, the AI drafts the words from the kit's concept and the survey's evidence, the owner edits
-them and the server checks them again. Neighbors pledge with PayPal without an account: each pledge is an AUTHORIZE
-order, so PayPal only holds the money, and a supporter may withdraw while the campaign is open, on its page or with the
-pledge's private receipt (app.routes.receipts). It settles when it closes (app.settlement), and the owner is paid the
-net collected total. Holding or withdrawing a pledge, and the owner's close or cancel, take the settlement's lock, so no
-pledge changes while its campaign closes or settles."""
+"""Walk-in Founders' campaigns: finding them, the campaign page, and pledging. A signed-in owner starts a campaign in
+app.routes.business_campaigns, from their own description of the business and the money terms they choose, and the AI
+drafts the words. Neighbors pledge with PayPal without an account: each pledge is an AUTHORIZE order, so PayPal only
+holds the money, and a supporter may withdraw while the campaign is open, on its page or with the pledge's private
+receipt (app.routes.receipts). It settles when it closes (app.settlement), and the owner is paid the net collected
+total. Holding or withdrawing a pledge, and the owner's close or cancel, take the settlement's lock, so no pledge
+changes while its campaign closes or settles."""
 from __future__ import annotations
 
 import logging
@@ -17,18 +17,15 @@ from pydantic import BaseModel, Field
 
 from .. import auth
 from ..config import settings
-from ..kits import designed
 from ..payments import pledges, receipts
 from ..payments.paypal import RESOURCE_ID, PayPalError, approval_url, authorized_in_full, request_key
 from ..payments.records import (
     CURRENCY,
     Problem,
     campaign_of,
-    email_problem,
     iso,
     major,
     mask_email,
-    minor,
     paypal_client,
     paypal_problem,
     progress_of,
@@ -36,7 +33,6 @@ from ..payments.records import (
 )
 from ..ratelimit import client_ip
 from ..settlement import Refused
-from ..survey.kit import place_texts
 
 log = logging.getLogger("walkin")
 router = APIRouter(prefix="/api")
@@ -61,17 +57,6 @@ class MoneyTerms(BaseModel):
     deadline: Any = Field(None, description="ISO 8601 with a time zone, 1 to 27 days away")
     perk: Any = Field(None, description="What founding supporters get, in the owner's words, or null",
                       examples=["10% off every visit in the first year"])
-
-
-class Terms(MoneyTerms):
-    kit_token: str = Field(..., min_length=1, max_length=64, description="The ready launch kit the campaign starts from")
-
-
-class NewCampaign(Terms):
-    payout_email: Any = Field(None, description="The PayPal email that receives the money")
-    title: Any = None
-    pitch: Any = None
-    perks: Any = None
 
 
 class PledgeRequest(BaseModel):
@@ -109,43 +94,6 @@ def check_terms(body: MoneyTerms, now: datetime, name: str | None = None) -> tup
     elif pledges.restates_pledge(perk_of(perk), body.amount, [name] if name else []):
         problems.append(f"The perk {pledges.RESTATES}, or leave it empty.")
     return deadline, problems
-
-
-async def ready_kit(request: Request, token: str) -> dict:
-    """A ready launch kit, with its payload: anyone's, the examples' included."""
-    kit = await request.app.state.kits.kit(token)
-    if kit is None:
-        raise HTTPException(404, "Kit not found.")
-    if kit["status"] != "ready":
-        raise HTTPException(409, "Start a campaign once the kit is ready.")
-    return kit
-
-
-async def survey_behind(request: Request, kit: dict):
-    """The kit's survey and the concept's design sheet."""
-    state = request.app.state
-    run = await state.runs.fetch(kit["survey_id"])
-    if run is None or not 0 <= kit["idx"] < len(run.concepts):
-        raise HTTPException(409, "The survey behind this kit is no longer saved, so a campaign cannot start from it.")
-    return run, await designed(state.services, state.surveys, run, kit["idx"])
-
-
-def kit_claims(kit: dict, sheet: dict) -> list[dict]:
-    """The claims the kit's ads were allowed to make, else the launch plan's."""
-    payload = kit.get("payload") if isinstance(kit.get("payload"), dict) else {}
-    claims = payload.get("claims")
-    if isinstance(claims, list):
-        return [claim for claim in claims if isinstance(claim, dict)]
-    return [claim for claim in (sheet.get("launch") or {}).get("claims") or [] if isinstance(claim, dict)]
-
-
-def offer_inputs(kit: dict, run, sheet: dict, body: Terms, deadline: datetime) -> dict:
-    """What draft_offer and offer_problems are given: the owner's terms and the survey's evidence."""
-    return {
-        "amount": body.amount, "goal": body.goal, "deadline": deadline, "currency": CURRENCY, "perk": perk_of(body.perk),
-        "concept": run.concepts[kit["idx"]], "claims": kit_claims(kit, sheet), "place": run.site.label,
-        "avoid": place_texts(run),
-    }
 
 
 async def campaign_row(request: Request, campaign_id: str) -> dict:
@@ -198,9 +146,7 @@ async def campaign_view(request: Request, row: dict) -> dict:
         "id": row["id"],
         "status": row["status"],
         "accepting": pledges.accepting(campaign, now),
-        "kit_token": row["kit_token"],
-        "kit_url": f"/k/{row['kit_token']}" if row["kit_token"] else None,
-        "survey_url": f"/s/{row['survey_id']}?sheet={row['idx']}" if row["survey_id"] else None,
+        "source": "owner",
         "name": offer.get("name") or "",
         "place": place_of(row),
         "concept": offer.get("concept") or {"genre": "", "summary": ""},
@@ -217,8 +163,6 @@ async def campaign_view(request: Request, row: dict) -> dict:
         "progress": public_progress(progress),
         "is_owner": owner,
     }
-    if row["kit_token"] is None:
-        view["source"] = "owner"
     if owner:
         view["owner"] = {
             "counts": progress["counts"],
@@ -231,76 +175,6 @@ async def campaign_view(request: Request, row: dict) -> dict:
 def public_base(request: Request) -> str:
     """Where PayPal sends the supporter back: PUBLIC_URL, else this server's own address."""
     return settings.public_url or (auth.own_origin(request) or str(request.base_url)).rstrip("/")
-
-
-@router.post("/campaigns/draft")
-async def draft(request: Request, body: Terms, user: auth.SignedIn) -> dict:
-    """The campaign's words drafted from the kit's concept and the survey's evidence; the owner's terms go in unchanged
-    and the AI sets no number. When the terms are not allowed, `problems` says why and nothing is drafted."""
-    state = request.app.state
-    kit = await ready_kit(request, body.kit_token)
-    deadline, problems = check_terms(body, state.now(), kit["name"])
-    if problems:
-        return {"title": "", "pitch": "", "perks": [], "how_it_works": "", "problems": problems}
-    if not state.draft_limiter.allow(client_ip(request)):
-        raise HTTPException(429, "Too many drafts from this address. Try again later.")
-    run, sheet = await survey_behind(request, kit)
-    services = state.services
-    offer = await pledges.draft_offer(services.llm, sheet, answers=services.answers, **offer_inputs(kit, run, sheet, body, deadline))
-    return {key: offer[key] for key in ("title", "pitch", "perks", "how_it_works")} | {"problems": []}
-
-
-@router.post("/campaigns")
-async def create(request: Request, body: NewCampaign, user: auth.SignedIn) -> dict:
-    """Starts the campaign on the owner's terms and words, once both keep the rules; one open campaign per user per
-    kit. The owner's PayPal email receives the money."""
-    state = request.app.state
-    kit = await ready_kit(request, body.kit_token)
-    running = await state.campaigns.open_for(user["id"], kit["token"])
-    if running:
-        raise Problem(409, "You already have an open campaign for this kit.", url=f"/p/{running['id']}")
-    now = state.now()
-    deadline, problems = check_terms(body, now, kit["name"])
-    email = email_problem(body.payout_email)
-    if email:
-        problems.append(email)
-    if problems:
-        raise Problem(422, " ".join(problems), problems=problems)
-    run, sheet = await survey_behind(request, kit)
-    inputs = offer_inputs(kit, run, sheet, body, deadline)
-    problems = pledges.offer_problems(sheet, title=body.title, pitch=body.pitch, perks=body.perks, **inputs)
-    if problems:
-        raise Problem(422, " ".join(problems), problems=problems)
-    campaign = pledges.new_campaign(uuid.uuid4().hex[:16], body.amount, body.goal, deadline, now, CURRENCY)
-    concept = run.concepts[kit["idx"]]
-    payload = kit.get("payload") if isinstance(kit.get("payload"), dict) else {}
-    name = kit["name"] or (payload.get("concept") or {}).get("name") or str(concept.get("name") or "")
-    site = run.site
-    offer = {
-        "pitch": " ".join(body.pitch.split()),
-        "perks": [" ".join(perk.split()) for perk in body.perks],
-        "how_it_works": pledges.how_it_works(campaign.amount, campaign.goal, campaign.deadline, campaign.currency),
-        "perk": inputs["perk"],
-        "name": name,
-        "place": {"label": site.label, "area": site.area},
-        "concept": {
-            "genre": str(concept.get("genre") or ""),
-            "summary": str(concept.get("one_liner") or sheet.get("tagline") or ""),
-        },
-        "evidence": pledges.evidence_lines(concept, inputs["claims"]),
-    }
-    async with state.campaign_lock:
-        running = await state.campaigns.open_for(user["id"], kit["token"])
-        if running:
-            raise Problem(409, "You already have an open campaign for this kit.", url=f"/p/{running['id']}")
-        await state.campaigns.create(
-            id=campaign.id, kit_token=kit["token"], survey_id=kit["survey_id"], idx=kit["idx"], user_id=user["id"],
-            status="open", title=" ".join(body.title.split()), offer=offer,
-            amount_cents=minor(campaign.amount, campaign.currency), currency=campaign.currency, goal_count=campaign.goal,
-            deadline=campaign.deadline, lat=site.lat, lon=site.lon, payout_email=body.payout_email.strip(),
-        )
-    log.info("Campaign %s started from kit %s", campaign.id, kit["token"][:8])
-    return {"id": campaign.id, "url": f"/p/{campaign.id}"}
 
 
 @router.get("/campaigns")

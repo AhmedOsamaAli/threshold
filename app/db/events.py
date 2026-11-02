@@ -3,8 +3,7 @@ from __future__ import annotations
 
 from sqlalchemy import delete
 
-from .database import Database
-from .surveys import INSERTS
+from .database import INSERTS, Database
 from .tables import paypal_events
 
 

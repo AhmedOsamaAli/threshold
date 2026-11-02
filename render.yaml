@@ -7,18 +7,11 @@ services:
     region: ohio
     healthCheckPath: /api/health
     envVars:
-      - key: QLOO_API_KEY
-        sync: false
-      - key: QLOO_BASE_URL
-        value: https://hackathon.api.qloo.com
       - key: DATABASE_URL
         sync: false
       - key: PUBLIC_URL
         sync: false
       - key: GOOGLE_CLIENT_ID
-        sync: false
-      # The finished surveys anyone can open before running their own (comma-separated survey ids).
-      - key: EXAMPLES
         sync: false
       # Shared with the Cloudflare Pages front door (frontend/functions), which sends the visitor's address with it.
       - key: PROXY_SECRET
@@ -41,8 +34,8 @@ services:
         value: "45"
       - key: GROQ_API_KEY
         sync: false
-      # Walk-in Founders: PayPal (the sandbox until PAYPAL_ENV=live), its webhook, the scheduled settlement's secret,
-      # the in-app settlement period, and paused surveys for the judging weeks.
+      # Walk-in Founders: PayPal (the sandbox until PAYPAL_ENV=live), its webhook, the scheduled settlement's secret
+      # and the in-app settlement period.
       - key: PAYPAL_CLIENT_ID
         sync: false
       - key: PAYPAL_CLIENT_SECRET
@@ -55,5 +48,3 @@ services:
         sync: false
       - key: SETTLE_EVERY_S
         value: "180"
-      - key: SURVEYS_PAUSED
-        value: "false"

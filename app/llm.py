@@ -7,7 +7,7 @@ Free tiers are small (Gemini: a handful of requests per minute and a few dozen p
 both for each model), so every call walks a chain of models across providers. A model that is rate limited,
 overloaded or hanging rests for a while and the next one answers; a tool-calling conversation stays on one model for
 as long as it can, and waits briefly when every model is about to come back, within one wait budget for the whole
-conversation (a survey's agent: AGENT_WAIT_BUDGET). Prompts carry compact JSON (compact_json).
+conversation (AGENT_WAIT_BUDGET). Prompts carry compact JSON (compact_json).
 
 The openai package is imported when a model is first asked, in a worker thread, not with this module (_openai).
 """
@@ -51,7 +51,7 @@ REST_DAILY_QUOTA = 3600.0
 REST_NOT_OFFERED = 6 * 3600.0
 MAX_RETRY_DELAY = 300.0
 
-# Token estimates for providers that limit tokens per request: conservative, survey evidence runs ~3.9 chars a token.
+# Token estimates for providers that limit tokens per request: conservative, JSON prompts run ~3.9 chars a token.
 CHARS_PER_TOKEN = 3.3
 CUT_NOTE = " …[cut to fit the model's token limit]"
 
@@ -78,8 +78,8 @@ class LLMUnavailable(RuntimeError):
 
 
 class WaitBudget:
-    """The seconds one conversation may still spend waiting for resting models (AGENT_WAIT_BUDGET for a survey's
-    agent), so its worst case is bounded however often the free models rest."""
+    """The seconds one conversation may still spend waiting for resting models (AGENT_WAIT_BUDGET), so its worst case
+    is bounded however often the free models rest."""
 
     def __init__(self, seconds: float) -> None:
         self.total = self.left = seconds
@@ -180,7 +180,7 @@ class LLM:
         self.first_reply_timeout = first_reply_timeout
         # Longest pause for a resting model to come back before a call gives up; 0 never waits.
         self.max_wait = max_wait
-        # Longest time, in all, one tool conversation (a survey's agent) may pause for resting models; None: no limit.
+        # Longest time, in all, one tool conversation may pause for resting models; None: no limit.
         self.wait_budget = wait_budget
         self._resting: dict[str, float] = {}
         self._loaded = False  # whether openai has been imported for this chain (load)

@@ -118,26 +118,26 @@ def test_a_token_paypal_no_longer_accepts_is_renewed_once():
     assert error.value.status == 401 and len(always.api()) == 2  # one renewal, then the error
 
 
-def test_a_kit_order_pays_now_without_shipping_and_carries_idempotency_headers():
+def test_an_order_pays_now_without_shipping_and_carries_idempotency_headers():
     stub = Stub(replies=[httpx.Response(200, json={"id": "ORDER1", "status": "PAYER_ACTION_REQUIRED", "links": [
         {"href": f"{API}/v2/checkout/orders/ORDER1", "rel": "self", "method": "GET"},
         {"href": "https://www.sandbox.paypal.com/checkoutnow?token=ORDER1", "rel": "payer-action", "method": "GET"},
     ]})])
     order = asyncio.run(client_for(stub).create_order(
-        intent="capture", amount="19", currency="usd", description="  Walk-in launch kit:\n Golden Hour ",
-        custom_id="kit:run-1", request_id="kit-order-run-1",
+        intent="capture", amount="19", currency="usd", description="  Walk-in order:\n Golden Hour ",
+        custom_id="order:run-1", request_id="order-run-1",
     ))
     request = stub.api()[0]
     assert (request.method, request.url.path) == ("POST", "/v2/checkout/orders")
-    assert request.headers["paypal-request-id"] == "kit-order-run-1"
+    assert request.headers["paypal-request-id"] == "order-run-1"
     assert request.headers["prefer"] == "return=representation"
     assert request.headers["content-type"] == "application/json"
     assert json.loads(request.content) == {
         "intent": "CAPTURE",
         "purchase_units": [{
             "amount": {"currency_code": "USD", "value": "19.00"},
-            "custom_id": "kit:run-1",
-            "description": "Walk-in launch kit: Golden Hour",
+            "custom_id": "order:run-1",
+            "description": "Walk-in order: Golden Hour",
         }],
         "payment_source": {"paypal": {"experience_context": {
             "brand_name": "Walk-in", "shipping_preference": "NO_SHIPPING", "user_action": "PAY_NOW",
@@ -177,7 +177,7 @@ def test_a_pledge_order_only_holds_the_money_and_returns_to_the_app():
 ])
 def test_bad_orders_never_reach_paypal(changes, error):
     stub = Stub()
-    order = {"intent": "CAPTURE", "amount": "19.00", "currency": "USD", "description": "Kit", "custom_id": "kit:1",
+    order = {"intent": "CAPTURE", "amount": "19.00", "currency": "USD", "description": "Order", "custom_id": "order:1",
              "request_id": "r1", **changes}
     with pytest.raises(error):
         asyncio.run(client_for(stub).create_order(**order))
@@ -199,8 +199,8 @@ CALLS = [
     ("reauthorize_authorization", ("AUTH1", "r7"), {}, "POST", "/v2/payments/authorizations/AUTH1/reauthorize", {}),
     ("get_authorization", ("AUTH1",), {}, "GET", "/v2/payments/authorizations/AUTH1", None),
     ("refund_capture", ("CAP1", "r8"), {}, "POST", "/v2/payments/captures/CAP1/refund", {}),
-    ("refund_capture", ("CAP1", "r9", "25"), {"note": " The kit was  refunded ", "currency": "USD"}, "POST",
-     "/v2/payments/captures/CAP1/refund", {"amount": AMOUNT_25, "note_to_payer": "The kit was refunded"}),
+    ("refund_capture", ("CAP1", "r9", "25"), {"note": " The order was  refunded ", "currency": "USD"}, "POST",
+     "/v2/payments/captures/CAP1/refund", {"amount": AMOUNT_25, "note_to_payer": "The order was refunded"}),
 ]
 
 
@@ -317,16 +317,16 @@ def test_secrets_and_tokens_never_reach_logs_errors_or_repr(caplog):
 
 
 def paid_order(capture: dict | None = None, **order: object) -> dict:
-    """A captured kit order as PayPal returns it (Prefer: return=representation)."""
+    """A captured order as PayPal returns it (Prefer: return=representation)."""
     paid = {
         "id": "CAP1", "status": "COMPLETED", "amount": {"currency_code": "USD", "value": "19.00"},
-        "custom_id": "kit:run-1", "final_capture": True, "create_time": "2026-10-22T14:00:00Z",
+        "custom_id": "order:run-1", "final_capture": True, "create_time": "2026-10-22T14:00:00Z",
     }
     return {
         "id": "ORDER1", "status": "COMPLETED", "intent": "CAPTURE",
         "payer": {"payer_id": "PAYER1", "email_address": "buyer@example.com"},
         "purchase_units": [{
-            "reference_id": "default", "custom_id": "kit:run-1", "amount": {"currency_code": "USD", "value": "19.00"},
+            "reference_id": "default", "custom_id": "order:run-1", "amount": {"currency_code": "USD", "value": "19.00"},
             "payments": {"captures": [{**paid, **(capture or {})}]},
         }],
         **order,
@@ -336,7 +336,7 @@ def paid_order(capture: dict | None = None, **order: object) -> dict:
 def test_summarize_capture_reads_the_paid_order():
     assert paypal.summarize_capture(paid_order()) == {
         "order_id": "ORDER1", "status": "COMPLETED", "capture_id": "CAP1", "capture_status": "COMPLETED",
-        "amount": "19.00", "currency": "USD", "payer_id": "PAYER1", "custom_id": "kit:run-1",
+        "amount": "19.00", "currency": "USD", "payer_id": "PAYER1", "custom_id": "order:run-1",
     }
     unpaid = paid_order(status="APPROVED")
     unpaid["purchase_units"][0].pop("payments")
@@ -345,26 +345,26 @@ def test_summarize_capture_reads_the_paid_order():
 
 
 def test_paid_in_full_needs_the_exact_amount_currency_and_custom_id():
-    assert paypal.paid_in_full(paid_order(), "19.00", "USD", "kit:run-1")
-    assert paypal.paid_in_full(paid_order(), "19", "usd", "kit:run-1")
-    assert paypal.paid_in_full(paid_order(), Decimal("19.0"), "USD", "kit:run-1")
+    assert paypal.paid_in_full(paid_order(), "19.00", "USD", "order:run-1")
+    assert paypal.paid_in_full(paid_order(), "19", "usd", "order:run-1")
+    assert paypal.paid_in_full(paid_order(), Decimal("19.0"), "USD", "order:run-1")
     # The capture's own custom_id may be missing; the purchase unit's counts.
-    assert paypal.paid_in_full(paid_order({"custom_id": None}), "19.00", "USD", "kit:run-1")
-    assert not paypal.paid_in_full(paid_order(), "20.00", "USD", "kit:run-1")
-    assert not paypal.paid_in_full(paid_order(), "18.99", "USD", "kit:run-1")
-    assert not paypal.paid_in_full(paid_order(), "19.00", "EUR", "kit:run-1")
-    assert not paypal.paid_in_full(paid_order(), "19.00", "USD", "kit:run-2")
-    assert not paypal.paid_in_full(paid_order({"status": "PENDING"}), "19.00", "USD", "kit:run-1")
-    assert not paypal.paid_in_full(paid_order({"status": "REFUNDED"}), "19.00", "USD", "kit:run-1")
+    assert paypal.paid_in_full(paid_order({"custom_id": None}), "19.00", "USD", "order:run-1")
+    assert not paypal.paid_in_full(paid_order(), "20.00", "USD", "order:run-1")
+    assert not paypal.paid_in_full(paid_order(), "18.99", "USD", "order:run-1")
+    assert not paypal.paid_in_full(paid_order(), "19.00", "EUR", "order:run-1")
+    assert not paypal.paid_in_full(paid_order(), "19.00", "USD", "order:run-2")
+    assert not paypal.paid_in_full(paid_order({"status": "PENDING"}), "19.00", "USD", "order:run-1")
+    assert not paypal.paid_in_full(paid_order({"status": "REFUNDED"}), "19.00", "USD", "order:run-1")
     assert not paypal.paid_in_full(paid_order({"amount": {"currency_code": "USD", "value": "1.90"}}), "19.00", "USD",
-                                   "kit:run-1")
-    assert not paypal.paid_in_full(paid_order(status="APPROVED"), "19.00", "USD", "kit:run-1")
+                                   "order:run-1")
+    assert not paypal.paid_in_full(paid_order(status="APPROVED"), "19.00", "USD", "order:run-1")
     twice = paid_order()
     twice["purchase_units"][0]["payments"]["captures"].append({"id": "CAP2", "status": "COMPLETED"})
-    assert not paypal.paid_in_full(twice, "19.00", "USD", "kit:run-1")
-    assert not paypal.paid_in_full({"id": "ORDER1", "status": "COMPLETED"}, "19.00", "USD", "kit:run-1")
+    assert not paypal.paid_in_full(twice, "19.00", "USD", "order:run-1")
+    assert not paypal.paid_in_full({"id": "ORDER1", "status": "COMPLETED"}, "19.00", "USD", "order:run-1")
     with pytest.raises(TypeError):
-        paypal.paid_in_full(paid_order(), 19.0, "USD", "kit:run-1")
+        paypal.paid_in_full(paid_order(), 19.0, "USD", "order:run-1")
 
 
 def held_order(authorization: dict | None = None, **order: object) -> dict:

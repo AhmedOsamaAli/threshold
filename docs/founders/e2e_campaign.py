@@ -1,10 +1,10 @@
 """End-to-end check of Walk-in Founders against a running server and PayPal's sandbox, as people would use it: the owner
-signs in (development login) and starts a campaign from a ready launch kit; each sandbox buyer pledges with the redirect
+signs in (development login) and starts a campaign by describing a business; each sandbox buyer pledges with the redirect
 flow, approves in PayPal (headless Chromium, locale en_US) and comes back to the campaign's page, which holds the
 pledge; one extra pledge is withdrawn; the owner closes the campaign once funded, it settles, and the owner is paid out.
 Prints each step's status, never secrets.
 
-    python docs/founders/e2e_campaign.py [--server http://127.0.0.1:8780] [--kit KIT_TOKEN] [--amount 5.00]
+    python docs/founders/e2e_campaign.py [--server http://127.0.0.1:8780] [--amount 5.00]
 
 Start the server first, from the repository's root, with the development login and its own address:
 
@@ -34,7 +34,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from sandbox_money_flows import approve, buyers, env_file  # noqa: E402
 
-ZAMALEK_KIT = "Uv6RpsfnBAa0kIfOdIEEVukHMeS9bqXG1imQEaiFuj4"
+BUSINESS = {
+    "kind": "bakery", "description": "A neighborhood bakery for the morning crowd.",
+    "why_here": "The nearest bakery is a 25-minute walk away.", "address": "Zamalek, Cairo, Egypt",
+    "lat": 30.0626, "lon": 31.2197,
+}
 
 
 def step(label: str, response: httpx.Response, *keys: str) -> dict:
@@ -49,19 +53,7 @@ def step(label: str, response: httpx.Response, *keys: str) -> dict:
     return body if isinstance(body, dict) else {}
 
 
-async def find_kit(http: httpx.AsyncClient, given: str | None) -> str | None:
-    """The kit to start from: the one given, else the first example's ready kit, else the Zamalek example's."""
-    if given:
-        return given
-    for example in (await http.get("/api/examples")).json() or []:
-        kit = example.get("kit") or {}
-        if kit.get("token"):
-            return kit["token"]
-    page = await http.get(f"/api/kits/{ZAMALEK_KIT}")
-    return ZAMALEK_KIT if page.status_code == 200 and page.json().get("status") == "ready" else None
-
-
-async def run(server: str, kit_given: str | None, amount: str) -> int:
+async def run(server: str, amount: str) -> int:
     from playwright.async_api import async_playwright
 
     env = env_file()
@@ -81,19 +73,16 @@ async def run(server: str, kit_given: str | None, amount: str) -> int:
             print("Set the sandbox buyers in .env (see this script's docstring).")
             return 1
         step("owner signs in", await http.post("/api/auth/dev", json={"email": f"e2e-{run_id}@example.com", "name": "E2E Owner"}))
-        kit = await find_kit(http, kit_given)
-        if not kit:
-            print("No ready launch kit found: pass --kit with a ready kit's token.")
-            return 1
-        print(f"kit: {kit[:6]}…")
         goal = 3
         deadline = (datetime.now(UTC) + timedelta(days=7)).isoformat()
-        terms = {"kit_token": kit, "amount": amount, "goal": goal, "deadline": deadline, "perk": None}
-        drafted = step("draft", await http.post("/api/campaigns/draft", json=terms), "title", "problems")
+        terms = {
+            **BUSINESS, "name": f"E2E Bakery {run_id}", "amount": amount, "goal": goal, "deadline": deadline, "perk": None,
+        }
+        drafted = step("draft", await http.post("/api/business-campaigns/draft", json=terms), "title", "problems")
         if drafted.get("problems") or not drafted.get("title"):
             return 1
         payout_email = env.get("PAYPAL_SANDBOX_PAYOUT_EMAIL") or found[0][0]
-        created = step("create", await http.post("/api/campaigns", json={
+        created = step("create", await http.post("/api/business-campaigns", json={
             **terms, "payout_email": payout_email, **{key: drafted[key] for key in ("title", "pitch", "perks")},
         }), "id", "url")
         campaign_id = created.get("id")
@@ -161,10 +150,9 @@ async def run(server: str, kit_given: str | None, amount: str) -> int:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--server", default="http://127.0.0.1:8780")
-    parser.add_argument("--kit", default=None, help="a ready launch kit's token (default: an example's)")
     parser.add_argument("--amount", default="5.00", help="each pledge, 5.00 to 200.00")
     options = parser.parse_args()
-    return asyncio.run(run(options.server.rstrip("/"), options.kit, options.amount))
+    return asyncio.run(run(options.server.rstrip("/"), options.amount))
 
 
 if __name__ == "__main__":

@@ -3,11 +3,10 @@
 .env.*
 !.env.example
 
-# Qloo API responses must never be committed (hackathon API terms)
+# Downloaded map data and model answers, rebuilt on demand
 .cache/
-data/raw/
 
-# The local database (surveys, orders and kits)
+# The local database (users, campaigns and pledges)
 .data/
 
 # Editor settings

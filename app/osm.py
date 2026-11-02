@@ -1,23 +1,20 @@
-"""OpenStreetMap cross-check: the named places OpenStreetMap shows inside the walk, so that a kind of place missing from
-Qloo's place list is never called missing when it is there.
+"""OpenStreetMap places: the named shops, amenities, leisure, tourism and craft places OpenStreetMap shows inside an
+area, and the kinds of place its tags pin down.
 
-Once per survey, one Overpass query reads the named shops, amenities, leisure, tourism and craft places (nodes and ways)
-inside the walk polygon. Each gap row then counts the places of its kind OpenStreetMap shows inside the walk and adds,
-as supply, those that no Qloo place inside the walk matches: a similar name within about 80 m, whatever Qloo's category
-for it (Qloo may list a bakery as a Mexican restaurant). Kinds of place that no OpenStreetMap tag pins down ('New
-American', 'Bar + Grill') are not checked: a guess would be worse than no cross-check.
+One Overpass query reads the named places (nodes and ways) inside the area's polygon. Which kind of place each one is
+comes from its tags: a bakery is shop=bakery, a coffee shop an amenity=cafe that serves coffee. Kinds of place that no
+tag pins down ('New American', 'Bar + Grill') are not mapped: a guess would be worse than no answer.
 
 The public Overpass instances are run by volunteers (wiki.openstreetmap.org/wiki/Overpass_API#Public_Overpass_API_instances).
 Requests identify the app, answers are cached on disk for a week, an instance that fails rests before it is asked again,
-and the main FOSSGIS instance, which asks apps to use alternatives, is asked last. When none answers, the survey goes on
-and its rows say they were not cross-checked.
+and the main FOSSGIS instance, which asks apps to use alternatives, is asked last. When none answers, the scan says so
+and the caller goes on without it.
 
 Data © OpenStreetMap contributors, available under the Open Database License (www.openstreetmap.org/copyright).
 """
 from __future__ import annotations
 
 import asyncio
-import contextvars
 import difflib
 import hashlib
 import json
@@ -25,21 +22,23 @@ import logging
 import math
 import re
 import time
+import unicodedata
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field
+from functools import lru_cache
 from pathlib import Path
 from urllib.parse import urlsplit
 
 import httpx
 
-from . import jsonio, scoring, tls
+from . import jsonio, tls
 from .catchment import Catchment
 from .geo import distance_m
 
 log = logging.getLogger("walkin")
 
 # Public instances with worldwide data, in the order they are asked. The French community instance answered when the
-# others did not (October 2026), with data some weeks old: each answer carries its date, and the survey shows it.
+# others did not (October 2026), with data some weeks old: each answer carries its date.
 # private.coffee and VK Maps welcome any project; the FOSSGIS instance is overloaded and asks apps to use alternatives
 # where possible, so it comes last. An instance that fails rests (is asked last) for REST_S.
 ENDPOINTS = (
@@ -50,10 +49,9 @@ ENDPOINTS = (
 )
 USER_AGENT = "Walk-in/0.3 (+https://github.com/AhmedOsamaAli/walk-in)"
 CREDIT = "© OpenStreetMap contributors"  # the data is ODbL: https://www.openstreetmap.org/copyright
-LABEL = "Cross-checking the map with OpenStreetMap"
 
 TIMEOUT_S = 12.0  # one request
-BUDGET_S = 30.0  # every instance asked, together: the survey waits no longer than this (two dead ones leave time for a third)
+BUDGET_S = 30.0  # every instance asked, together: a caller waits no longer than this (two dead ones leave time for a third)
 CONNECT_S = 5.0
 REST_S = 600.0  # an instance that failed is asked last for this long
 SERVER_TIMEOUT_S = 10  # what the query asks the server for, so it gives up before the client does
@@ -67,10 +65,8 @@ POI_KEYS = ("amenity", "shop", "leisure", "tourism", "craft")
 NAME_KEYS = ("name", "name:en", "int_name", "alt_name", "official_name", "short_name", "brand")
 
 NOTES = {
-    "off": "The OpenStreetMap cross-check is off.",
-    "unavailable": "Not cross-checked: OpenStreetMap did not answer in time.",
-    "unmapped": "Not cross-checked: no OpenStreetMap tag reliably marks this kind of place.",
-    "too_big": "Not cross-checked: the area is too large for OpenStreetMap's free servers.",
+    "unavailable": "OpenStreetMap did not answer in time.",
+    "too_big": "The area is too large for OpenStreetMap's free servers.",
 }
 
 
@@ -78,13 +74,21 @@ class OsmError(RuntimeError):
     pass
 
 
+@lru_cache(maxsize=65536)
+def plain_text(text: str) -> str:
+    """A text as plain words: lowercase, accents and punctuation folded ('Crème brûlée' -> 'creme brulee')."""
+    folded = "".join(ch for ch in unicodedata.normalize("NFKD", text or "") if not unicodedata.combining(ch))
+    folded = re.sub(r"['’`]", "", folded.lower().replace("&", " and "))
+    return " ".join(re.sub(r"[^\w]+|_", " ", folded).split())
+
+
 # ---------- Kinds of place ----------
 #
-# A Qloo genre maps to the OpenStreetMap tags that make a place that kind of place, one alternative per string. In an
-# alternative, every condition must hold: 'key=a|b' needs one of the values, 'key=*' any value and '-' among the values
-# lets the key be absent. Values are read one by one from lists such as cuisine=coffee_shop;donut. Each alternative is
-# sufficient on its own: when tags cannot say a place is of the kind (a bar is not necessarily a cocktail bar), the kind
-# needs the specific tag or is left unmapped, and its rows say they were not checked.
+# A kind of place (a genre such as 'Bakery' or 'Cocktail bar') maps to the OpenStreetMap tags that make a place that
+# kind of place, one alternative per string. In an alternative, every condition must hold: 'key=a|b' needs one of the
+# values, 'key=*' any value and '-' among the values lets the key be absent. Values are read one by one from lists such
+# as cuisine=coffee_shop;donut. Each alternative is sufficient on its own: when tags cannot say a place is of the kind
+# (a bar is not necessarily a cocktail bar), the kind needs the specific tag or is left unmapped (kind_of gives None).
 
 _COFFEE = "coffee_shop|coffee|espresso"
 _CAFE_LIKE = "bar|pub|nightclub|restaurant|cafe"
@@ -277,7 +281,7 @@ class Condition:
 
 @dataclass(frozen=True)
 class Kind:
-    """The OpenStreetMap side of one Qloo genre."""
+    """The OpenStreetMap side of one kind of place."""
 
     key: str
     rules: tuple[tuple[Condition, ...], ...]
@@ -321,22 +325,18 @@ KINDS = _build_kinds()
 # The keys the rules read, kept from each place along with its names.
 RULE_KEYS = frozenset(condition.key for kind in KINDS.values() for rule in kind.rules for condition in rule)
 KEEP_TAGS = frozenset(POI_KEYS) | frozenset(NAME_KEYS) | RULE_KEYS
-GENRE_PREFIX = "urn:tag:genre:place:"
 
 
 def kind_key(genre: str) -> str:
     """A genre name as a table key: 'Ice cream shop' -> 'icecreamshop', 'Bar & grill' and 'Bar + Grill' -> 'barandgrill',
     'Southern restaurant (US)' -> 'southern'."""
-    text = scoring.topic_text(re.sub(r"\(.*?\)", " ", genre or "").replace("+", "&"))
+    text = plain_text(re.sub(r"\(.*?\)", " ", genre or "").replace("+", "&"))
     return "".join(word for word in text.split() if word not in ("restaurant", "restaurants"))
 
 
-def kind_of(genre: str, genre_id: str | None = None) -> Kind | None:
-    """The OpenStreetMap side of a Qloo genre, by its name or else by its tag id; None when no tag says it reliably."""
-    found = KINDS.get(kind_key(genre))
-    if found is None and genre_id and genre_id.startswith(GENRE_PREFIX):
-        found = KINDS.get(genre_id.rsplit(":", 1)[-1].replace("_", ""))
-    return found
+def kind_of(genre: str) -> Kind | None:
+    """The OpenStreetMap side of a kind of place, by its name; None when no tag says it reliably."""
+    return KINDS.get(kind_key(genre))
 
 
 # ---------- Names ----------
@@ -362,7 +362,7 @@ class Name:
 
     @classmethod
     def of(cls, name: str) -> Name:
-        text = " ".join(w for w in scoring.topic_text((name or "").replace("+", "&")).split() if w not in ("the", "and"))
+        text = " ".join(w for w in plain_text((name or "").replace("+", "&")).split() if w not in ("the", "and"))
         return cls(text, frozenset(w for w in text.split() if w not in GENERIC_NAME_WORDS))
 
 
@@ -400,7 +400,7 @@ def display_name(tags: Mapping[str, str]) -> str:
 
 
 def place_names(tags: Mapping[str, str]) -> list[str]:
-    """Every name a place goes by, to match against Qloo's."""
+    """Every name a place goes by, to match against other lists of places."""
     names: list[str] = []
     for key in NAME_KEYS:
         for value in str(tags.get(key) or "").split(";"):
@@ -474,7 +474,7 @@ def compact(elements: Iterable[dict]) -> list[dict]:
 
 
 def places_inside(elements: Iterable[dict], contains: Callable[[float, float], bool]) -> list[dict]:
-    """The places inside the walk; a place drawn twice (its node and its building) counts once."""
+    """The places inside the area; a place drawn twice (its node and its building) counts once."""
     places: list[dict] = []
     by_name: dict[str, list[tuple[float, float]]] = {}
     for element in elements:
@@ -492,184 +492,23 @@ def places_inside(elements: Iterable[dict], contains: Callable[[float, float], b
     return places
 
 
-# ---------- One survey's cross-check ----------
+# ---------- What OpenStreetMap shows inside an area ----------
 
 @dataclass
 class Scan:
-    """What OpenStreetMap shows inside one walk."""
+    """What OpenStreetMap shows inside one area."""
 
     checked: bool
     places: list[dict] = field(default_factory=list)
     source: str | None = None  # the Overpass instance that answered
     as_of: str | None = None  # when OpenStreetMap's data was last updated on that instance
-    note: str | None = None  # why the walk was not cross-checked
-    reason: str = "unavailable"  # why not, for the gap rows: 'unavailable' (no answer in time) or 'too_big'
-
-
-def unchecked(reason: str, note: str | None = None) -> dict:
-    return {"checked": False, "count": 0, "extra": [], "reason": reason, "note": note or NOTES[reason]}
+    note: str | None = None  # why the area was not read
+    reason: str = "unavailable"  # why not: 'unavailable' (no answer in time) or 'too_big'
 
 
 def main_tag(tags: Mapping[str, str]) -> str | None:
     """'shop=pastry': what OpenStreetMap says a place is."""
     return next((f"{key}={tags[key]}" for key in POI_KEYS if tags.get(key)), None)
-
-
-@dataclass
-class _Known:
-    names: tuple[Name, ...]
-    lat: float | None
-    lon: float | None
-
-
-def qloo_names(place: dict) -> list[str]:
-    """The names a Qloo place goes by: its name and its also-known-as names, which Qloo writes 'Name, address'."""
-    names = [place["name"]] if place.get("name") else []
-    for aka in (place.get("properties") or {}).get("akas") or []:
-        value = aka.get("value") if isinstance(aka, dict) else None
-        if isinstance(value, str):
-            alias = value.split(",")[0].strip().strip('"')
-            if alias and alias not in names:
-                names.append(alias)
-    return names
-
-
-class CrossCheck:
-    """One survey's cross-check: what OpenStreetMap shows inside the walk, and every Qloo place known to be there.
-
-    A place OpenStreetMap shows is already known when a Qloo place has a similar name within MATCH_M of it, whatever
-    Qloo's category for it (Qloo may list a bakery as a Mexican restaurant); closed ones count too, since OpenStreetMap
-    keeps places that have closed. Qloo's places come from the lists the survey read inside the walk, and from a name
-    search on Qloo around each place only OpenStreetMap seems to show (engine.cross_check), so an extra is a place Qloo
-    does not list there.
-    """
-
-    def __init__(self, scan: Scan | None, catchment: Catchment | None = None) -> None:
-        self.scan = scan
-        self._contains = catchment.contains if catchment else None
-        self._site = (catchment.lat, catchment.lon) if catchment else None
-        # The area in the notes: 'the walk' as always, or 'the 30-minute drive'.
-        self._here = catchment.label if catchment and catchment.travel != "walk" else "walk"
-        self._known: list[_Known] = []
-        self._ids: set[str] = set()
-        self._verdicts: dict[str, bool] = {}
-
-    @property
-    def checked(self) -> bool:
-        return bool(self.scan and self.scan.checked)
-
-    def learn(self, places: Iterable[dict], inside_only: bool = False, located_only: bool = False) -> None:
-        """Qloo places known around the walk. Lists Qloo filtered to the walk are taken whole; from wider lists, such
-        as the favorites, only the places located inside the walk (`inside_only`); name-search results only with a
-        location (`located_only`), since a name alone could be a branch across town."""
-        for place in places:
-            names = qloo_names(place)
-            location = scoring.place_location(place)
-            pid = scoring.item_id(place) or f"{names[:1]}@{location}"
-            if not names or pid in self._ids:
-                continue
-            if location is None and (inside_only or located_only):
-                continue
-            if inside_only and (self._contains is None or not self._contains(*location)):
-                continue
-            self._ids.add(pid)
-            self._known.append(_Known(tuple(Name.of(name) for name in names), *(location or (None, None))))
-            self._verdicts.clear()
-
-    def learn_row(self, row: dict) -> None:
-        self.learn(row.get("_nearby_entities") or [])
-        self.learn(row.get("_closed_nearby") or [])
-        self.learn(row.get("_favorite_entities") or [], inside_only=True)
-
-    def places_of(self, genre: str, genre_id: str | None = None) -> list[dict] | None:
-        """The places of a kind OpenStreetMap shows inside the walk; None when the walk or the kind is not checked."""
-        kind = kind_of(genre, genre_id)
-        if not self.checked or kind is None:
-            return None
-        return [place for place in self.scan.places if kind.matches(place["tags"])]
-
-    def candidates(self, rows: Iterable[dict]) -> list[dict]:
-        """The places of the rows' kinds that no Qloo place read so far matches, nearest the site first."""
-        found: dict[str, dict] = {}
-        for row in rows:
-            if row.get("nearby_capped"):
-                continue
-            for place in self.places_of(row["genre"], row.get("genre_id")) or []:
-                if not self.known(place):
-                    found.setdefault(place["id"], place)
-        return sorted(found.values(), key=self._distance)
-
-    def apply(self, row: dict) -> dict:
-        """Sets row['osm']: whether the row's kind was checked, how many places of it OpenStreetMap shows inside the
-        walk, and the ones no Qloo place matches (its extras, nearest first)."""
-        self.learn_row(row)
-        row["osm"] = self.check(row["genre"], row.get("genre_id"), capped=bool(row.get("nearby_capped")))
-        return row["osm"]
-
-    def check(self, genre: str, genre_id: str | None = None, capped: bool = False) -> dict:
-        if self.scan is None:
-            return unchecked("off")
-        if not self.scan.checked:
-            return unchecked(self.scan.reason, self.scan.note)
-        places = self.places_of(genre, genre_id)
-        if places is None:
-            return unchecked("unmapped")
-        result = {"checked": True, "count": len(places), "extra": [], "as_of": self.scan.as_of, "credit": CREDIT}
-        if capped:
-            # Qloo has more of these inside the walk than it returns, so its list cannot tell which ones it lacks.
-            return {**result, "note": f"Qloo lists more places of this kind inside the {self._here} than it returns, so the "
-                                      f"{len(places)} OpenStreetMap shows are not compared one by one."}
-        extra = [self._card(place) for place in sorted(places, key=self._distance) if not self.known(place)]
-        return {**result, "extra": extra}
-
-    def known(self, place: dict) -> bool:
-        verdict = self._verdicts.get(place["id"])
-        if verdict is None:
-            verdict = self._verdicts[place["id"]] = self._matches(place)
-        return verdict
-
-    def _matches(self, place: dict) -> bool:
-        names = [Name.of(name) for name in place.get("names") or [place["name"]]]
-        lat, lon = place["lat"], place["lon"]
-        near_lat = MATCH_M / _M_PER_DEG
-        near_lon = near_lat / max(0.1, math.cos(math.radians(lat)))
-        for known in self._known:
-            if known.lat is None or known.lon is None:
-                # Only lists filtered to the walk give places without a location: the same name is enough.
-                if any(similar(name, other, strict=True) for name in names for other in known.names):
-                    return True
-                continue
-            if abs(known.lat - lat) > near_lat or abs(known.lon - lon) > near_lon:
-                continue
-            if distance_m(lat, lon, known.lat, known.lon) <= MATCH_M and any(
-                similar(name, other) for name in names for other in known.names
-            ):
-                return True
-        return False
-
-    def _distance(self, place: dict) -> float:
-        return distance_m(*self._site, place["lat"], place["lon"]) if self._site else 0.0
-
-    def _card(self, place: dict) -> dict:
-        card = {"name": place["name"], "lat": place["lat"], "lon": place["lon"], "url": place_url(place["id"]),
-                "tag": main_tag(place["tags"])}
-        if self._site:
-            card["distance_m"] = round(self._distance(place))
-        return card
-
-
-_current: contextvars.ContextVar[CrossCheck | None] = contextvars.ContextVar("osm_cross_check", default=None)
-
-
-def track(check: CrossCheck | None) -> CrossCheck | None:
-    """Makes `check` the cross-check of the survey the current task runs, for the categories it measures later (the
-    agent's tests, the owner's business); a survey sets it before anything reads it, so surveys never share one."""
-    _current.set(check)
-    return check
-
-
-def current() -> CrossCheck | None:
-    return _current.get()
 
 
 # ---------- The client ----------
@@ -697,7 +536,7 @@ def _describe(exc: BaseException) -> str:
 
 
 class OsmClient:
-    """Asks public Overpass instances for the places inside a walk, with an on-disk cache keyed by the query."""
+    """Asks public Overpass instances for the places inside an area, with an on-disk cache keyed by the query."""
 
     def __init__(
         self,
@@ -716,7 +555,7 @@ class OsmClient:
         self._http = httpx.AsyncClient(
             headers={"User-Agent": USER_AGENT, "Accept": "application/json"}, transport=transport, verify=tls.context(),
         )
-        # The instances ask for no parallel scripts; two surveys may ask at once, more wait.
+        # The instances ask for no parallel scripts; two requests may ask at once, more wait.
         self._gate = asyncio.Semaphore(2)
         self._inflight: dict[str, asyncio.Future] = {}
         self._failed: dict[str, float] = {}
@@ -727,15 +566,15 @@ class OsmClient:
         await self._http.aclose()
 
     async def scan(self, catchment: Catchment) -> Scan:
-        """The named places OpenStreetMap shows inside the walk; never raises: when no instance answers in time, the
-        scan says so and the survey goes on without the cross-check."""
+        """The named places OpenStreetMap shows inside the area; never raises: when no instance answers in time, the
+        scan says so and the caller goes on without it."""
         try:
             data = await self._answer(overpass_query(catchment.ring))
             return Scan(True, places_inside(data["elements"], catchment.contains), data.get("source"), data.get("as_of"))
         except OsmError as exc:
-            log.warning("OpenStreetMap cross-check skipped: %s", exc)
-        except Exception:  # an answer shaped unlike any seen so far must not stop the survey either
-            log.warning("OpenStreetMap cross-check failed", exc_info=True)
+            log.warning("OpenStreetMap scan skipped: %s", exc)
+        except Exception:  # an answer shaped unlike any seen so far must not stop the caller either
+            log.warning("OpenStreetMap scan failed", exc_info=True)
         return Scan(False, note=NOTES["unavailable"])
 
     async def _answer(self, query: str) -> dict:
@@ -752,7 +591,7 @@ class OsmClient:
                 task = asyncio.current_task()
                 if task is not None and task.cancelling():
                     raise
-                raise OsmError("the survey that asked first was stopped") from None
+                raise OsmError("the request that asked first was stopped") from None
         future: asyncio.Future = asyncio.get_running_loop().create_future()
         self._inflight[key] = future
         try:
@@ -782,20 +621,20 @@ class OsmClient:
 
     def _order(self) -> list[str]:
         """The instances to ask: those that answered last time first; when every one failed in the last REST_S seconds,
-        only the one that failed longest ago, so an outage costs each survey one try."""
+        only the one that failed longest ago, so an outage costs each request one try."""
         fresh = [url for url in self._endpoints if not self._resting(url)]
         if fresh:
             return fresh + sorted((url for url in self._endpoints if url not in fresh), key=lambda url: self._failed[url])
         return sorted(self._endpoints, key=lambda url: self._failed[url])[:1]
 
     async def _fetch(self, query: str) -> dict:
-        # The budget covers the wait for other surveys' queries too, so a survey never waits longer than it.
+        # The budget covers the wait for other queries too, so a request never waits longer than it.
         deadline = time.monotonic() + self._budget
         try:
             async with asyncio.timeout(self._budget):
                 await self._gate.acquire()
         except TimeoutError:
-            raise OsmError("other surveys were asking OpenStreetMap") from None
+            raise OsmError("other queries were asking OpenStreetMap") from None
         try:
             problems = []
             for url in self._order():
@@ -823,13 +662,13 @@ class OsmClient:
         finally:
             self._gate.release()
 
-    # ---------- Other queries: the kit's street map (app.basemap) ----------
+    # ---------- Other queries: the street map (app.basemap) ----------
 
     async def ask(
         self, query: str, shape: Callable[[dict], dict], *, name: str, timeout: float = TIMEOUT_S,
         budget: float | None = None,
     ) -> dict:
-        """Another Overpass query, asked the way the cross-check's is: the same instances in the same order, each resting
+        """Another Overpass query, asked the way scan's is: the same instances in the same order, each resting
         after it fails, two queries at a time at most, and the answer kept on disk for a week, as '{name}-{hash}.json'.
         `shape` turns an Overpass answer into what is kept, raising OsmError when it holds nothing usable, so the next
         instance is asked. Raises OsmError when none answers in `budget` seconds and no older answer is on disk."""
@@ -871,8 +710,8 @@ class OsmClient:
                             url, data={"data": query}, timeout=httpx.Timeout(limit, connect=min(CONNECT_S, limit)),
                         )
                     data = _answer_of(response)
-                    # Shaping a big area's answer is pure Python and can take seconds: off the event loop, so surveys
-                    # keep streaming and health checks keep answering meanwhile.
+                    # Shaping a big area's answer is pure Python and can take seconds: off the event loop, so the app
+                    # and its health checks keep answering meanwhile.
                     kept = await asyncio.to_thread(shape, data)
                 except (httpx.HTTPError, TimeoutError, OsmError, ValueError, KeyError, TypeError, AttributeError) as exc:
                     self._failed[url] = time.monotonic()

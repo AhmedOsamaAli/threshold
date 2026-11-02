@@ -1,2 +1,3 @@
-"""Walk-in: reads Qloo taste data for the area people can reach from a door, ranks what the block is missing and designs
-the business. app.main builds the app; docs/architecture.md maps the packages."""
+"""Walk-in Founders: neighbors pledge money to back a new place before its owner signs the lease. PayPal only holds each
+pledge; if the goal is met by the deadline every hold is collected and the owner is paid, otherwise every hold is
+released. app.main builds the app."""

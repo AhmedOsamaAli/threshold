@@ -380,8 +380,8 @@ def run_agent(llm: LLM, waits: list) -> tuple[dict | None, str | None]:
 
 
 def test_one_conversation_waits_for_resting_models_within_its_budget_only():
-    """AGENT_WAIT_BUDGET: a survey's agent waits this long at most, in all, for resting models; a wait that would go past
-    it is not started, and the agent stops as when every model is resting past LLM_MAX_WAIT."""
+    """AGENT_WAIT_BUDGET: a tool conversation waits this long at most, in all, for resting models; a wait that would go past
+    it is not started, and the conversation stops as when every model is resting past LLM_MAX_WAIT."""
     llm, seen, waits = agent_on_resting_models()  # no budget: it waits before each turn and finishes
     assert run_agent(llm, waits) == ({}, "groq-big") and [phase for phase, _ in waits] == ["start", "end"] * 2
 

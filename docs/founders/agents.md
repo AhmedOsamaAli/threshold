@@ -1,9 +1,8 @@
 # Walk-in Founders for AI assistants
 
-Walk-in surveys an empty storefront with Qloo taste data and designs the business its block is missing. **Walk-in
-Founders** lets the neighbors back that business before the lease is signed: each one pledges a fixed amount with
-PayPal, PayPal only holds it, and everyone is charged only if enough people join by the deadline. If the goal is
-missed, every hold is released and nobody pays.
+**Walk-in Founders** lets the neighbors back a new place (a cafe, a gym, a bakery) before the lease is signed: each one
+pledges a fixed amount with PayPal, PayPal only holds it, and everyone is charged only if enough people join by the
+deadline. If the goal is missed, every hold is released and nobody pays.
 
 An AI assistant is a natural way in. People don't browse for campaigns; they ask "is anyone opening something near
 me?" This page shows how an assistant uses Walk-in Founders from that question to a pledge, why that is agentic
@@ -11,9 +10,8 @@ commerce done safely, and how to connect Walk-in's MCP server to an assistant. T
 [CONTRACT.md](CONTRACT.md), the tools in [mcp_server/README.md](../../mcp_server/README.md), and a summary for
 crawling agents in [llms.txt](../../frontend/public/llms.txt), served at https://walkin-app.pages.dev/llms.txt.
 
-Campaigns can also start from the owner's own description without a Walk-in survey. Their `source` is `owner`,
-their survey and kit links are null, and why-here is labelled as the owner's words, not verified evidence. Do not
-repeat such a claim as something Qloo measured.
+Every campaign starts from its owner's own description of the business. Its `source` is `owner`, and why-here is
+labelled as the owner's words, not verified evidence. Do not repeat such a claim as something Walk-in measured.
 
 ## End to end
 
@@ -22,7 +20,7 @@ repeat such a claim as something Qloo measured.
    lists the open campaigns, nearest first. Without a place, it lists the newest anywhere. Each comes with the business,
    its place and distance, the pledge, supporters against the goal, the deadline and its link.
 2. **Explain.** The assistant calls `get_campaign` (`GET /api/campaigns/{id}`) and tells the person what the business
-   is, why it belongs on that block (the survey's lines of evidence, from Qloo's taste data), the owner's pitch and
+   is, why it belongs on that block (the owner's own words), the owner's pitch and
    perks, the progress and the terms, written from the campaign's own numbers: "PayPal holds $25. You are charged only
    if 40 neighbors join by Nov 30; otherwise the hold is released."
 3. **Prepare.** When the person says "back it for me", the assistant calls `back_campaign`. The tool reads the campaign
@@ -147,7 +145,7 @@ so the assistant launches it as a child process. It calls only Walk-in's public 
        "walkin": {
          "command": "python",
          "args": ["C:\\path\\to\\walk-in\\mcp_server\\walkin_mcp.py"],
-         "env": { "WALKIN_URL": "https://walkin-app.pages.dev", "WALKIN_WAIT_SECONDS": "50" }
+         "env": { "WALKIN_URL": "https://walkin-app.pages.dev" }
        }
      }
    }

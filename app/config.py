@@ -60,11 +60,6 @@ def origin_of(url: str) -> str | None:
 
 @dataclass(frozen=True)
 class Settings:
-    qloo_api_key: str = field(default_factory=lambda: _env("QLOO_API_KEY"))
-    qloo_base_url: str = field(default_factory=lambda: _env("QLOO_BASE_URL", "https://hackathon.api.qloo.com").rstrip("/"))
-    # Qloo requests in flight at once, across all surveys. Measured live (Oct 28, two sites, empty cache): 12 finished
-    # the Qloo-bound steps about 3 s sooner than 6 on both; 24 drew three times the HTTP 429s and was slowest.
-    qloo_concurrency: int = field(default_factory=lambda: int(_env_or("QLOO_CONCURRENCY", 12)))
     # Any OpenAI-compatible chat endpoint. Recommended free option: Gemini's OpenAI-compatible endpoint.
     llm_api_key: str = field(default_factory=lambda: _env("LLM_API_KEY"))
     llm_base_url: str | None = field(default_factory=lambda: _env("LLM_BASE_URL") or None)
@@ -74,13 +69,12 @@ class Settings:
     llm_timeout: float = field(default_factory=lambda: _env_float("LLM_TIMEOUT") or 45.0)
     llm_temperature: float | None = field(default_factory=lambda: _env_float("LLM_TEMPERATURE"))
     llm_reasoning_effort: str | None = field(default_factory=lambda: _env("LLM_REASONING_EFFORT") or None)
-    # Longest wait, in seconds, for a resting model to come back before the agent hands over to the evidence rules.
+    # Longest wait, in seconds, for a resting model to come back before the evidence rules write the words instead.
     llm_max_wait: float = field(default_factory=lambda: _env_or("LLM_MAX_WAIT", 40.0))
-    # Longest time, in all, one survey's agent may wait for resting models; past it, the evidence rules finish, so the
-    # worst concepts step is bounded (free tiers rest models often: waits of 17-58 s a survey were seen in October).
+    # Longest time, in all, one tool-calling conversation may wait for resting models (free tiers rest models often).
     agent_wait_budget: float = field(default_factory=lambda: _env_or("AGENT_WAIT_BUDGET", 20.0))
     # A second free provider whose models follow the main chain (console.groq.com/keys). Its free tier allows 1,000
-    # requests a day and 8,000 tokens a minute per model, so long agent conversations are cut to fit.
+    # requests a day and 8,000 tokens a minute per model, so long conversations are cut to fit.
     groq_api_key: str = field(default_factory=lambda: _env("GROQ_API_KEY"))
     groq_base_url: str = field(default_factory=lambda: _env("GROQ_BASE_URL", "https://api.groq.com/openai/v1"))
     groq_models: tuple[str, ...] = field(
@@ -93,36 +87,24 @@ class Settings:
     # with optional "token_limit", "reasoning_effort" and "temperature". Each is inactive until the variable named by
     # its "key_env" holds a key (app.providers).
     llm_extra_providers: str = field(default_factory=lambda: _env("LLM_EXTRA_PROVIDERS"))
-    # Agent answers are reused when a site's evidence is unchanged, which saves the free AI quota. "0" turns it off.
+    # The AI's drafts are reused when their inputs are unchanged, which saves the free AI quota. "0" turns it off.
     agent_cache: bool = field(default_factory=lambda: _env("AGENT_CACHE", "1") != "0")
-    # Most launch kits the server builds per day (UTC); each one asks the model for its ad copy.
-    kit_daily_limit: int = field(default_factory=lambda: int(_env_or("KIT_DAILY_LIMIT", 60)))
-    # Megabytes of finished surveys and ready kits kept in memory as the bytes the API sends (app.response_cache),
-    # besides the examples, which are always kept; their gzipped copies add about a quarter. A record or a kit runs to
-    # 100-200 KB; the server has 512 MB.
+    # Megabytes of final responses kept in memory as the bytes the API sends (app.response_cache); their gzipped copies
+    # add about a quarter. The server has 512 MB.
     response_cache_mb: int = field(default_factory=lambda: int(_env_or("RESPONSE_CACHE_MB", 32)))
-    # Survey states kept in memory for design sheets and launch kits, the latest first; older ones are restored from the
-    # database when asked for. One state holds 15 MB (a 10-minute walk) to 65 MB (a 15-minute drive) of Python objects,
-    # measured on real sites: keeping 100, as before October 28, took the server from 109 MB to 462 MB in six surveys
-    # (a walk and a drive in turn), still climbing; keeping 2 levels off near 370 MB.
-    run_store_size: int = field(default_factory=lambda: int(_env_or("RUN_STORE_SIZE", 2)))
-    cache_dir: Path = field(default_factory=lambda: Path(_env("CACHE_DIR") or ROOT / ".cache" / "qloo"))
+    # Where the disk caches live, each in a folder of its own: walking areas, OpenStreetMap's answers, the AI's drafts.
+    cache_dir: Path = field(default_factory=lambda: Path(_env("CACHE_DIR") or ROOT / ".cache"))
     walk_cache_dir: Path = field(default_factory=lambda: Path(_env("WALK_CACHE_DIR") or ROOT / ".cache" / "walk"))
     agent_cache_dir: Path = field(default_factory=lambda: Path(_env("AGENT_CACHE_DIR") or ROOT / ".cache" / "agent"))
-    # Where users, surveys, design sheets and launch kits live: a local SQLite file by default, or a Postgres URL (Neon's
-    # free tier, for example) on a host whose disk does not survive a restart.
+    # Where users, campaigns and pledges live: a local SQLite file by default, or a Postgres URL (Neon's free tier, for
+    # example) on a host whose disk does not survive a restart.
     database_url: str = field(
         default_factory=lambda: _env("DATABASE_URL") or f"sqlite:///{(ROOT / '.data' / 'walkin.db').as_posix()}"
     )
-    # Surveys older than this are deleted on startup, with their kits, unless a signed-in user keeps them in My places.
-    survey_retention_days: int = field(default_factory=lambda: int(_env_or("SURVEY_RETENTION_DAYS", 60)))
-    # Finished surveys anyone can open before running their own (comma-separated survey ids): GET /api/examples. They
-    # are never deleted, and opening one replays what was saved, so it spends no Qloo or AI quota.
-    examples: tuple[str, ...] = field(default_factory=lambda: _env_list("EXAMPLES"))
     # The app's public address (https://...). When it is https, cookies are Secure and the development login is off.
     public_url: str = field(default_factory=lambda: _env("PUBLIC_URL").rstrip("/"))
     # Sign in with Google (console.cloud.google.com, Google Auth Platform > Clients): the web client's ID. Without it
-    # nobody can sign in, so nothing is kept in My places; surveys work as before.
+    # nobody can sign in, so nobody can start a campaign or see their own.
     google_client_id: str = field(default_factory=lambda: _env("GOOGLE_CLIENT_ID"))
     # Days a sign-in lasts; using the app renews it, at most once a day.
     session_days: int = field(default_factory=lambda: int(_env_or("SESSION_DAYS", 30)))
@@ -149,9 +131,6 @@ class Settings:
     cron_secret: str = field(default_factory=lambda: _env("CRON_SECRET"))
     # Seconds between the in-app settlement passes (0 turns the loop off; the cron endpoint still settles).
     settle_every: float = field(default_factory=lambda: _env_or("SETTLE_EVERY_S", 180.0))
-    # For the judging weeks, once Qloo's hackathon key is switched off: GET /api/run answers 503, and the web app shows
-    # the surveyed storefronts instead.
-    surveys_paused: bool = field(default_factory=lambda: _env_flag("SURVEYS_PAUSED"))
 
     @property
     def hosted(self) -> bool:

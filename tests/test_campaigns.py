@@ -1,7 +1,7 @@
-"""Walk-in Founders over a fake PayPal: drafting and starting a campaign from a ready kit, the campaign page, finding
-campaigns, pledging with the buttons or a redirect, holding (idempotent, declined, refused), withdrawing, the owner's
-close and cancel, and what the rest of the app shows of campaigns: /api/config, My places, the kit's page, paused
-surveys and the Origin check."""
+"""Walk-in Founders over a fake PayPal: starting a campaign from the owner's description (drafting its words, checking
+the terms and the edited words), the campaign page, finding campaigns, pledging with the buttons or a redirect, holding
+(idempotent, declined, refused), withdrawing, the owner's close and cancel, and what the rest of the app shows of
+campaigns: /api/config, the owner's campaigns and the Origin check."""
 from __future__ import annotations
 
 import json
@@ -11,26 +11,28 @@ import httpx
 import pytest
 from sqlalchemy import select, update
 
-from app.db.tables import campaigns, kits, pledges
+from app.db.tables import campaigns, pledges
 from app.llm import LLM
 from app.payments.paypal import PayPalError
 from app.payments.pledges import OFFER_SYSTEM
+from app.payments.records import TEST_MODE
 from tests.account_fakes import recording_llm
 from tests.founders_fakes import (
+    BUSINESS,
     CRON_SECRET,
+    OWNER_EMAIL,
     Clock,
     FakePayPal,
+    business_terms,
     configure,
     dev_sign_in,
     make_client,
     race,
-    ready_kit,
-    run_survey,
     webhook,
 )
 
 PERK = "10% off every visit in the first year"
-EMAIL = "olive.owner@example.com"
+EMAIL = OWNER_EMAIL
 
 
 @pytest.fixture(autouse=True)
@@ -40,17 +42,13 @@ def settings(monkeypatch):
 
 @pytest.fixture
 def world():
-    """A PayPal and an app sharing one clock and a model that records what it is asked, a survey, a signed-in owner
-    and the ready kit of concept 0."""
+    """A PayPal and an app sharing one clock and a model that records what it is asked, and a signed-in owner."""
     clock = Clock()
     paypal = FakePayPal(clock)
     asked: list[dict] = []
     with make_client(paypal=paypal, clock=clock, llm=recording_llm(asked)) as client:
-        run_id = run_survey(client)
-        kit = ready_kit(client, run_id)
         owner = dev_sign_in(client)
-        yield {"client": client, "paypal": paypal, "clock": clock, "run_id": run_id, "owner": owner, "kit": kit,
-               "asked": asked}
+        yield {"client": client, "paypal": paypal, "clock": clock, "owner": owner, "asked": asked}
 
 
 def table(client, which) -> list[dict]:
@@ -73,19 +71,17 @@ def offers_asked(world) -> int:
     return sum(1 for body in world["asked"] if body["messages"][0]["content"] == OFFER_SYSTEM)
 
 
-def terms(world, days: float = 10, kit: dict | None = None, **changes) -> dict:
-    deadline = (world["clock"].now + timedelta(days=days)).isoformat()
-    return {"kit_token": (kit or world["kit"])["token"], "amount": "25.00", "goal": 3, "deadline": deadline,
-            "perk": None, **changes}
+def terms(world, days: float = 10, **changes) -> dict:
+    return business_terms(world["clock"], days, **changes)
 
 
-def start(world, days: float = 10, kit: dict | None = None, **changes) -> str:
+def start(world, days: float = 10, **changes) -> str:
     client = world["client"]
-    body = terms(world, days, kit, **changes)
-    drafted = client.post("/api/campaigns/draft", json=body).json()
+    body = terms(world, days, **changes)
+    drafted = client.post("/api/business-campaigns/draft", json=body).json()
     assert drafted["problems"] == [], drafted
-    created = client.post("/api/campaigns", json={**body, "payout_email": EMAIL,
-                                                  **{key: drafted[key] for key in ("title", "pitch", "perks")}})
+    created = client.post("/api/business-campaigns", json={**body, "payout_email": EMAIL,
+                                                           **{key: drafted[key] for key in ("title", "pitch", "perks")}})
     assert created.status_code == 200, created.text
     return created.json()["id"]
 
@@ -99,9 +95,9 @@ def pledge(client, campaign_id: str, flow: str = "buttons") -> tuple[str, dict]:
     return order_id, held.json()
 
 
-def test_an_owner_drafts_and_starts_a_campaign_from_any_ready_kit(world):
-    client, kit = world["client"], world["kit"]
-    drafted = client.post("/api/campaigns/draft", json=terms(world, perk=f"  {PERK} ")).json()
+def test_an_owner_drafts_and_starts_a_campaign_from_their_description(world):
+    client = world["client"]
+    drafted = client.post("/api/business-campaigns/draft", json=terms(world, perk=f"  {PERK} ")).json()
     assert drafted["problems"] == [] and drafted["title"] and drafted["pitch"]
     assert set(drafted) == {"title", "pitch", "perks", "how_it_works", "problems"}
     assert drafted["perks"][0] == PERK  # the owner's words, first and unchanged
@@ -109,32 +105,27 @@ def test_an_owner_drafts_and_starts_a_campaign_from_any_ready_kit(world):
     assert offers_asked(world) == 1  # the model wrote the words (its empty answer left them to the rules)
 
     body = {**terms(world, perk=PERK), "payout_email": EMAIL, **{key: drafted[key] for key in ("title", "pitch", "perks")}}
-    created = client.post("/api/campaigns", json=body).json()
+    created = client.post("/api/business-campaigns", json=body).json()
     campaign_id = created["id"]
     assert created == {"id": campaign_id, "url": f"/p/{campaign_id}"}
-    again = client.post("/api/campaigns", json=body)
-    assert again.status_code == 409 and again.json()["url"] == created["url"]  # one open campaign per user per kit
-    assert again.json()["detail"]
 
     page = client.get(f"/api/campaigns/{campaign_id}").json()
     assert page == {
-        "id": campaign_id, "status": "open", "accepting": True, "kit_token": kit["token"], "kit_url": f"/k/{kit['token']}",
-        "survey_url": f"/s/{world['run_id']}?sheet=0", "name": kit["name"], "place": page["place"],
-        "concept": page["concept"], "evidence": page["evidence"], "title": drafted["title"], "pitch": drafted["pitch"],
-        "perks": drafted["perks"], "how_it_works": drafted["how_it_works"], "amount": "25.00", "currency": "USD",
-        "goal": 3, "deadline": page["deadline"], "closed_at": None,
+        "id": campaign_id, "status": "open", "accepting": True, "source": "owner", "name": BUSINESS["name"],
+        "place": {"label": BUSINESS["address"], "lat": BUSINESS["lat"], "lon": BUSINESS["lon"], "area": ""},
+        "concept": {"genre": "cafe", "summary": BUSINESS["description"]}, "evidence": [BUSINESS["why_here"]],
+        "title": drafted["title"], "pitch": drafted["pitch"], "perks": drafted["perks"],
+        "how_it_works": drafted["how_it_works"], "amount": "25.00", "currency": "USD", "goal": 3,
+        "deadline": page["deadline"], "closed_at": None,
         "progress": {"supporters": 0, "goal": 3, "remaining": 3, "percent": 0, "total": "0.00", "funded": False},
         "is_owner": True,
         "owner": {"counts": page["owner"]["counts"], "report": None,
                   "payout": {"status": "none", "amount": None, "email": "o***@example.com"}},
     }
-    assert page["place"]["label"] == "Test Corner, Testville" and page["place"]["area"] == "10-minute walk"
-    assert isinstance(page["place"]["lat"], float) and isinstance(page["place"]["lon"], float)
-    assert page["concept"]["genre"] and page["concept"]["summary"] and page["deadline"].endswith("Z")
-    assert 1 <= len(page["evidence"]) <= 3 and all(isinstance(line, str) and line for line in page["evidence"])
+    assert page["deadline"].endswith("Z")
     assert set(page["owner"]["counts"]) >= {"created", "authorized", "captured", "voided", "withdrawn"}
     [row] = table(client, campaigns)
-    assert (row["user_id"], row["payout_email"], row["kit_token"]) == (world["owner"]["id"], EMAIL, kit["token"])
+    assert (row["user_id"], row["payout_email"]) == (world["owner"]["id"], EMAIL)
 
     client.post("/api/auth/logout")
     public = client.get(f"/api/campaigns/{campaign_id}").json()
@@ -143,7 +134,7 @@ def test_an_owner_drafts_and_starts_a_campaign_from_any_ready_kit(world):
     assert client.get("/api/campaigns/no-such-campaign").status_code == 404
     assert client.get("/api/campaigns/bad%20id!").status_code == 422
 
-    # Another signed-in user may start a campaign from the same kit (examples included): it is theirs.
+    # Another signed-in user may start a campaign for the same business: it is theirs.
     other = dev_sign_in(client, "neighbor@example.com", "Nora Neighbor")
     theirs = start(world)
     assert theirs != campaign_id and table(client, campaigns)[1]["user_id"] == other["id"]
@@ -151,21 +142,22 @@ def test_an_owner_drafts_and_starts_a_campaign_from_any_ready_kit(world):
 
 def test_the_terms_and_the_edited_words_are_checked_and_bad_terms_ask_no_model(world):
     client = world["client"]
-    bad = client.post("/api/campaigns/draft", json=terms(world, days=40, amount="500.00", goal=1)).json()
-    assert bad["title"] == "" and bad["perks"] == [] and len(bad["problems"]) == 3
-    assert any("27 days" in problem for problem in bad["problems"])
-    assert client.post("/api/campaigns/draft", json={**terms(world), "deadline": "next week"}).json()["problems"]
-    assert client.post("/api/campaigns/draft", json={**terms(world), "deadline": "2026-11-01T12:00:00"}).json()["problems"]
-    assert client.post("/api/campaigns/draft", json={**terms(world), "amount": 25.0}).json()["problems"]  # no floats
-    too_long = client.post("/api/campaigns/draft", json=terms(world, perk="x" * 81)).json()
-    assert too_long["problems"] and "perk" in too_long["problems"][0]
+    draft = "/api/business-campaigns/draft"
+    bad = client.post(draft, json=terms(world, days=40, amount="500.00", goal=1))
+    assert bad.status_code == 422 and len(bad.json()["problems"]) == 3
+    assert any("27 days" in problem for problem in bad.json()["problems"])
+    assert client.post(draft, json={**terms(world), "deadline": "next week"}).status_code == 422
+    assert client.post(draft, json={**terms(world), "deadline": "2026-11-01T12:00:00"}).status_code == 422
+    assert client.post(draft, json={**terms(world), "amount": 25.0}).status_code == 422  # no floats
+    too_long = client.post(draft, json=terms(world, perk="x" * 81))
+    assert too_long.status_code == 422 and "perk" in too_long.json()["problems"][0]
     assert offers_asked(world) == 0  # no draft, no model
 
-    drafted = client.post("/api/campaigns/draft", json=terms(world)).json()
+    drafted = client.post(draft, json=terms(world)).json()
     body = {**terms(world), "payout_email": EMAIL, **{key: drafted[key] for key in ("title", "pitch", "perks")}}
 
     def refused(**changes) -> list[str]:
-        answer = client.post("/api/campaigns", json={**body, **changes})
+        answer = client.post("/api/business-campaigns", json={**body, **changes})
         assert answer.status_code == 422, answer.text
         assert answer.json()["detail"]
         return answer.json()["problems"]
@@ -185,11 +177,9 @@ def test_the_terms_and_the_edited_words_are_checked_and_bad_terms_ask_no_model(w
     assert refused(title="Run by chef Marco from the corner") == ["The title names Marco."]
     assert table(client, campaigns) == []
 
-    assert client.post("/api/campaigns/draft", json={**terms(world), "kit_token": "no-such-kit"}).status_code == 404
-    assert client.post("/api/campaigns", json={**body, "kit_token": "no-such-kit"}).status_code == 404
     client.post("/api/auth/logout")
-    assert client.post("/api/campaigns/draft", json=terms(world)).status_code == 401
-    assert client.post("/api/campaigns", json=body).status_code == 401
+    assert client.post(draft, json=terms(world)).status_code == 401
+    assert client.post("/api/business-campaigns", json=body).status_code == 401
 
 
 def drafting_llm(draft: dict) -> LLM:
@@ -205,10 +195,11 @@ def drafting_llm(draft: dict) -> LLM:
 
 def test_a_perk_that_only_restates_the_pledge_is_refused_in_the_draft_and_the_campaign(world, monkeypatch):
     client = world["client"]
+    draft = "/api/business-campaigns/draft"
     restated = "The perk only restates the pledge: say what founding supporters get beyond it, or leave it empty."
-    for perk in ("Pledge $25", "$25 pledge", "A $25 contribution", f"Back {world['kit']['name']} with $25.00"):
-        answer = client.post("/api/campaigns/draft", json=terms(world, perk=perk)).json()
-        assert (answer["problems"], answer["perks"]) == ([restated], []), perk
+    for perk in ("Pledge $25", "$25 pledge", "A $25 contribution", f"Back {BUSINESS['name']} with $25.00"):
+        answer = client.post(draft, json=terms(world, perk=perk))
+        assert (answer.status_code, answer.json()["problems"]) == (422, [restated]), perk
     assert offers_asked(world) == 0  # no draft, no model
 
     # The AI's perks keep the same rule: the pledge itself never comes back as one.
@@ -216,26 +207,17 @@ def test_a_perk_that_only_restates_the_pledge_is_refused_in_the_draft_and_the_ca
         "title": "Back it", "pitch": "Come by.",
         "perks": ["Pledge $25.00 to become a founding supporter.", "An invitation to the opening night"],
     }))
-    drafted = client.post("/api/campaigns/draft", json=terms(world)).json()
+    drafted = client.post(draft, json=terms(world)).json()
     assert drafted["problems"] == [] and drafted["perks"] == ["An invitation to the opening night"]
 
     body = {**terms(world), "payout_email": EMAIL, **{key: drafted[key] for key in ("title", "pitch", "perks")}}
-    edited = client.post("/api/campaigns", json={**body, "perks": [*drafted["perks"], "A $25 contribution"]})
+    edited = client.post("/api/business-campaigns", json={**body, "perks": [*drafted["perks"], "A $25 contribution"]})
     assert edited.status_code == 422 and edited.json()["problems"] == [
         "Perk 2 only restates the pledge: say what founding supporters get beyond it."]
-    own = client.post("/api/campaigns", json={**body, "perk": "Pledge $25", "perks": ["Pledge $25"]})
+    own = client.post("/api/business-campaigns", json={**body, "perk": "Pledge $25", "perks": ["Pledge $25"]})
     assert own.status_code == 422 and own.json()["problems"] == [restated]
     assert table(client, campaigns) == []
-    assert client.post("/api/campaigns", json=body).status_code == 200
-
-
-def test_a_kit_still_building_starts_no_campaign(world):
-    client = world["client"]
-    # Built first: a build still running would end by marking the kit ready (KitStore.finish), over the change below.
-    made = ready_kit(client, world["run_id"], index=1)
-    change(client, kits, kits.c.token == made["token"], status="building")
-    answer = client.post("/api/campaigns/draft", json=terms(world, kit={"token": made["token"]}))
-    assert answer.status_code == 409 and "ready" in answer.json()["detail"]
+    assert client.post("/api/business-campaigns", json=body).status_code == 200
 
 
 def test_supporters_pledge_with_the_buttons_or_a_redirect_and_are_held_once(world):
@@ -250,7 +232,7 @@ def test_supporters_pledge_with_the_buttons_or_a_redirect_and_are_held_once(worl
     unit = request["purchase_units"][0]
     assert request["intent"] == "AUTHORIZE" and unit["amount"] == {"currency_code": "USD", "value": "25.00"}
     assert unit["custom_id"] == row["id"] and unit["reference_id"] == campaign_id
-    assert unit["description"] == f"Founding supporter: {world['kit']['name']}"
+    assert unit["description"] == f"Founding supporter: {BUSINESS['name']}"
     context = request["payment_source"]["paypal"]["experience_context"]
     assert context["user_action"] == "CONTINUE" and context["shipping_preference"] == "NO_SHIPPING"
     assert context["return_url"] == f"http://testserver/p/{campaign_id}?pledge={row['id']}"
@@ -348,7 +330,7 @@ def test_closing_needs_the_goal_and_cancelling_releases_every_hold(world):
     assert paypal.calls(r"/v2/payments/authorizations/[^/]+/capture") == []
     assert client.post(f"/api/campaigns/{campaign_id}/cancel").json()["status"] == "cancelled"  # idempotent
     assert table(client, campaigns)[0]["funded"] is False
-    assert start(world) != campaign_id  # the kit may start another campaign now
+    assert start(world) != campaign_id  # the owner may start another campaign now
 
     funded = table(client, campaigns)[1]["id"]
     for _ in range(3):
@@ -458,10 +440,9 @@ def test_a_hold_placed_after_the_campaign_stopped_taking_pledges_is_released_and
 
 def test_open_campaigns_are_found_near_a_place_or_newest_first(world):
     client, clock = world["client"], world["clock"]
-    second_kit = ready_kit(client, world["run_id"], 1)
     near = start(world)
     clock.advance(minutes=5)
-    far = start(world, kit=second_kit)
+    far = start(world)
     pledge(client, near)
     row = next(r for r in table(client, campaigns) if r["id"] == near)
     lat, lon = row["lat"], row["lon"]
@@ -471,8 +452,8 @@ def test_open_campaigns_are_found_near_a_place_or_newest_first(world):
     assert [c["id"] for c in newest] == [far, near]
     listed = newest[1]
     assert listed == {
-        "id": near, "url": f"/p/{near}", "title": row["title"], "name": world["kit"]["name"],
-        "place": {"label": "Test Corner, Testville", "lat": lat, "lon": lon}, "distance_km": None, "amount": "25.00",
+        "id": near, "url": f"/p/{near}", "title": row["title"], "name": BUSINESS["name"],
+        "place": {"label": BUSINESS["address"], "lat": lat, "lon": lon}, "distance_km": None, "amount": "25.00",
         "goal": 3, "supporters": 1, "total": "25.00", "deadline": listed["deadline"],
     }
     around = client.get("/api/campaigns", params={"lat": lat, "lon": lon}).json()["campaigns"]
@@ -489,66 +470,41 @@ def test_open_campaigns_are_found_near_a_place_or_newest_first(world):
     assert client.get("/api/campaigns").json()["campaigns"] == []  # past its deadline
 
 
-def test_config_my_places_and_the_kit_page_show_campaigns(world):
-    client, kit = world["client"], world["kit"]
+def test_config_and_my_campaigns_show_campaigns(world):
+    client = world["client"]
     config = client.get("/api/config").json()
-    assert config["paypal"] == {"enabled": True, "client_id": "test-paypal-client", "environment": "sandbox",
-                                "currency": "USD"}
-    assert config["surveys_paused"] is False
-    kit_campaigns = f"/api/kits/{kit['token']}/campaigns"
-    assert client.get(kit_campaigns).json() == {"campaigns": []}
+    assert config == {"google_client_id": "1234-test.apps.googleusercontent.com", "dev_login": True,
+                      "paypal": {"enabled": True, "client_id": "test-paypal-client", "environment": "sandbox",
+                                 "currency": "USD"}}
+    assert client.get("/api/me/campaigns").json() == {"campaigns": []}
+    assert client.get("/api/me/places").status_code == 404  # replaced by /api/me/campaigns
 
     mine = start(world)
     pledge(client, mine)
-    assert client.get("/api/me/places").json()["campaigns"] == [{
+    assert client.get("/api/me/campaigns").json()["campaigns"] == [{
         "id": mine, "title": table(client, campaigns)[0]["title"], "status": "open", "supporters": 1, "total": "25.00",
         "goal": 3, "deadline": client.get(f"/api/campaigns/{mine}").json()["deadline"], "url": f"/p/{mine}",
     }]
     world["clock"].advance(minutes=1)
     dev_sign_in(client, "neighbor@example.com")
+    assert client.get("/api/me/campaigns").json() == {"campaigns": []}  # only the signed-in user's own
     theirs = start(world)
-    assert client.get("/api/me/places").json()["campaigns"][0]["id"] == theirs
+    assert [c["id"] for c in client.get("/api/me/campaigns").json()["campaigns"]] == [theirs]
+    cancelled = client.post(f"/api/campaigns/{theirs}/cancel").json()
+    assert client.get("/api/me/campaigns").json()["campaigns"][0]["status"] == cancelled["status"] == "cancelled"
 
-    def listed() -> list[tuple]:
-        return [(c["id"], c["is_owner"], c["supporters"]) for c in client.get(kit_campaigns).json()["campaigns"]]
-
-    assert listed() == [(theirs, True, 0), (mine, False, 1)]  # the viewer's own first
-    dev_sign_in(client)
-    assert listed() == [(mine, True, 1), (theirs, False, 0)]
-    page = client.get(kit_campaigns).json()["campaigns"][0]
-    assert page == {"id": mine, "url": f"/p/{mine}", "is_owner": True, "status": "open", "amount": "25.00", "goal": 3,
-                    "supporters": 1, "total": "25.00", "deadline": page["deadline"]}
+    response = client.get("/api/me/campaigns")
+    assert response.headers["cache-control"] == "no-store"  # nothing keeps what is one user's own
     client.post("/api/auth/logout")
-    assert listed() == [(theirs, False, 0), (mine, False, 1)]  # signed out: the newest first
-    world["clock"].advance(days=11)
-    assert listed() == []  # past their deadline, they take no pledges
-
-
-def test_the_kit_page_is_one_for_everyone_and_its_campaigns_are_never_kept(world):
-    """A kit's page may be kept in memory and by the front door, one copy for every visitor (app.cache_policy), so no
-    campaign is in it: campaigns change with every pledge and say which one is the viewer's own, so they have an
-    endpoint of their own that nothing keeps."""
-    client, kit = world["client"], world["kit"]
-    page = f"/api/kits/{kit['token']}"
-    mine = start(world)
-    pledge(client, mine)
-    as_owner = client.get(page)
-    client.post("/api/auth/logout")
-    as_visitor = client.get(page)
-    assert "campaigns" not in as_owner.json() and as_owner.json() == as_visitor.json()
-    listed = client.get(f"{page}/campaigns")
-    assert listed.headers["cache-control"] == "no-store"
-    assert [(c["id"], c["is_owner"], c["supporters"]) for c in listed.json()["campaigns"]] == [(mine, False, 1)]
+    assert client.get("/api/me/campaigns").status_code == 401
 
 
 def test_without_paypal_nobody_can_pledge(monkeypatch):
     with make_client() as client:
         config = client.get("/api/config").json()
         assert config["paypal"] == {"enabled": False, "client_id": None, "environment": "sandbox", "currency": "USD"}
-        run_id = run_survey(client)
-        kit = ready_kit(client, run_id)
         dev_sign_in(client)
-        world = {"client": client, "clock": Clock(), "kit": kit}
+        world = {"client": client, "clock": Clock()}
         campaign_id = start(world)
         answer = client.post(f"/api/campaigns/{campaign_id}/pledges")
         assert answer.status_code == 503 and "PayPal" in answer.json()["detail"]
@@ -556,16 +512,6 @@ def test_without_paypal_nobody_can_pledge(monkeypatch):
     configure(monkeypatch, paypal_env="live")
     with make_client(paypal=FakePayPal()) as client:
         assert client.get("/api/config").json()["paypal"]["environment"] == "live"
-
-
-def test_paused_surveys_answer_503_and_the_rest_still_works(monkeypatch):
-    configure(monkeypatch, surveys_paused=True)
-    with make_client(paypal=FakePayPal()) as client:
-        answer = client.get("/api/run", params={"lat": 40.0, "lon": -73.0})
-        assert answer.status_code == 503
-        assert answer.json() == {"detail": "New surveys are paused; open one of the surveyed storefronts"}
-        assert client.get("/api/config").json()["surveys_paused"] is True
-        assert client.get("/api/campaigns").json() == {"campaigns": []}
 
 
 def test_paypal_and_the_scheduler_are_not_held_to_the_origin_check(monkeypatch):
@@ -588,15 +534,19 @@ def test_pledges_and_drafts_are_rate_limited_per_address(world):
     other = client.post(f"/api/campaigns/{campaign_id}/pledges", headers={"x-forwarded-for": "198.51.100.7"})
     assert other.status_code == 200  # another address has its own allowance
     client.app.state.draft_limiter.limit = 0
-    assert client.post("/api/campaigns/draft", json=terms(world)).status_code == 429
-    assert client.post("/api/campaigns/draft", json=terms(world, goal=1)).json()["problems"]  # problems cost nothing
+    assert client.post("/api/business-campaigns/draft", json=terms(world)).status_code == 429
+    assert client.post("/api/business-campaigns/draft", json=terms(world, goal=1)).status_code == 422  # problems cost nothing
 
 
 def test_campaign_pages_are_pages_of_the_web_app(world):
     client = world["client"]
     campaign_id = start(world)
-    for path in (f"/p/{campaign_id}", "/p/anything", "/founders"):
+    for path in (f"/p/{campaign_id}", "/p/anything", "/founders", "/founders/start", "/r/anything", "/me", "/privacy"):
         page = client.get(path)
         assert page.status_code == 200 and page.headers["content-type"].startswith("text/html"), path
         policy = page.headers["content-security-policy"]
         assert "https://www.sandbox.paypal.com https://www.paypal.com" in policy
+
+
+def test_the_public_payment_disclosure_does_not_claim_demo_funds_are_real():
+    assert TEST_MODE == "Demo payments — no real money."

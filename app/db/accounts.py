@@ -1,4 +1,4 @@
-"""Users, their sessions and the surveys they keep in My places.
+"""Users and their sessions.
 
 A user is only what signing in needs: Google's subject id, the email and name to show who is signed in, and the
 profile picture's URL for the avatar. Sessions hold a hash of their cookie and when they expire, nothing else.
@@ -12,7 +12,7 @@ from sqlalchemy import delete, select, update
 from sqlalchemy.exc import IntegrityError
 
 from .database import Database
-from .tables import sessions, surveys, users
+from .tables import sessions, users
 
 USER = (users.c.id, users.c.email, users.c.name, users.c.picture)
 
@@ -70,33 +70,8 @@ class AccountStore:
             result = await connection.execute(delete(sessions).where(sessions.c.expires_at <= now))
         return result.rowcount
 
-    async def attach_device(self, user_id: str, device_id: str) -> int:
-        """Gives the user the surveys this browser ran before they signed in."""
+    async def delete(self, user_id: str) -> None:
+        """Deletes a user and their sessions in one transaction. Their campaigns stay, without an owner."""
         async with self._engine.begin() as connection:
-            result = await connection.execute(
-                update(surveys)
-                .where(surveys.c.device_id == device_id, surveys.c.user_id.is_(None))
-                .values(user_id=user_id)
-            )
-        return result.rowcount
-
-    async def delete(self, user_id: str) -> list[str]:
-        """Deletes a user, their sessions and their surveys (the design sheets go with them) in one transaction; the
-        surveys' ids."""
-        async with self._engine.begin() as connection:
-            owned = list((await connection.execute(select(surveys.c.id).where(surveys.c.user_id == user_id))).scalars())
             await connection.execute(delete(sessions).where(sessions.c.user_id == user_id))
-            await connection.execute(delete(surveys).where(surveys.c.user_id == user_id))
             await connection.execute(delete(users).where(users.c.id == user_id))
-        return owned
-
-    async def surveys(self, user_id: str, limit: int = 100) -> list[dict]:
-        """The user's surveys, newest first, without their events."""
-        query = (
-            select(surveys.c.id, surveys.c.label, surveys.c.intent, surveys.c.status, surveys.c.created_at, surveys.c.headline)
-            .where(surveys.c.user_id == user_id)
-            .order_by(surveys.c.created_at.desc())
-            .limit(limit)
-        )
-        async with self._engine.connect() as connection:
-            return [dict(row) for row in (await connection.execute(query)).mappings()]

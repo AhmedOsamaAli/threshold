@@ -1,5 +1,5 @@
 """Pledge campaigns: terms, progress, what to do with each hold, settlement with a fake PayPal, the AI pitch and the
-rules its words and the owner's edits keep, and the evidence a campaign page shows."""
+rules its words and the owner's edits keep."""
 import asyncio
 import json
 from dataclasses import replace
@@ -24,7 +24,6 @@ from app.payments.pledges import (
     decide,
     decide_funding,
     draft_offer,
-    evidence_lines,
     funded_at_close,
     lapsed,
     named,
@@ -477,7 +476,7 @@ DESIGN = {
                  "intents": [{"label": "Routine visit", "places": 2, "of": 3, "angle": "Lead with the habit."}]},
         "claims": [
             {"kind": "only", "line": "The only bakery within a 10-minute walk",
-             "proof": "Qloo lists no bakery inside the walk; 3 of the bakeries locals love are outside it."},
+             "proof": "No bakery is listed inside the walk; 3 of the bakeries locals love are outside it."},
             {"kind": "new", "line": "Cardamom bun, which no bakery within a 10-minute walk is known for",
              "proof": "2 of the bakeries locals love are known for it; none inside the walk is."},
             {"kind": "promise", "line": "Book ahead, or be served fast at the counter",
@@ -490,7 +489,7 @@ CONCEPT = {
     "inspired_by": ["Crumb Bakehouse", "Sunrise Loaves"],
     "why_here": ["Locals travel a median 2.1 km to bakeries such as Crumb Bakehouse.",
                  "Neighbors rank bakery #6 among the place types they engage with.",
-                 "Not cross-checked: OpenStreetMap did not answer in time, so this count is Qloo's alone."],
+                 "Not cross-checked: OpenStreetMap did not answer in time, so this count is the list's alone."],
 }
 TERMS = {"amount": "25", "goal": 40, "deadline": datetime(2026, 11, 12, 23, 0, tzinfo=UTC)}
 FORBIDDEN = ("Mobley", "Gary Clark", "Patagonia", "Stassi", "Crumb", "Sunrise Loaves", "Corner Cellar")
@@ -542,7 +541,7 @@ def test_the_model_writes_the_words_and_the_owner_s_terms_stay_fixed():
     assert brief["place"] == {"label": "Holly, Austin", "area": "10-minute walk", "neighborhoods": ["Holly", "East Cesar Chavez"]}
     assert brief["evidence"] == [
         {"kind": "only", "claim": "The only bakery within a 10-minute walk",
-         "proof": "Qloo lists no bakery inside the walk; 3 of the bakeries locals love are outside it."},
+         "proof": "No bakery is listed inside the walk; 3 of the bakeries locals love are outside it."},
         {"kind": "new", "claim": "Cardamom bun, which no bakery within a 10-minute walk is known for",
          "proof": "2 of the bakeries locals love are known for it; none inside the walk is."},
         {"fact": "Neighbors rank bakery #6 among the place types they engage with."},  # the caveat is left out
@@ -552,7 +551,7 @@ def test_the_model_writes_the_words_and_the_owner_s_terms_stay_fixed():
     assert not [name for name in FORBIDDEN if name in sent]  # the model never sees a real name to repeat
 
 
-def test_the_kit_s_claims_are_the_evidence_when_given():
+def test_the_claims_given_are_the_evidence():
     seen: list[dict] = []
     claims = [{"kind": "closer", "line": "Bakery without crossing town", "proof": "2 of the 3 bakeries people here love are outside the walk."}]
     draft(llm_answering(GOOD, seen), claims=claims)
@@ -820,22 +819,6 @@ def test_a_perk_that_only_restates_the_pledge_is_refused_whoever_wrote_it():
     restated = draft(llm_answering({**GOOD, "perks": ["$25 pledge", "A $25 contribution"]}, []))
     assert restated["perks"] == draft(None)["perks"] and len(restated["rejected"]) == 2
     assert "beyond the pledge itself" in seen[0]["messages"][0]["content"]  # the model is asked for no such perk
-
-
-def test_the_page_s_evidence_says_why_this_and_why_here():
-    claims = DESIGN["launch"]["claims"]
-    assert evidence_lines(CONCEPT, claims) == [
-        "The only bakery within a 10-minute walk.",
-        "Locals travel a median 2.1 km to bakeries such as Crumb Bakehouse.",
-        "Neighbors rank bakery #6 among the place types they engage with.",
-    ]
-    assert evidence_lines(CONCEPT, claims[1:], limit=2) == [
-        "Cardamom bun, which no bakery within a 10-minute walk is known for.",
-        "Locals travel a median 2.1 km to bakeries such as Crumb Bakehouse.",
-    ]
-    # A promise is no evidence, and caveats about the data are left out.
-    assert evidence_lines({"why_here": CONCEPT["why_here"][2:]}, claims[2:]) == []
-    assert evidence_lines({}, []) == []
 
 
 def test_a_slow_model_gives_way_to_the_rules(monkeypatch):

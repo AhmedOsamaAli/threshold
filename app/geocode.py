@@ -15,7 +15,7 @@ from . import tls
 # the street address and the two smallest ('Williamsburg, Brooklyn', 'East Cesar Chavez, Austin').
 STREET_KEYS = ("road", "pedestrian", "square", "footway", "path", "place")
 TOWN_KEYS = ("neighbourhood", "quarter", "suburb", "hamlet", "village", "town", "city")
-LABEL_MAX = 160  # a survey's site label is at most this long
+LABEL_MAX = 160  # an address label is at most this long
 PLACES_KEPT = 500
 
 
@@ -48,7 +48,7 @@ class Geocoder:
         self._last = 0.0
         self._http = http_client or httpx.AsyncClient(
             base_url="https://nominatim.openstreetmap.org",
-            headers={"User-Agent": "Walk-in/0.2 (Qloo Agentic Hackathon demo)"},
+            headers={"User-Agent": "Walk-in/0.2"},
             timeout=15,
             verify=tls.context(),
         )

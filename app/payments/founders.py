@@ -7,7 +7,6 @@ their stores, rate limits and the settlement loop for the app's lifetime.
 """
 from __future__ import annotations
 
-import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -63,7 +62,6 @@ async def running(app: FastAPI, settle_every: float | None) -> AsyncIterator[Non
     state.campaigns = CampaignStore(state.db)
     state.events = EventStore(state.db)
     state.settler = Settler(state.campaigns, state.services.paypal, lambda: state.now())
-    state.campaign_lock = asyncio.Lock()
     state.pledge_limiter = RateLimiter(PLEDGES_PER_HOUR, 3600)
     state.draft_limiter = RateLimiter(DRAFTS_PER_HOUR, 3600)
     state.campaign_limiter = RateLimiter(10, 3600)

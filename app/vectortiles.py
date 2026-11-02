@@ -1,5 +1,5 @@
-"""The kit's street map from vector tiles: its second source, for when no OpenStreetMap Overpass server answers in time
-(app.basemap asks them first; when opening a kit saved without a street map, app.kits asks the tiles first).
+"""A street map from vector tiles: the second source of app.basemap, for when no OpenStreetMap Overpass server answers in
+time (app.basemap asks them first when a caller wants the map at once).
 
 OpenFreeMap (openfreemap.org) serves OpenStreetMap's data as vector tiles in the OpenMapTiles schema
 (openmaptiles.org/schema), free and without a key. Its TileJSON (tiles.openfreemap.org/planet, kept a day) names the
@@ -25,7 +25,7 @@ the map is simplified and capped as an Overpass map (basemap.payload), and credi
 cannot be read or is missing fails the whole map (TileError): a map with a hole in it would hide a shore or streets.
 
 OpenFreeMap's terms for downloads (openfreemap.org/quick_start): at most 4 requests at once and the app's own
-User-Agent (app.osm's). Tiles are kept on disk for a week, and each shaped map too, so a survey's kits read them once.
+User-Agent (app.osm's). Tiles are kept on disk for a week, and each shaped map too, so an area's map is read once.
 
 Map © OpenFreeMap, © OpenMapTiles; data © OpenStreetMap contributors (ODbL).
 """
@@ -575,7 +575,7 @@ def _tilejson(raw: object) -> dict:
 
 
 class TileClient:
-    """Reads OpenFreeMap's vector tiles into the kit's street map (street_map), kept on disk: the TileJSON for a day,
+    """Reads OpenFreeMap's vector tiles into a street map (street_map), kept on disk: the TileJSON for a day,
     tiles and shaped maps for a week, under `cache_dir`."""
 
     def __init__(

@@ -1,4 +1,4 @@
-"""Accounts: Sign in with Google, sessions, the browser's device id and the origin check for the API's unsafe methods.
+"""Accounts: Sign in with Google, sessions and the origin check for the API's unsafe methods.
 
 A Google ID token is trusted only once its signature checks out against Google's published keys (JWKS), and its
 issuer, audience (our client ID), expiry and verified email do too. A session is a random token in an HttpOnly cookie;
@@ -29,9 +29,6 @@ log = logging.getLogger("walkin")
 GOOGLE_CERTS = "https://www.googleapis.com/oauth2/v3/certs"
 GOOGLE_ISSUERS = ("accounts.google.com", "https://accounts.google.com")
 SESSION_COOKIE = "walkin_session"
-DEVICE_COOKIE = "walkin_device"
-DEVICE_DAYS = 400  # the longest a browser keeps a cookie
-DEVICE_ID = re.compile(r"[0-9a-f]{32}")
 UNSAFE_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 # Seconds a token's times may be off by, for clocks that differ between Google and this server.
 LEEWAY = 60
@@ -205,8 +202,7 @@ def apply_cookies(request: Request, response: Response) -> None:
 
 
 async def start_session(request: Request, user: dict) -> None:
-    """Signs the user in: a new session (any earlier one in this browser ends), its cookie, and the surveys this
-    browser ran before are now theirs."""
+    """Signs the user in: a new session (any earlier one in this browser ends) and its cookie."""
     state = request.app.state
     earlier = request.cookies.get(SESSION_COOKIE)
     if earlier:
@@ -216,9 +212,6 @@ async def start_session(request: Request, user: dict) -> None:
     await state.accounts.open_session(user["id"], token_hash(token), state.now() + timedelta(days=days))
     queue_cookie(request, SESSION_COOKIE, token, days * 86400)
     request.state.user = user
-    device = request.cookies.get(DEVICE_COOKIE, "")
-    if DEVICE_ID.fullmatch(device):
-        await state.accounts.attach_device(user["id"], device)
 
 
 async def end_session(request: Request) -> None:
@@ -230,14 +223,10 @@ async def end_session(request: Request) -> None:
 
 
 async def delete_account(request: Request, user: dict) -> None:
-    """Deletes the user, every session they have and the surveys in their My places (design sheets go with them),
-    drops those surveys from memory, and makes this browser forget the session and its device id."""
-    state = request.app.state
-    for run_id in await state.accounts.delete(user["id"]):
-        state.runs.forget(run_id)
-        state.responses.forget_survey(run_id)  # its record and its kits, kept in memory as they were sent
+    """Deletes the user and every session they have, and makes this browser forget its session. Their campaigns stay,
+    without an owner."""
+    await request.app.state.accounts.delete(user["id"])
     queue_cookie(request, SESSION_COOKIE, None)
-    queue_cookie(request, DEVICE_COOKIE, None)
     request.state.user = None
 
 
@@ -269,28 +258,8 @@ async def require_user(request: Request) -> dict:
     return user
 
 
-async def session_user_id(state: Any, token: str | None) -> str | None:
-    """The id of the user a session cookie signs in, or None: for work that goes on after the response has started,
-    such as a survey recording who ran it. It neither renews the session nor touches its cookie, which current_user
-    does on the requests that wait for it (the page asks GET /api/me on every load)."""
-    if not token:
-        return None
-    found = await state.accounts.session(token_hash(token), state.now())
-    return found[0]["id"] if found else None
-
-
 # An endpoint parameter for the signed-in user; 401 when nobody is signed in.
 SignedIn = Annotated[dict, Depends(require_user)]
-
-
-def device_id(request: Request) -> str:
-    """This browser's id from its walkin_device cookie; a new one (and its cookie) when it has none."""
-    device = request.cookies.get(DEVICE_COOKIE, "")
-    if DEVICE_ID.fullmatch(device):
-        return device
-    device = secrets.token_hex(16)
-    queue_cookie(request, DEVICE_COOKIE, device, DEVICE_DAYS * 86400)
-    return device
 
 
 def public_user(user: dict) -> dict:

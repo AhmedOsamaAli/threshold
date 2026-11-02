@@ -1,14 +1,11 @@
 """The database's tables, as SQLAlchemy Core. The migrations in migrations/ create them; keep both in step.
 
-Users sign in with Google; a session row holds only the SHA-256 of its cookie. The app writes surveys and their design
-sheets, for anyone, and records the signed-in user and the browser (device) that ran each. A finished survey's state is
-kept as zlib-compressed JSON (app.db.surveys): it runs to megabytes, and compresses about sevenfold. Launch kits, one
-per survey concept, live and go with their survey.
+Users sign in with Google; a session row holds only the SHA-256 of its cookie.
 
-Walk-in Founders: a campaign starts from a ready kit and keeps what its page shows (the business, the place, the
-evidence), so it outlives its survey; its pledges are PayPal orders that only hold money until it settles, its payout
-sends the net collected total to the owner, and PayPal's webhook events are kept once each. A pledge keeps only the
-SHA-256 of its private receipt, as a session keeps only that of its cookie.
+Walk-in Founders: a campaign keeps what its page shows (the business, the place, why here), its pledges are PayPal
+orders that only hold money until it settles, its payout sends the net collected total to the owner, and PayPal's
+webhook events are kept once each. A pledge keeps only the SHA-256 of its private receipt, as a session keeps only that
+of its cookie.
 """
 from __future__ import annotations
 
@@ -23,11 +20,9 @@ from sqlalchemy import (
     Float,
     ForeignKey,
     Integer,
-    LargeBinary,
     MetaData,
     String,
     Table,
-    UniqueConstraint,
 )
 from sqlalchemy.types import TypeDecorator
 
@@ -72,10 +67,6 @@ def _updated() -> Column:
     return Column("updated_at", UTCDateTime, nullable=False, default=utcnow, onupdate=utcnow)
 
 
-def _user() -> Column:
-    return Column("user_id", String(32), ForeignKey("users.id"), index=True)
-
-
 users = Table(
     "users", metadata,
     Column("id", String(32), primary_key=True),
@@ -95,55 +86,9 @@ sessions = Table(
     Column("expires_at", UTCDateTime, nullable=False, index=True),
 )
 
-surveys = Table(
-    "surveys", metadata,
-    Column("id", String(32), primary_key=True),
-    Column("created_at", UTCDateTime, nullable=False, default=utcnow, index=True),
-    _updated(),
-    Column("status", String(16), nullable=False),  # running | complete | failed
-    Column("intent", String(16), nullable=False),  # explore | open | improve
-    Column("label", String(200), nullable=False),
-    Column("lat", Float, nullable=False),
-    Column("lon", Float, nullable=False),
-    Column("request", JSON, nullable=False),  # the site and the owner's brief, as asked
-    Column("events", JSON, nullable=False),  # every event as streamed: [event, data, seconds since the start]
-    # The finished run (app.survey.snapshot) as zlib-compressed JSON, so it can still be designed after a restart.
-    Column("state", LargeBinary),
-    _user(),  # who ran it, when signed in (or who signed in later in the same browser)
-    Column("device_id", String(32), index=True),  # the browser that ran it: its walkin_device cookie
-    Column("headline", String(200)),  # the top concept's name, or the top gap, for My places
-)
-
-designs = Table(
-    "designs", metadata,
-    Column("survey_id", String(32), ForeignKey("surveys.id", ondelete="CASCADE"), primary_key=True),
-    Column("idx", Integer, primary_key=True),  # the concept's position in the survey's concepts
-    Column("sheet", JSON, nullable=False),
-    _created(),
-)
-
-kits = Table(
-    "kits", metadata,
-    Column("token", String(64), primary_key=True),  # random, in the kit's link: anyone with the link can open the kit
-    Column("survey_id", String(32), ForeignKey("surveys.id", ondelete="CASCADE"), nullable=False),
-    Column("idx", Integer, nullable=False),  # the concept's position in the survey's concepts
-    Column("status", String(16), nullable=False),  # building | ready | failed
-    Column("name", String(200)),  # the business's name, for the kit's page and My places
-    Column("payload", JSON),  # app.survey.kit.build_kit's kit, dossier included, once ready
-    Column("error", String(500)),  # why the last build failed, in plain words
-    _created(),
-    _updated(),
-    UniqueConstraint("survey_id", "idx"),  # one kit per concept
-)
-
 campaigns = Table(
     "campaigns", metadata,
     Column("id", String(32), primary_key=True),
-    # The kit it started from and the survey and concept behind it: no foreign keys, so a campaign outlives a survey
-    # that is purged or deleted with its user's account.
-    Column("kit_token", String(64), nullable=True, index=True),
-    Column("survey_id", String(32), nullable=True),
-    Column("idx", Integer, nullable=True),
     # The owner, the signed-in user who started it; null once they delete their account.
     Column("user_id", String(32), ForeignKey("users.id", ondelete="SET NULL"), index=True),
     Column("status", String(16), nullable=False, index=True),  # open | funded | partial | collected | expired | cancelled

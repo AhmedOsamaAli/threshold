@@ -1,6 +1,5 @@
-"""Accounts: Google ID tokens checked against Google's keys, sessions and sign-out, the device cookie and surveys it
-attaches at sign-in, deleting an account, no personal data sent to Qloo or the model, the development login, the origin
-check, public settings and the security headers."""
+"""Accounts: Google ID tokens checked against Google's keys, sessions and sign-out, deleting an account, no personal
+data sent to the model, the development login, the origin check, public settings and the security headers."""
 from __future__ import annotations
 
 import asyncio
@@ -14,9 +13,9 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from sqlalchemy import select
 
 from app import auth
-from app.auth import DEVICE_COOKIE, SESSION_COOKIE, GoogleKeys, KeysUnavailable, TokenError, verify_google_token
+from app.auth import SESSION_COOKIE, GoogleKeys, KeysUnavailable, TokenError, verify_google_token
 from app.config import ROOT
-from app.db.tables import designs, sessions, surveys, users
+from app.db.tables import campaigns, sessions, users
 from app.main import CONTENT_SECURITY_POLICY, GOOGLE_SIGN_IN, PAYPAL
 from tests.account_fakes import (
     CLIENT_ID,
@@ -25,9 +24,8 @@ from tests.account_fakes import (
     configure,
     make_client,
     recording_llm,
-    run_survey,
 )
-from tests.fakes import FakeQloo
+from tests.founders_fakes import OWNER_EMAIL, business_terms
 
 
 @pytest.fixture(scope="module")
@@ -165,7 +163,7 @@ def test_sign_out_ends_the_session_for_good(google):
         assert rows(client, sessions) == []
         client.cookies.set(SESSION_COOKIE, token)  # the old cookie, replayed
         assert client.get("/api/me").json() == {"user": None}
-        assert client.get("/api/me/places").status_code == 401
+        assert client.get("/api/me/campaigns").status_code == 401
         assert client.post("/api/auth/logout").status_code == 204  # signed out already: still fine
 
 
@@ -192,68 +190,41 @@ def test_a_session_renews_at_most_once_a_day_and_ends_after_30_idle_days(google)
         assert set_cookie_headers(expired, SESSION_COOKIE) and rows(client, sessions) == []
 
 
-def test_surveys_run_in_this_browser_are_kept_at_sign_in(google):
-    with make_client(google=google) as client:
-        first = client.get("/api/run", params={"lat": 40.0, "lon": -73.0, "label": "Before signing in"})
-        cookie = set_cookie_headers(first, DEVICE_COOKIE)[0].lower()
-        assert "httponly" in cookie and "samesite=lax" in cookie and f"max-age={400 * 86400}" in cookie
-        device = client.cookies.get(DEVICE_COOKIE)
-        assert len(device) == 32 and int(device, 16) >= 0
-        before = rows(client, surveys)
-        assert [(row["device_id"], row["user_id"]) for row in before] == [(device, None)]
-
-        # Another browser's survey is not this user's.
-        with make_client(google=google) as other:
-            run_survey(other)
-
+def test_deleting_an_account_removes_the_user_and_their_sessions_but_not_their_campaigns(google):
+    clock = Clock()
+    with make_client(google=google, clock=clock) as client:
         user = client.post("/api/auth/google", json={"credential": google.token()}).json()["user"]
-        signed_in = client.get("/api/run", params={"lat": 40.0, "lon": -73.0, "label": "Signed in"})
-        assert not set_cookie_headers(signed_in, DEVICE_COOKIE)  # the browser keeps its id
-        places = client.get("/api/me/places").json()
-        assert [survey["label"] for survey in places["surveys"]] == ["Signed in", "Before signing in"]
-        newest = places["surveys"][0]
-        assert newest == {
-            "id": newest["id"], "label": "Signed in", "intent": "explore", "status": "complete",
-            "created_at": newest["created_at"], "headline": newest["headline"], "url": f"/s/{newest['id']}",
-        }
-        assert newest["headline"] and newest["created_at"].endswith("Z")
-        assert places["kits"] == []
-        owners = [row["user_id"] for row in rows(client, surveys)]
-        assert owners.count(user["id"]) == 2 and owners.count(None) == 1
-
-
-def test_deleting_an_account_removes_the_user_their_sessions_and_their_surveys(google):
-    with make_client(google=google) as client:
-        before = run_survey(client, label="Before signing in")
-        with make_client(google=google) as other:  # someone else, in another browser
-            theirs = run_survey(other, label="Someone else")
-        user = client.post("/api/auth/google", json={"credential": google.token()}).json()["user"]
-        mine = run_survey(client, label="Signed in")
-        assert client.post("/api/design", json={"run_id": mine, "index": 0}).status_code == 200
-        with make_client(google=google) as phone:  # the same person, signed in on another device
+        body = business_terms(clock)
+        words = client.post("/api/business-campaigns/draft", json=body).json()
+        started = client.post("/api/business-campaigns", json={
+            **body, "payout_email": OWNER_EMAIL, **{key: words[key] for key in ("title", "pitch", "perks")},
+        })
+        assert started.status_code == 200, started.text
+        campaign_id = started.json()["id"]
+        assert [row["user_id"] for row in rows(client, campaigns)] == [user["id"]]
+        with make_client(google=google, clock=clock) as phone:  # the same person, signed in on another device
             assert phone.post("/api/auth/google", json={"credential": google.token()}).json()["user"] == user
-            assert len(rows(client, sessions)) == 2 and rows(client, designs)
+            assert len(rows(client, sessions)) == 2
 
             refused = client.delete("/api/me", headers={"origin": "https://evil.example.com"})
             assert refused.status_code == 403 and len(rows(client, users)) == 1
             deleted = client.delete("/api/me")
             assert deleted.status_code == 204 and deleted.content == b""
-            for name in (SESSION_COOKIE, DEVICE_COOKIE):  # this browser forgets both
-                cleared = set_cookie_headers(deleted, name)[0].lower()
-                assert f'{name}=""' in cleared or "max-age=0" in cleared
+            cleared = set_cookie_headers(deleted, SESSION_COOKIE)[0].lower()  # this browser forgets its session
+            assert f'{SESSION_COOKIE}=""' in cleared or "max-age=0" in cleared
             assert phone.get("/api/me").json() == {"user": None}  # signed out everywhere
 
-        assert rows(client, users) == [] and rows(client, sessions) == [] and rows(client, designs) == []
-        assert [row["id"] for row in rows(client, surveys)] == [theirs]
-        for run_id in (before, mine):
-            assert client.get(f"/api/runs/{run_id}").status_code == 404
-            assert client.post("/api/design", json={"run_id": run_id, "index": 0}).status_code == 404  # not in memory
+        assert rows(client, users) == [] and rows(client, sessions) == []
         assert client.get("/api/me").json() == {"user": None}
         assert client.delete("/api/me").status_code == 401
+        # The campaign stays for the neighbors who pledged to it, without an owner.
+        assert [row["user_id"] for row in rows(client, campaigns)] == [None]
+        page = client.get(f"/api/campaigns/{campaign_id}")
+        assert page.status_code == 200 and page.json()["is_owner"] is False
 
         # Signing in again starts a new, empty account.
         again = client.post("/api/auth/google", json={"credential": google.token()}).json()["user"]
-        assert again["id"] != user["id"] and client.get("/api/me/places").json()["surveys"] == []
+        assert again["id"] != user["id"] and client.get("/api/me/campaigns").json() == {"campaigns": []}
 
 
 def test_a_user_is_only_what_sign_in_needs(google):
@@ -266,16 +237,16 @@ def test_a_user_is_only_what_sign_in_needs(google):
         assert set(session) == {"token_hash", "user_id", "created_at", "expires_at"}
 
 
-def test_no_personal_data_reaches_qloo_or_the_model(google):
-    qloo, sent = FakeQloo(), []
+def test_no_personal_data_reaches_the_model(google):
+    sent: list[dict] = []
+    clock = Clock()
     private = {"email": "zebulon.quill@example.org", "name": "Zebulon Quill", "sub": "777000111"}
-    with make_client(google=google, llm=recording_llm(sent), qloo=qloo) as client:
+    with make_client(google=google, clock=clock, llm=recording_llm(sent)) as client:
         user = client.post("/api/auth/google", json={"credential": google.token(**private)}).json()["user"]
-        run_id = run_survey(client, label="Signed-in corner", notes="no alcohol")
-        assert client.post("/api/design", json={"run_id": run_id, "index": 0}).status_code == 200
-        assert [row["user_id"] for row in rows(client, surveys)] == [user["id"]]
-    assert sent and qloo.requests  # the survey did ask both
-    outgoing = json.dumps(sent) + json.dumps(qloo.requests, default=str)
+        drafted = client.post("/api/business-campaigns/draft", json=business_terms(clock))
+        assert drafted.status_code == 200, drafted.text
+    assert sent  # the draft did ask the model
+    outgoing = json.dumps(sent)
     for value in (*private.values(), "Zebulon", "Quill", "zebulon", user["id"]):
         assert value not in outgoing
 
@@ -351,7 +322,7 @@ def test_sign_ins_are_rate_limited():
 
 def test_pages_get_the_security_headers_google_sign_in_needs():
     with make_client() as client:
-        for path in ("/", "/me", "/privacy", "/s/some-survey", "/api/health"):
+        for path in ("/", "/me", "/privacy", "/p/some-campaign", "/api/health"):
             response = client.get(path)
             assert response.status_code == 200, path
             assert response.headers["cross-origin-opener-policy"] == "same-origin-allow-popups"

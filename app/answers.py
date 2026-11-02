@@ -1,8 +1,8 @@
-"""Reuses AI answers when the evidence behind them is unchanged.
+"""Reuses AI answers when the inputs behind them are unchanged.
 
-Free AI tiers allow a few dozen requests a day per model. A survey whose Qloo evidence is identical to an earlier
-one would get an equivalent answer, so the earlier answer is replayed instead of spending the quota again. Keys
-include the prompt version, so changing a prompt starts fresh. Answers stay on the server, like the Qloo cache.
+Free AI tiers allow a few dozen requests a day per model. A draft whose inputs are identical to an earlier one would
+get an equivalent answer, so the earlier answer is replayed instead of spending the quota again. Keys include the
+prompt version, so changing a prompt starts fresh. Answers stay on the server.
 """
 from __future__ import annotations
 

@@ -9,12 +9,15 @@ from typing import Any
 from alembic import command
 from alembic.config import Config
 from sqlalchemy import URL, event, make_url
+from sqlalchemy.dialects import postgresql, sqlite
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from .. import jsonio
 from ..config import ROOT
 
 MIGRATIONS = ROOT / "migrations"
+# INSERT ... ON CONFLICT DO NOTHING is spelled the same on both databases, but SQLAlchemy builds it per dialect.
+INSERTS = {"sqlite": sqlite.insert, "postgresql": postgresql.insert}
 
 
 def async_url(url: str) -> tuple[URL, dict[str, Any]]:
@@ -65,8 +68,8 @@ class Database:
         self.url = url
         target, connect_args = async_url(url)
         postgres = target.get_backend_name() == "postgresql"
-        # Neon suspends an idle database and drops its connections, so each is checked before use. JSON columns (a
-        # survey's events, a kit's payload: 100-200 KB each) are read with orjson, to the same values as json.
+        # Neon suspends an idle database and drops its connections, so each is checked before use. JSON columns are
+        # read with orjson, to the same values as json.
         self.engine = create_async_engine(
             target, connect_args=connect_args, pool_pre_ping=postgres, json_deserializer=jsonio.loads,
         )

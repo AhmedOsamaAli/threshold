@@ -1,5 +1,5 @@
-"""Public settings, sign-in (Google, or a development login), sign-out, the signed-in user, My places (with the user's
-campaigns) and deleting the account."""
+"""Public settings, sign-in (Google, or a development login), sign-out, the signed-in user, their campaigns and deleting
+the account."""
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -9,13 +9,12 @@ from pydantic import BaseModel, Field
 
 from .. import auth, cache_policy
 from ..config import settings
-from ..db.surveys import survey_status
 from ..payments import founders
 from ..payments.records import progress_of
 from ..ratelimit import client_ip
 
 router = APIRouter(prefix="/api")
-PLACES = 100
+CAMPAIGNS = 100
 
 
 class GoogleSignIn(BaseModel):
@@ -39,15 +38,14 @@ def limit_sign_ins(request: Request) -> None:
 
 @router.get("/config")
 async def public_config(request: Request, response: Response) -> dict:
-    """What the web app needs to know before anyone signs in: how to sign in, whether pledging with PayPal works here
-    (and what PayPal's JavaScript SDK needs), and whether new surveys are paused. All of it changes only with a deploy,
-    so the front door may keep it (cache_policy.STATIC)."""
+    """What the web app needs to know before anyone signs in: how to sign in, and whether pledging with PayPal works
+    here (and what PayPal's JavaScript SDK needs). All of it changes only with a deploy, so the front door may keep it
+    (cache_policy.STATIC)."""
     response.headers["Cache-Control"] = cache_policy.STATIC
     return {
         "google_client_id": settings.google_client_id or None,
         "dev_login": settings.dev_login,
         "paypal": founders.paypal_config(request.app.state),
-        "surveys_paused": settings.surveys_paused,
     }
 
 
@@ -100,35 +98,23 @@ async def me(request: Request) -> dict:
 
 @router.delete("/me", status_code=204)
 async def delete_me(request: Request, user: auth.SignedIn) -> Response:
-    """Deletes the account: the user, all their sessions (on every device) and the surveys in their My places, with
-    their design sheets. This browser forgets its session and its device id."""
+    """Deletes the account: the user and all their sessions (on every device). Their campaigns stay, without an owner,
+    and this browser forgets its session."""
     await auth.delete_account(request, user)
     return Response(status_code=204)
 
 
-@router.get("/me/places")
-async def places(request: Request, user: auth.SignedIn) -> dict:
-    """The user's surveys, the launch kits made for them and the campaigns the user started, newest first, at most 100
-    of each."""
+@router.get("/me/campaigns")
+async def my_campaigns(request: Request, user: auth.SignedIn) -> dict:
+    """The campaigns the user started, newest first, at most 100."""
     state = request.app.state
     now = state.now()
-    surveys = await state.accounts.surveys(user["id"], PLACES)
-    kits = await state.kits.owned_by(user["id"], PLACES)
-    campaigns = await state.campaigns.owned_by(user["id"], PLACES)
+    campaigns = await state.campaigns.owned_by(user["id"], CAMPAIGNS)
     held: dict[str, list[dict]] = {row["id"]: [] for row in campaigns}
     for pledge in await state.campaigns.pledges(held):
         held[pledge["campaign_id"]].append(pledge)
     progress = {row["id"]: progress_of(row, held[row["id"]], now) for row in campaigns}
     return {
-        "surveys": [{
-            "id": row["id"], "label": row["label"], "intent": row["intent"],
-            "status": survey_status(row["status"], row["created_at"], now), "created_at": iso(row["created_at"]),
-            "headline": row["headline"], "url": f"/s/{row['id']}",
-        } for row in surveys],
-        "kits": [{
-            "token": row["token"], "survey_id": row["survey_id"], "index": row["idx"], "name": row["name"] or "",
-            "status": row["status"], "created_at": iso(row["created_at"]), "url": f"/k/{row['token']}",
-        } for row in kits],
         "campaigns": [{
             "id": row["id"], "title": row["title"], "status": row["status"],
             "supporters": progress[row["id"]]["supporters"], "total": progress[row["id"]]["total"],

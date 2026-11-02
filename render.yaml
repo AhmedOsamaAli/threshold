@@ -1,0 +1,59 @@
+services:
+  - type: web
+    name: walk-in
+    runtime: docker
+    plan: free
+    # Ohio, next to the Neon database (AWS us-east-2), so each query stays a few milliseconds away.
+    region: ohio
+    healthCheckPath: /api/health
+    envVars:
+      - key: QLOO_API_KEY
+        sync: false
+      - key: QLOO_BASE_URL
+        value: https://hackathon.api.qloo.com
+      - key: DATABASE_URL
+        sync: false
+      - key: PUBLIC_URL
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      # The finished surveys anyone can open before running their own (comma-separated survey ids).
+      - key: EXAMPLES
+        sync: false
+      # Shared with the Cloudflare Pages front door (frontend/functions), which sends the visitor's address with it.
+      - key: PROXY_SECRET
+        sync: false
+      # The front door's health check (https://<the Pages address>/api/health): the app visits it every 5 minutes so
+      # the free instance never sleeps.
+      - key: KEEP_AWAKE_URL
+        sync: false
+      - key: LLM_API_KEY
+        sync: false
+      - key: LLM_BASE_URL
+        value: https://generativelanguage.googleapis.com/v1beta/openai/
+      - key: LLM_MODEL
+        value: gemini-3.6-flash
+      - key: LLM_FALLBACK_MODELS
+        value: gemini-3.5-flash,gemini-2.5-flash,gemini-3.1-flash-lite
+      - key: LLM_REASONING_EFFORT
+        value: low
+      - key: LLM_TIMEOUT
+        value: "45"
+      - key: GROQ_API_KEY
+        sync: false
+      # Walk-in Founders: PayPal (the sandbox until PAYPAL_ENV=live), its webhook, the scheduled settlement's secret,
+      # the in-app settlement period, and paused surveys for the judging weeks.
+      - key: PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_CLIENT_SECRET
+        sync: false
+      - key: PAYPAL_ENV
+        value: sandbox
+      - key: PAYPAL_WEBHOOK_ID
+        sync: false
+      - key: CRON_SECRET
+        sync: false
+      - key: SETTLE_EVERY_S
+        value: "180"
+      - key: SURVEYS_PAUSED
+        value: "false"

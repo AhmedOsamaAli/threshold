@@ -1,0 +1,26 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Qloo API responses must never be committed (hackathon API terms)
+.cache/
+data/raw/
+
+# The local database (surveys, orders and kits)
+.data/
+
+# Editor settings
+.vscode/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+
+# Node
+node_modules/
+
+# Tool artifacts
+.playwright-mcp/

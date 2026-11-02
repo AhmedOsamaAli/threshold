@@ -1,0 +1,22 @@
+name: Keep the demo awake
+
+# The free Render instance sleeps after 15 idle minutes and takes about 40 seconds to wake (the Cloudflare front door
+# shows a note meanwhile). The app keeps itself awake (app/keepawake.py); this backup pings it every 10 minutes too, from
+# now (the entry is submitted and judges may open it any day) through the end of judging (Nov 5, 11:45 pm ET), with a
+# few days' margin, and wakes it if Render ever lets it sleep. Dates are UTC. Scheduled runs are free for public
+# repositories; the 750 free instance hours a month cover one instance awake all month.
+on:
+  schedule:
+    - cron: "*/10 * 26-31 10 *"  # submitted: open to judges and Devpost's eligibility check
+    - cron: "*/10 * 1-8 11 *"  # Qloo hackathon judging, November 2-5 (ET), and a margin
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Ping the health check
+        run: curl --fail --silent --show-error --max-time 90 --retry 2 https://walk-in-aoa2.onrender.com/api/health > /dev/null

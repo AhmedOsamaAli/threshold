@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Walk-in</title>
+    <meta
+      name="description"
+      content="Drop a pin on an empty storefront: Walk-in reads Qloo's taste data for the area people can reach from that door, on foot or by car, ranks what the area is missing, designs the business to fill it and makes a free launch kit."
+    />
+    <meta name="theme-color" content="#f5f4ef" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <!-- The map's tiles come from Esri's two hosts: their connections open while the app loads. -->
+    <link rel="preconnect" href="https://server.arcgisonline.com" />
+    <link rel="preconnect" href="https://services.arcgisonline.com" />
+    <script src="/theme.js"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <noscript>Walk-in needs JavaScript to draw the map and stream the survey.</noscript>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -29,7 +29,7 @@ import {
 } from "../lib/founders";
 import { absoluteUrl } from "../lib/url";
 import { useNavigate } from "../lib/navigation";
-import { campaignUrl, FOUNDERS_URL, type CampaignRoute } from "../lib/routes";
+import { campaignUrl, FOUNDERS_URL, proofUrl, type CampaignRoute } from "../lib/routes";
 import { useNow } from "../lib/useNow";
 import { heldPledge, keepPledge, takePrepared, useCampaign, type HeldPledge } from "../state/founders";
 import { session, useSession } from "../state/session";
@@ -252,6 +252,12 @@ function PledgeCard({ campaign, now, held, back, said, news, onHeld, onWithdrawn
       {/* The owner's part above already says it. */}
       {!campaign.is_owner && (!paypal || (paypal.enabled && inSandbox(paypal))) ? <SandboxNotice className="cp-sandbox" /> : null}
       {action}
+      <p className="cp-proof">
+        <Link className="text-link" href={proofUrl(campaign.id)}>
+          See the proof
+        </Link>{" "}
+        <span>of the signed terms and PayPal&apos;s own record of each pledge.</span>
+      </p>
       <p className="sr-only" role="status" aria-live="polite">
         {news}
       </p>

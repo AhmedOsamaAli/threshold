@@ -22,7 +22,14 @@ def _load_dotenv(path: Path) -> None:
         os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
 
 
-_load_dotenv(ROOT / ".env")
+def env_path() -> Path:
+    """The file development settings are read from: .env in the repository, or the file ENV_FILE names, so secrets can
+    live outside the repository. A variable already in the environment wins over the file."""
+    named = os.environ.get("ENV_FILE", "").strip()
+    return Path(named) if named else ROOT / ".env"
+
+
+_load_dotenv(env_path())
 
 
 def _env(name: str, default: str = "") -> str:

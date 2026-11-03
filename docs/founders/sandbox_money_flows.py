@@ -25,6 +25,7 @@ import httpx
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
+from app import config as pp_config  # noqa: E402
 from app.config import settings  # noqa: E402
 from app.payments import paypal as pp  # noqa: E402
 
@@ -38,8 +39,8 @@ BUTTON = re.compile(
 
 
 def env_file() -> dict[str, str]:
-    """.env's values (the app's settings do not carry the sandbox buyer's)."""
-    path = ROOT / ".env"
+    """The env file's values (the app's settings do not carry the sandbox buyers'): .env, or the file ENV_FILE names."""
+    path = pp_config.env_path()
     if not path.exists():
         return {}
     values = {}

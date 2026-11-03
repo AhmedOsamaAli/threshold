@@ -110,6 +110,8 @@
 .cp-pledge, .cp-preview { display: grid; gap: 12px; padding-top: 18px; border-top: var(--hair); }
 .cp-action-title { font: 400 27px/1.08 var(--f-serif); letter-spacing: -.016em; text-wrap: balance; }
 .cp-terms { font-size: 15px; line-height: 1.5; color: var(--text-2); text-wrap: pretty; }
+.cp-proof { margin-top: 14px; padding-top: 12px; border-top: var(--hair); font-size: 13.5px; line-height: 1.45; color: var(--text-3); }
+.cp-proof .text-link { color: var(--blue); font-weight: 500; }
 .cp-said {
   padding: 10px 14px; background: var(--blue-wash); border-radius: 12px;
   font-size: 14.5px; line-height: 1.45; color: var(--text-2);

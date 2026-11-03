@@ -96,6 +96,10 @@ python scripts/e2e.py              # the whole flow against PayPal's sandbox (se
 - **Free hosting sleeps.** The first request after a quiet spell can take about a minute while the server wakes; the front door says so.
 - **The campaigns on the live demo are fictional**, made with [`scripts/seed_demo.py`](scripts/seed_demo.py).
 
+## Starting point
+
+Threshold began from the payments engine and app shell of **Walk-in Founders**, an earlier MIT-licensed project by the same author (the first commit says so): campaigns, pledges as PayPal authorizations, settlement, payouts, webhooks, private receipts and the Cloudflare front door. The signed terms and the proof, the limits and the Ask assistant, Check a spot, the MCP server's `check_proof` and limits, and the pages that carry them were written for Threshold.
+
 ## Built with AI
 
 Much of the code was written with GitHub Copilot's agent mode under the author's direction, and tested by the suites above. At run time an optional language model (Gemini through an OpenAI-compatible API, Groq as a fallback) drafts a campaign's words for its owner to edit and phrases the assistant's answers; rules in code check what it writes, and it never sets a number, a link or a payment.

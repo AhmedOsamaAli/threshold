@@ -105,7 +105,7 @@
 .signin-privacy { font-size: 13px; line-height: 1.45; color: var(--text-4); }
 .signin-privacy .text-link { font-weight: 500; }
 
-/* ---------- My places: who is signed in, and the ways out ---------- */
+/* ---------- My campaigns: who is signed in, and the ways out ---------- */
 .place-kicker { display: block; margin-bottom: 5px; font-size: 10px; color: var(--blue); transition: color .6s var(--ease); }
 .place-row:hover .place-kicker, .place-row:focus-visible .place-kicker { color: var(--on-yellow-3); }
 .account-card {
@@ -138,8 +138,6 @@
   .privacy-list > div { grid-template-columns: minmax(0, 1fr); }
 }
 
-/* ---------- "Keep your surveys": an optional offer under a finished survey ---------- */
-
 /* ---------- Confirmation before an action that cannot be undone ---------- */
 .confirm {
   width: min(480px, 92vw); max-width: none; padding: 0;
@@ -147,6 +145,7 @@
   border: var(--rule); border-radius: 24px; box-shadow: var(--shadow);
 }
 .confirm[open] { animation: sheetIn .55s var(--ease) both; }
+@keyframes sheetIn { from { opacity: 0; transform: translateY(56px) scale(.985); } }
 .confirm::backdrop { background: var(--backdrop); backdrop-filter: blur(3px); animation: fade .4s both; }
 .confirm-inner { display: grid; gap: 14px; padding: 26px 26px 22px; }
 .confirm-title { font: 400 30px/1.05 var(--f-serif); letter-spacing: -.02em; text-wrap: balance; }

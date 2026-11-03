@@ -84,7 +84,7 @@ describe("the campaigns an answer shows", () => {
 
 describe("a pledge prepared for approval", () => {
   function render() {
-    vi.stubGlobal("window", { location: { origin: "https://dayone.test" } });
+    vi.stubGlobal("window", { location: { origin: "https://threshold.test" } });
     return renderToStaticMarkup(<PledgePanel pledge={pledge} />);
   }
 
@@ -107,7 +107,7 @@ describe("a pledge prepared for approval", () => {
     const html = render();
     expect(html).toContain('Signed terms <span class="raw">a1b2c3d4e5f6</span>');
     expect(html).toContain('href="/proof/c4f1e2"');
-    expect(html).toContain(`https://dayone.test/r/${RECEIPT}`);
+    expect(html).toContain(`https://threshold.test/r/${RECEIPT}`);
   });
 });
 

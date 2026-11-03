@@ -91,19 +91,13 @@
 .theme-toggle:active { transform: rotate(-35deg) scale(.94); }
 .theme-toggle svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 
-/* ---------- Stage: the sheet on the left, the map pinned on the right ---------- */
-/* Once a survey runs, the results take the width and the map docks beside them, small and sticky (map.css). On phones
-   and tablets it is a strip at the top of the results instead. The results sit above the map, so the sticky status
-   line covers the strip as it scrolls away rather than going under it. */
-@keyframes secIn { from { opacity: 0; transform: translateY(28px); } }
-
 /* ---------- Section heads: number in the margin, a broadsheet headline, a serif standfirst ---------- */
 .sec-head { display: grid; grid-template-columns: 44px minmax(0, 1fr); column-gap: 8px; margin-bottom: 30px; }
 .sec-no { padding-top: 13px; color: var(--blue); }
 .sec-title { font: 400 clamp(34px, 3.3vw, 52px)/1.02 var(--f-serif); letter-spacing: -.024em; text-wrap: balance; }
 .sec-note { grid-column: 2; max-width: 46ch; margin-top: 12px; font-size: 18px; line-height: 1.4; color: var(--text-2); }
 
-/* ---------- The site's name: in the brief's site line and the survey's header, with its link to Google Maps ---------- */
+/* ---------- A place's name, with its link to Google Maps (MapsLink.tsx) ---------- */
 .maps-link {
   flex: none; color: var(--blue); text-transform: none; letter-spacing: .02em; white-space: nowrap;
   text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--blue) 35%, transparent); text-underline-offset: 3px;
@@ -111,17 +105,6 @@
 }
 .maps-link:hover { color: var(--ink); text-decoration-color: currentColor; }
 .maps-link:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; border-radius: 2px; }
-/* A pin placed by hand goes by its coordinates until its address comes: in the drafting face, as on the map's card. */
-
-/* ---------- The brief's next step, once a site is chosen (Brief.tsx, NextStep.tsx, SearchBox.tsx) ---------- */
-/* The card scrolls into view under the bar, whole when it fits; its primary action stays at the foot of the screen
-   while the card is on it, so it is never a scroll away. */
-/* The site line takes focus once a site is picked in the brief; it is not a control, so it draws no ring. */
-.chosen:focus { outline: none; }
-/* A search box that says the site set: its arrow steps back to an outline, leaving the next step the one primary action.
-   Typing something new brings it back. */
-/* Phones and tablets: "Use this spot" at the foot of the screen while the brief is out of sight below the map. */
-@keyframes nextIn { from { opacity: 0; transform: translateY(14px); } }
 
 /* ---------- View transitions ---------- */
 ::view-transition-old(root), ::view-transition-new(root) { animation-duration: .5s; animation-timing-function: var(--ease); }

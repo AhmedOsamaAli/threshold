@@ -14,7 +14,7 @@ export function useFocusOnMount(): (node: HTMLElement | null) => void {
   }, []);
 }
 
-/** "My campaigns · Day One" in the tab while the page shows; back to the name alone after. */
+/** "My campaigns · Threshold" in the tab while the page shows; back to the name alone after. */
 export function useDocumentTitle(title: string | null): void {
   useEffect(() => {
     if (!title) return;

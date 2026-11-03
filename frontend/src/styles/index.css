@@ -2,15 +2,8 @@
 @import "./tokens.css";
 @import "./base.css";
 @import "./layout.css";
-@import "./brief.css";
-@import "./survey.css";
-@import "./map.css";
-@import "./design.css";
-@import "./intents.css";
+@import "./components.css";
 @import "./pages.css";
 @import "./account.css";
 @import "./wake.css";
-@import "./kit-offer.css";
-@import "./journey.css";
-@import "./tabs.css";
 @import "./responsive.css";

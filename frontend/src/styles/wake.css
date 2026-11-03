@@ -7,7 +7,6 @@
 @media print {
   .page { padding-top: 0; }
 }
-/* The survey's own status sticks under the band while there is one, rather than sliding beneath it. */
 
 .wake {
   container-type: inline-size;
@@ -23,7 +22,6 @@
   transition: opacity .7s var(--ease), transform .7s var(--ease);
 }
 .wake:focus { outline: none; }
-/* Beside the map, the note spans the sheet only, as the survey's own status does, and leaves the map's controls free. */
 .wake[data-note="leaving"] { opacity: 0; transform: translateY(-6px); pointer-events: none; }
 @keyframes wakeIn { from { opacity: 0; transform: translateY(-8px); } }
 /* The porch light left on while the engine naps: it breathes until the engine answers, and is out if it never does. */

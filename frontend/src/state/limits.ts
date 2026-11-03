@@ -5,7 +5,7 @@ import { plainError } from "../lib/account";
 
 /** Where the limits token is kept: this browser only. It is the person's, and it only ever limits what an assistant may
  * prepare for them; the server checks every pledge against it. */
-export const LIMITS_STORAGE_KEY = "dayone-limits";
+export const LIMITS_STORAGE_KEY = "threshold-limits";
 
 export interface LimitsState {
   /** The token an assistant presents; null until the person sets limits, and again once they end. */

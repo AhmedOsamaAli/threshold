@@ -1,13 +1,7 @@
-/* One column below 980px: the map leads, short enough on the brief that the question and the search fit on screen. */
+/* Below 980px the bar has two columns: the mark, then the links and controls on the right. */
 @media (max-width: 980px) {
   .bar { grid-template-columns: auto minmax(0, 1fr); }
   .bar-end { justify-self: end; }
-}
-
-/* Phones: the search comes straight after the question; the explanation follows it. */
-@media (max-width: 560px) {
-  .design { border-radius: 20px; }
-  /* The open map credits wrap short of the legend in the opposite corner. */
 }
 
 @media (max-width: 420px) {

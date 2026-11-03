@@ -2,6 +2,7 @@ import "../styles/home.css";
 import { Link } from "../components/Link";
 import { Page, PageHead, useFocusOnMount } from "../components/Page";
 import { SectionHead } from "../components/SectionHead";
+import { PRODUCT_NAME } from "../lib/product";
 import { ASK_URL, BROWSE_URL, SPOT_URL, START_CAMPAIGN_URL } from "../lib/routes";
 
 const STEPS = [
@@ -41,7 +42,7 @@ export function HomePage() {
   return (
     <Page className="home">
       <PageHead
-        eyebrow="Day One · Back a new place before it opens"
+        eyebrow={`${PRODUCT_NAME} · Back a new place before it opens`}
         title="Neighbors back the place before it opens"
         titleRef={titleRef}
         standfirst="Pledge to a new cafe, gym or bakery before the owner signs the lease. PayPal only holds the money. If enough neighbors join by the deadline, everyone is charged and the owner is paid. If not, every hold is released and nobody pays."

@@ -113,7 +113,7 @@ def test_every_pledge_is_signed_under_the_same_terms_with_a_reference_of_its_own
 def test_a_hosted_site_without_a_lasting_signing_key_prepares_no_pledge(world, monkeypatch):
     client, paypal = world["client"], world["paypal"]
     campaign_id = start(world)
-    configure(monkeypatch, public_url="https://dayone.example")
+    configure(monkeypatch, public_url="https://threshold.example")
     refused = client.post(f"/api/campaigns/{campaign_id}/pledges")
     assert refused.status_code == 503 and "signing key" in refused.json()["detail"]
     assert nothing_was_prepared(client, paypal)

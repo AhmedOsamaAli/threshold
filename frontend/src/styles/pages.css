@@ -1,4 +1,4 @@
-/* ---------- Pages beside the survey: My places and the privacy note ---------- */
+/* ---------- A page's frame: the sheet, its head and its sections (Page.tsx), used by every page but a campaign ---------- */
 .page {
   container: page / inline-size;
   min-height: calc(100vh - var(--bar-h));
@@ -42,7 +42,7 @@
 .sk-row { height: 62px; margin-top: 10px; border-radius: 12px; }
 .places-wait { font: italic 380 19px/1.35 var(--f-serif); color: var(--text-4); }
 
-/* ---------- My places: one ruled list per kind, each row a link ---------- */
+/* ---------- My campaigns: one ruled list per kind, each row a link ---------- */
 .place-list { border-top: var(--rule); border-bottom: var(--rule); }
 .place-list li + li { border-top: var(--hair); }
 .place-row {
@@ -66,9 +66,6 @@
 .place-arrow { font-size: 17px; transition: transform .5s var(--ease); }
 .place-row:hover .place-arrow { transform: translateX(5px); }
 .state { padding: 3px 9px 2px; border: 1px solid var(--edge); border-radius: 999px; color: var(--text-3); }
-.state[data-state="complete"] { background: var(--ink); border-color: var(--ink); color: var(--on-ink); }
-.state[data-state="running"] { background: var(--blue-wash); border-color: var(--blue); color: var(--blue); }
-.state[data-state="failed"] { border-color: var(--red); color: var(--red); }
 .place-row:is(:hover, :focus-visible) .state { border-color: var(--on-yellow); }
 .places-empty {
   display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px;
@@ -95,6 +92,8 @@
     --paper: #ffffff; --card: #ffffff; --ink: #111111; --on-ink: #ffffff; --ash: #55554f;
     --smoke: #d9d8d0; --edge: #b9b8b0; --blue: #0b59d0; --red: #b3261e;
     --text-2: #1f1f1d; --text-3: #333330; --text-4: #44443f; --text-5: #50504a;
+    --bone: #f1f0ea; --blue-wash: #e8effc; --blue-fill: #0f68ea; --shimmer: #faf9f6;
+    --on-blue: #ffffff; --on-yellow: #1d1d1f; --on-yellow-2: #3a3832; --on-yellow-3: #57544b;
     --grid-line: transparent; --marker: rgba(255, 203, 0, .55); --shadow: none; --shadow-s: none;
   }
   html, body { background: #ffffff; }

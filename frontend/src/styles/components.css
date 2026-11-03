@@ -1,0 +1,72 @@
+/* The parts every page shares: the eyebrow, the primary (blue pen) and ghost buttons, text fields, the title block of a
+   page's facts, the copy button and the loading skeleton. */
+
+/* ---------- Eyebrow: the page's kind, the first word in the pen's blue ---------- */
+.eyebrow { display: flex; gap: 10px; align-items: baseline; margin-bottom: clamp(14px, 2.4vh, 22px); }
+.eyebrow b { font-weight: 500; color: var(--blue); }
+
+/* ---------- The one primary action: the blue pen, with an arrow in a white disc or without ---------- */
+.go svg { width: 21px; height: 21px; fill: none; stroke: var(--on-blue); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.go {
+  justify-self: start;
+  display: inline-flex; align-items: center; gap: 18px;
+  height: 58px; padding: 0 7px 0 26px;
+  background: var(--blue-fill); color: var(--on-blue); border-radius: 999px;
+  font: 500 17px/1 var(--f-sans); letter-spacing: -.005em;
+  box-shadow: var(--shadow-s);
+  transition: background .4s var(--ease), color .4s var(--ease), transform .4s var(--ease);
+}
+.go i { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: var(--on-blue); }
+.go i svg { stroke: var(--blue-fill); transition: transform .5s var(--ease), stroke .4s; }
+.go:hover:not(:disabled) { background: var(--ink); color: var(--on-ink); }
+.go:hover:not(:disabled) i { background: var(--on-ink); }
+.go:hover:not(:disabled) i svg { stroke: var(--ink); transform: translateX(3px); }
+.go:active:not(:disabled) { transform: scale(.98); }
+.go:disabled { opacity: .3; cursor: not-allowed; }
+
+/* ---------- The secondary action: an outlined pill ---------- */
+.ghost {
+  flex: none; padding: 10px 17px; white-space: nowrap;
+  border: 1px solid var(--ink); border-radius: 999px;
+  transition: background .35s var(--ease), color .35s;
+}
+.ghost:hover { background: var(--ink); color: var(--on-ink); }
+
+/* ---------- Text fields: paper wells ---------- */
+.field-input {
+  display: block; width: 100%; height: 46px; padding: 0 16px;
+  background: var(--paper); border: 1px solid var(--edge); border-radius: var(--r-m);
+  font-size: 16px; outline: 0; transition: box-shadow .35s var(--ease), border-color .35s;
+}
+.field-input::placeholder { color: var(--ash); }
+.field-input:focus { border-color: var(--ink); box-shadow: 0 0 0 4px var(--yellow); }
+.field-input::-webkit-search-cancel-button { display: none; }
+
+/* ---------- A page's facts, set out like a drawing's title block ---------- */
+.title-block { display: grid; grid-template-columns: repeat(var(--cols, 4), minmax(0, 1fr)); gap: 1px; background: var(--ink); border: var(--rule); }
+.title-block > div { min-width: 0; padding: 9px 12px 11px; background: var(--card); }
+.title-block dt { color: var(--ash); font-size: 10px; }
+.title-block dd { margin-top: 5px; font-size: 13.5px; font-weight: 500; line-height: 1.35; overflow-wrap: anywhere; }
+.title-block dd.mono { font-size: 11.5px; line-height: 1.55; }
+.title-block dd span { display: block; }
+
+/* ---------- The copy button (CopyButton.tsx) ---------- */
+.copy {
+  flex: none; padding: 5px 12px 4px; border: 1px solid var(--edge); border-radius: 999px; font-size: 10px;
+  transition: background .3s var(--ease), color .3s, border-color .3s;
+}
+.copy:hover { background: var(--ink); border-color: var(--ink); color: var(--on-ink); }
+.copy[data-state="copied"], .copy[data-state="selected"] { background: var(--blue-wash); border-color: var(--blue); color: var(--blue); }
+
+/* ---------- Loading skeletons ---------- */
+.sk {
+  border-radius: 12px;
+  background: linear-gradient(90deg, var(--bone) 0 40%, var(--shimmer) 50%, var(--bone) 60% 100%);
+  background-size: 300% 100%; animation: shimmer 1.4s linear infinite;
+}
+.sk-line { height: 20px; width: 72%; }
+.sk-line + .sk-line { width: 54%; margin-top: 10px; }
+.sk-block { height: 240px; margin-top: 34px; }
+
+/* ---------- A heading focus lands on after a page change is not a control: no ring ---------- */
+.sec-title[tabindex="-1"]:focus { outline: none; }

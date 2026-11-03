@@ -1,7 +1,7 @@
 *, *::before, *::after { box-sizing: border-box; }
 html {
   scroll-behavior: smooth;
-  scroll-padding-top: calc(var(--bar-h) + var(--wake-h) + var(--live-h) + 12px);
+  scroll-padding-top: calc(var(--bar-h) + var(--wake-h) + 12px);
   -webkit-text-size-adjust: 100%;
 }
 body {
@@ -37,7 +37,6 @@ legend { padding: 0; }
 .label .muted { margin-left: 6px; text-transform: none; letter-spacing: .01em; }
 
 @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } }
-@keyframes rise { to { transform: none; } }
 @keyframes blink { 50% { opacity: 0; } }
 @keyframes fade { from { opacity: 0; } }
 @keyframes shimmer { from { background-position: 100% 0; } to { background-position: 0 0; } }

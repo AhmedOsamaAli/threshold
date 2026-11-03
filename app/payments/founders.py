@@ -18,6 +18,7 @@ from ..db.campaigns import CampaignStore
 from ..db.events import EventStore
 from ..ratelimit import RateLimiter
 from ..settlement import Settler
+from ..spot import SpotBook
 from ..trust.keys import Signer
 from ..trust.proof import ProofBook
 from . import records
@@ -34,14 +35,17 @@ LIMIT_LOCKS = 64
 ASSISTANT_PER_HOUR = 60
 MODEL_PER_HOUR = 20
 MODEL_PER_DAY = 300
+# Checks of a spot ask the free public map servers, so a visitor gets a few an hour.
+SPOTS_PER_HOUR = 30
 # A receipt's page reads it once as it opens and again after each step, and an assistant on request.
 RECEIPT_CHECKS_PER_HOUR = 120
 RECEIPT_WITHDRAWALS_PER_HOUR = 20
 SHUTDOWN_GRACE_S = 10
 # Called by PayPal and a scheduled job, never by a page; each proves itself otherwise.
 CALLBACKS = frozenset({"/api/paypal/webhook", "/api/cron/settle"})
-# The web app's pages for a campaign, for the list of open campaigns and for a pledge's private receipt.
-PAGES = ("/p/{key}", "/founders", "/founders/start", "/r/{key}")
+# The web app's pages: a campaign and its proof, the list of open campaigns, starting one, a pledge's private receipt, the
+# assistant and Check a spot.
+PAGES = ("/p/{key}", "/founders", "/founders/start", "/r/{key}", "/ask", "/spot", "/proof/{key}")
 
 
 def paypal_config(state) -> dict:
@@ -58,9 +62,9 @@ def paypal_config(state) -> dict:
 
 def install(app: FastAPI) -> None:
     """Adds the campaign and receipt endpoints and the callbacks to the app; the web app's pages are PAGES."""
-    from ..routes import assistant, business_campaigns, campaigns, hooks, receipts, trust
+    from ..routes import assistant, business_campaigns, campaigns, hooks, receipts, spot, trust
 
-    for area in (campaigns, hooks, receipts, business_campaigns, trust, assistant):
+    for area in (campaigns, hooks, receipts, business_campaigns, trust, assistant, spot):
         app.include_router(area.router)
     app.add_exception_handler(records.Problem, records.problem_response)
     app.state.origin_exempt = frozenset(getattr(app.state, "origin_exempt", frozenset()) | CALLBACKS)
@@ -88,6 +92,8 @@ async def running(app: FastAPI, settle_every: float | None) -> AsyncIterator[Non
     state.assistant_limiter = RateLimiter(ASSISTANT_PER_HOUR, 3600)
     state.model_limiter = RateLimiter(MODEL_PER_HOUR, 3600)
     state.model_day = RateLimiter(MODEL_PER_DAY, 86400)
+    state.spots = SpotBook()
+    state.spot_limiter = RateLimiter(SPOTS_PER_HOUR, 3600)
     if settle_every:
         state.settler.start(settle_every)
     try:

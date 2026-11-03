@@ -339,6 +339,16 @@ def kind_of(genre: str) -> Kind | None:
     return KINDS.get(kind_key(genre))
 
 
+def kind_from(key: str, rules: Iterable[str]) -> Kind:
+    """A kind of place from rules written as the table's are. Its keys must be ones the query keeps (KEEP_TAGS): a
+    place's other tags are gone before the rules see it."""
+    written = tuple(rules)
+    found = {condition.key for rule in written for condition in _rule(rule)}
+    if not found <= KEEP_TAGS:
+        raise ValueError(f"Kind {key} reads tags the query does not keep: {sorted(found - KEEP_TAGS)}")
+    return Kind(key, tuple(_rule(rule) for rule in written), written)
+
+
 # ---------- Names ----------
 
 def _words(text: str) -> frozenset[str]:

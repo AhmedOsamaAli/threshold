@@ -81,7 +81,7 @@ def test_shared_links_open_the_web_app_and_leave_the_api_alone(web_build):
     with make_client() as client:
         home = client.get("/")
         assert "<title>Walk-in</title>" in home.text
-        for path in ("/me", "/privacy", "/p/abc123", "/founders", "/founders/start", "/r/abc123"):
+        for path in ("/me", "/privacy", "/p/abc123", "/founders", "/founders/start", "/r/abc123", "/ask", "/spot", "/proof/abc123"):
             page = client.get(path)
             assert page.status_code == 200 and page.text == home.text, path
             for header in ("content-security-policy", "x-content-type-options", "referrer-policy", "cache-control"):

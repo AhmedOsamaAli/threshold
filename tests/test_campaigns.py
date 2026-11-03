@@ -542,7 +542,8 @@ def test_pledges_and_drafts_are_rate_limited_per_address(world):
 def test_campaign_pages_are_pages_of_the_web_app(world):
     client = world["client"]
     campaign_id = start(world)
-    for path in (f"/p/{campaign_id}", "/p/anything", "/founders", "/founders/start", "/r/anything", "/me", "/privacy"):
+    for path in (f"/p/{campaign_id}", "/p/anything", "/founders", "/founders/start", "/r/anything", "/me", "/privacy",
+                 "/ask", "/spot", f"/proof/{campaign_id}"):
         page = client.get(path)
         assert page.status_code == 200 and page.headers["content-type"].startswith("text/html"), path
         policy = page.headers["content-security-policy"]

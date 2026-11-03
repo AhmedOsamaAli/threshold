@@ -243,8 +243,41 @@ public API, like any outside assistant, so the same rules bind it:
   prepared when none was, or a number no tool returned replaces them with the plain answer.
 - Without a model, when it is resting, or past its share (per address and per day), the plain answer is the whole assistant.
 
+## Check a spot
+
+`GET /api/spot?kind=bakery&address=Logan Square, Chicago` (or `lat=` and `lon=` instead of an address, not both; anyone;
+30 an hour per address) says what OpenStreetMap lists inside a 10-minute walk of the place for one kind of business
+(`cafe`, `restaurant`, `bakery`, `bar`, `gym`, `studio`, `salon`, `barber`, `bookstore`, `grocery`, and `shop`, `kids`,
+`services`, `other`). It shows **supply, never demand**: demand is what the pledges measure.
+```ts
+{ place: { label; lat; lon }; kind; walk_minutes: 10;
+  checked: boolean; reason: string | null;                // false: OpenStreetMap could not be read, and nothing below is a number
+  same_kind: { count: number | null; nearest: { name; kind; distance_m; lat; lon }[] } | null;  // null for kinds no single tag pins down
+  around: { count; top_kinds: { kind; count }[]; dots: [lat, lon, 0 | 1][] } | null;           // 1: the asked kind
+  area: { ring: [lat, lon][]; source: "walk" | "circle" } | null;   // circle: the routing service did not answer
+  summary: string;                                         // a sentence written from the numbers and nothing else
+  source: { name; url; as_of: string | null }; checked_at: string; note: string }
+```
+- Nothing is a guess. When OpenStreetMap or the routing service does not answer, `checked` is false, there are no
+  numbers, and `reason` says why. A kind no single tag pins down gets no count of its own kind. Every answer says that
+  OpenStreetMap is volunteers' work and can be incomplete, and that the check shows what is open, not what people want.
+- A visitor waits at most 45 s. A check that is only slow goes on in the background and fills the caches (the places a
+  walk covers are kept on disk for 7 days), so asking again a minute later finds the answer. An answer with no numbers is
+  never kept; one with numbers is kept for a day by point (to about 10 m) and kind.
+- Data © OpenStreetMap contributors, under the Open Database License.
+
+Live, against the real public servers (`scripts/spot_live.py`, before slow checks went on in the background): East Austin
+café, 2 listed, nearest 413 m (25.9 s); Logan Square gym, 1, nearest 406 m (10.3 s); Zamalek café, 22, nearest 57 m
+(6.3 s). Three more addresses (a Williamsburg bakery, a Kreuzberg bookstore, a Shibuya bar) did not finish in 14 to 26 s
+and answered, honestly, with no numbers.
+
 ## Pages
 
+- `/`: what the product is, how a pledge works, and the ways in.
+- `/ask`: the assistant. The person's limits above (the form, then what is left of them), the conversation below: campaign
+  cards with Back it, a prepared pledge with PayPal's own approval link and the private receipt, and what the assistant did.
+- `/proof/{id}`: a campaign's signed terms, each pledge's checks against PayPal, where the money is, and how to check it.
+- `/spot`: Check a spot, with a plan of the walk, the nearest places of the kind and what else is around.
 - `/p/{id}`: the campaign. Supporter view: the business, the place, why here (in the owner's words),
   the pitch and perks, the progress toward the goal, the deadline, "Pledge $25 with PayPal" (the buttons), and in plain
   words: "PayPal holds $25. You are charged only if 40 neighbors join by Nov 30; otherwise the hold is released."

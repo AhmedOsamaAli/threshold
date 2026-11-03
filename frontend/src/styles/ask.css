@@ -107,7 +107,9 @@ select.field-input, textarea.field-input { font-family: inherit; }
 /* ---------- Check a spot ---------- */
 .spot-form .cf-grid { margin-bottom: 18px; }
 .spot-examples { display: flex; flex-wrap: wrap; gap: 8px 22px; margin: 16px 0 0; padding: 0; list-style: none; }
-.spot-wait { padding: 22px var(--pad); color: var(--text-3); }
+/* The loading and failure lines a page shows in a bare wrapper, kept inside the page's own margins. */
+.page-state > p { padding: 22px var(--pad); }
+.page-state > p[role="status"] { color: var(--text-3); }
 .spot-summary { max-width: 52ch; margin-bottom: 22px; font-size: clamp(22px, 2.4vw, 30px); line-height: 1.25; text-wrap: balance; }
 .spot-grid { display: grid; grid-template-columns: minmax(260px, 380px) minmax(0, 1fr); gap: 28px 40px; align-items: start; }
 .spot-plan { margin: 0; }

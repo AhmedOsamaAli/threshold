@@ -212,9 +212,9 @@ export function SpotPage() {
           ))}
         </ul>
       </form>
-      <div aria-busy={busy}>
+      <div className="page-state" aria-busy={busy}>
         {load.phase === "loading" ? (
-          <p className="spot-wait" role="status">
+          <p role="status">
             Checking {load.what} on OpenStreetMap. Its free servers can be slow, so this can take up to 45 seconds.
           </p>
         ) : null}

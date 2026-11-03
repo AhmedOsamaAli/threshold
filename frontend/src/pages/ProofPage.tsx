@@ -209,7 +209,7 @@ export function ProofPage({ id }: { id: string }) {
             : undefined
         }
       />
-      <div aria-busy={load.phase === "loading"}>
+      <div className="page-state" aria-busy={load.phase === "loading"}>
         {load.phase === "loading" ? <p role="status">Checking the record with PayPal…</p> : null}
         {load.phase === "failed" ? (
           <p className="page-alert" role="alert">

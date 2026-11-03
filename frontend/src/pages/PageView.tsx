@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { foundersChunk, privacyChunk } from "../chunks";
+import { foundersChunk, homeChunk, privacyChunk, trustChunk } from "../chunks";
 import { ErrorBoundary } from "../components/ErrorBoundary";
 import { lazyComponent } from "../lib/lazy";
 import { pageUrl, type Route } from "../lib/routes";
@@ -7,11 +7,15 @@ import { NotFoundPage } from "./NotFoundPage";
 
 // Each page loads with its own chunk the first time it opens.
 const PrivacyPage = lazyComponent(privacyChunk, (chunk) => chunk.PrivacyPage);
+const HomePage = lazyComponent(homeChunk, (chunk) => chunk.HomePage);
 const FoundersPage = lazyComponent(foundersChunk, (chunk) => chunk.FoundersPage);
 const CampaignPage = lazyComponent(foundersChunk, (chunk) => chunk.CampaignPage);
 const MyCampaignsPage = lazyComponent(foundersChunk, (chunk) => chunk.MyCampaignsPage);
 const ReceiptPage = lazyComponent(foundersChunk, (chunk) => chunk.ReceiptPage);
 const StartCampaignPage = lazyComponent(foundersChunk, (chunk) => chunk.StartCampaignPage);
+const AskPage = lazyComponent(trustChunk, (chunk) => chunk.AskPage);
+const ProofPage = lazyComponent(trustChunk, (chunk) => chunk.ProofPage);
+const SpotPage = lazyComponent(trustChunk, (chunk) => chunk.SpotPage);
 
 function Broken() {
   return (
@@ -38,8 +42,8 @@ function Loading() {
 
 function Shown({ route }: { route: Route }) {
   switch (route.page) {
-    // The landing page comes later; until then "/" lists the open campaigns, as "/founders" does.
     case "home":
+      return <HomePage />;
     case "founders":
       return <FoundersPage />;
     case "start-campaign":
@@ -50,6 +54,12 @@ function Shown({ route }: { route: Route }) {
       return <PrivacyPage />;
     case "campaign":
       return <CampaignPage route={route} />;
+    case "ask":
+      return <AskPage />;
+    case "spot":
+      return <SpotPage />;
+    case "proof":
+      return <ProofPage id={route.id} />;
     case "receipt":
       return <ReceiptPage token={route.token} />;
     case "not-found":

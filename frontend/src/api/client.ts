@@ -161,9 +161,12 @@ export async function probeEngine(signal: AbortSignal, deps: Pick<WakeDeps, "fet
   }
 }
 
+/** What a request may carry beyond fetch's own options: headers as plain text, such as the person's limits. */
+export type RequestOptions = Omit<RequestInit, "headers"> & { headers?: Record<string, string> };
+
 /** A JSON request; an answer without a body (204, or a 202 that says nothing) resolves to undefined. */
-export async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const headers: Record<string, string> = { Accept: "application/json" };
+export async function request<T>(path: string, init: RequestOptions = {}): Promise<T> {
+  const headers: Record<string, string> = { Accept: "application/json", ...init.headers };
   if (init.body) headers["Content-Type"] = "application/json";
   const response = await fetchAwake(path, { ...init, headers });
   if (!response.ok) throw await apiError(response);
@@ -171,7 +174,7 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
   return (text ? JSON.parse(text) : undefined) as T;
 }
 
-export function post(body?: unknown): RequestInit {
+export function post(body?: unknown): RequestOptions {
   return body === undefined ? { method: "POST" } : { method: "POST", body: JSON.stringify(body) };
 }
 

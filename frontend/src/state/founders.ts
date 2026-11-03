@@ -141,3 +141,36 @@ export function keepPledge(campaignId: string, pledge: HeldPledge | null): void 
     // Private browsing can refuse storage: the pledge then counts, but withdrawing it needs this page still open.
   }
 }
+
+// ---------- A pledge prepared for approval in PayPal: its receipt waits for the hold ----------
+
+const PREPARED_KEY = "walk-in-prepared:";
+/** How long a prepared pledge's receipt waits for the person to come back from PayPal. */
+export const PREPARED_FOR_MS = 24 * 60 * 60 * 1000;
+
+/** A pledge's receipt is kept apart from the held ones until PayPal confirms the hold: a pledge nobody approved is not a
+ * pledge, and the page must never say it is. */
+export function keepPrepared(campaignId: string, receipt: string, now = Date.now()): void {
+  if (!/^[A-Za-z0-9_-]{32}$/.test(receipt)) return;
+  try {
+    window.localStorage.setItem(PREPARED_KEY + campaignId, JSON.stringify({ receipt, at: now }));
+  } catch {
+    // Not kept: the person can still withdraw from the campaign's page.
+  }
+}
+
+/** The receipt prepared for this campaign, once: the one the person comes back from PayPal to hold. */
+export function takePrepared(campaignId: string, now = Date.now()): string | undefined {
+  try {
+    const text = window.localStorage.getItem(PREPARED_KEY + campaignId);
+    window.localStorage.removeItem(PREPARED_KEY + campaignId);
+    if (!text) return undefined;
+    const value: unknown = JSON.parse(text);
+    if (typeof value !== "object" || value === null || !("receipt" in value) || !("at" in value)) return undefined;
+    const { receipt, at } = value;
+    if (typeof receipt !== "string" || !/^[A-Za-z0-9_-]{32}$/.test(receipt)) return undefined;
+    return typeof at === "number" && now - at <= PREPARED_FOR_MS ? receipt : undefined;
+  } catch {
+    return undefined;
+  }
+}

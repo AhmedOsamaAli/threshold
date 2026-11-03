@@ -31,7 +31,7 @@ import { absoluteUrl } from "../lib/url";
 import { useNavigate } from "../lib/navigation";
 import { campaignUrl, FOUNDERS_URL, type CampaignRoute } from "../lib/routes";
 import { useNow } from "../lib/useNow";
-import { heldPledge, keepPledge, useCampaign, type HeldPledge } from "../state/founders";
+import { heldPledge, keepPledge, takePrepared, useCampaign, type HeldPledge } from "../state/founders";
 import { session, useSession } from "../state/session";
 import { PrivateReceipt } from "../components/founders/PrivateReceipt";
 
@@ -572,7 +572,9 @@ export function CampaignPage({ route }: { route: CampaignRoute }) {
         if (!live) return;
         after.current.setProgress(progress);
         if (status === "authorized") {
-          const pledge = { orderId: holding, at: new Date().toISOString() };
+          // A pledge an assistant prepared kept its receipt aside until now, when PayPal confirms the hold.
+          const receipt = takePrepared(id);
+          const pledge = { orderId: holding, at: new Date().toISOString(), ...(receipt ? { receipt } : {}) };
           keepPledge(id, pledge);
           setHeld(pledge);
           setBack(null);

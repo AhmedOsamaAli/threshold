@@ -1,13 +1,16 @@
 /**
- * What a URL asks for: the open campaigns ("/" for now, and "/founders"), starting a campaign, one campaign's page, a
- * pledge's private receipt, the privacy note, the signed-in user's campaigns, or nothing the app has.
+ * What a URL asks for: the home page, the open campaigns, starting a campaign, one campaign's page and its proof, a pledge's
+ * private receipt, the assistant, checking a spot, the privacy note, the signed-in user's campaigns, or nothing the app has.
  */
 export type Route =
   | { page: "home" }
   | { page: "founders" }
   | { page: "start-campaign" }
   | { page: "my-campaigns" }
+  | { page: "ask" }
+  | { page: "spot" }
   | { page: "privacy" }
+  | { page: "proof"; id: string }
   | { page: "receipt"; token: string }
   | CampaignRoute
   | { page: "not-found"; path: string };
@@ -28,13 +31,18 @@ export const HOME_URL = "/";
 export const FOUNDERS_URL = "/founders";
 export const START_CAMPAIGN_URL = "/founders/start";
 export const MY_CAMPAIGNS_URL = "/me";
+export const ASK_URL = "/ask";
+export const SPOT_URL = "/spot";
 export const PRIVACY_URL = "/privacy";
 
 const FOUNDERS_PATH = /^\/founders\/?$/;
 const START_CAMPAIGN_PATH = /^\/founders\/start\/?$/;
 const MY_CAMPAIGNS_PATH = /^\/me\/?$/;
+const ASK_PATH = /^\/ask\/?$/;
+const SPOT_PATH = /^\/spot\/?$/;
 const PRIVACY_PATH = /^\/privacy\/?$/;
 const CAMPAIGN_PATH = /^\/p\/([A-Za-z0-9_-]{1,64})\/?$/;
+const PROOF_PATH = /^\/proof\/([A-Za-z0-9_-]{1,64})\/?$/;
 const RECEIPT_PATH = /^\/r\/([A-Za-z0-9_-]{32})\/?$/;
 // What PayPal sends a supporter back with: our pledge's id, or PayPal's order id ("5O190127TN364715T"); the server
 // takes either.
@@ -45,9 +53,13 @@ export function parseRoute(pathname: string, search: string): Route {
   if (FOUNDERS_PATH.test(pathname)) return { page: "founders" };
   if (START_CAMPAIGN_PATH.test(pathname)) return { page: "start-campaign" };
   if (MY_CAMPAIGNS_PATH.test(pathname)) return { page: "my-campaigns" };
+  if (ASK_PATH.test(pathname)) return { page: "ask" };
+  if (SPOT_PATH.test(pathname)) return { page: "spot" };
   if (PRIVACY_PATH.test(pathname)) return { page: "privacy" };
   const receipt = RECEIPT_PATH.exec(pathname)?.[1];
   if (receipt) return { page: "receipt", token: receipt };
+  const proof = PROOF_PATH.exec(pathname)?.[1];
+  if (proof) return { page: "proof", id: proof };
   const campaign = CAMPAIGN_PATH.exec(pathname)?.[1];
   if (campaign) {
     const params = new URLSearchParams(search);
@@ -67,6 +79,11 @@ export function campaignUrl(id: string): string {
   return `/p/${encodeURIComponent(id)}`;
 }
 
+/** "/proof/{id}": what the campaign's pledges and money did, checked against PayPal. */
+export function proofUrl(id: string): string {
+  return `/proof/${encodeURIComponent(id)}`;
+}
+
 export function receiptUrl(token: string): string {
   return `/r/${encodeURIComponent(token)}`;
 }
@@ -82,10 +99,16 @@ export function pageUrl(route: Route): string {
       return START_CAMPAIGN_URL;
     case "my-campaigns":
       return MY_CAMPAIGNS_URL;
+    case "ask":
+      return ASK_URL;
+    case "spot":
+      return SPOT_URL;
     case "privacy":
       return PRIVACY_URL;
     case "campaign":
       return campaignUrl(route.id);
+    case "proof":
+      return proofUrl(route.id);
     case "receipt":
       return receiptUrl(route.token);
     case "not-found":

@@ -31,6 +31,7 @@
 .page-head .title-block { margin-top: 24px; }
 @container page (max-width: 640px) {
   .page-head .title-block { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .page-head .title-block > div:last-child:nth-child(odd) { grid-column: 1 / -1; }
 }
 .pg-sec { padding: 52px var(--pad) 60px; border-bottom: var(--rule); }
 .pg-sec .sec-head { margin-bottom: 26px; }

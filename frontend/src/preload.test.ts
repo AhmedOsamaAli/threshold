@@ -1,11 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { preloadLink, preloadRoute, routeOf } from "./preload";
 
-const spies = vi.hoisted(() => ({ privacy: vi.fn(), founders: vi.fn() }));
+const spies = vi.hoisted(() => ({ privacy: vi.fn(), founders: vi.fn(), home: vi.fn(), trust: vi.fn() }));
 
 vi.mock("./chunks", () => ({
   privacyChunk: { preload: spies.privacy },
   foundersChunk: { preload: spies.founders },
+  homeChunk: { preload: spies.home },
+  trustChunk: { preload: spies.trust },
 }));
 
 const BASE = "https://walkin.test/founders";
@@ -22,20 +24,33 @@ describe("what an address needs", () => {
     expect(spies.privacy).toHaveBeenCalledTimes(1);
     expect(spies.founders).not.toHaveBeenCalled();
 
-    preloadRoute({ page: "home" });
     preloadRoute({ page: "founders" });
     preloadRoute({ page: "start-campaign" });
     preloadRoute({ page: "my-campaigns" });
     preloadRoute({ page: "campaign", id: "c4f1e2", pledge: null, cancelled: false });
     preloadRoute({ page: "receipt", token: TOKEN });
-    expect(spies.founders).toHaveBeenCalledTimes(6);
+    expect(spies.founders).toHaveBeenCalledTimes(5);
     expect(spies.privacy).toHaveBeenCalledTimes(1);
+  });
+
+  it("starts the home page's own chunk, and the trust chunk for the assistant, a proof and Check a spot", () => {
+    preloadRoute({ page: "home" });
+    expect(spies.home).toHaveBeenCalledTimes(1);
+    expect(spies.founders).not.toHaveBeenCalled();
+
+    preloadRoute({ page: "ask" });
+    preloadRoute({ page: "spot" });
+    preloadRoute({ page: "proof", id: "c4f1e2" });
+    expect(spies.trust).toHaveBeenCalledTimes(3);
+    expect(spies.home).toHaveBeenCalledTimes(1);
   });
 
   it("starts nothing for an address the app has no page for", () => {
     preloadRoute({ page: "not-found", path: "/s/099134cbfaec" });
     expect(spies.founders).not.toHaveBeenCalled();
     expect(spies.privacy).not.toHaveBeenCalled();
+    expect(spies.home).not.toHaveBeenCalled();
+    expect(spies.trust).not.toHaveBeenCalled();
   });
 
   it("reads a link's route, and none for a link that leaves the app", () => {

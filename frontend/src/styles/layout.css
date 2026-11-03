@@ -59,9 +59,10 @@
 .bar-start:hover { background: var(--ink); color: var(--on-ink); }
 .bar-start[aria-current="page"] { background: var(--blue-fill); border-color: var(--blue-fill); color: var(--on-blue); }
 /* Phones and the narrowest tablets: the pill says only "Start" (the link is named in full for screen readers either
-   way), and below 520 px the mark keeps its door without its word. */
+   way), "Check a spot" leaves the bar (the home page links to it), and below 520 px the mark keeps its door without its
+   word. */
 @media (max-width: 600px) {
-  .bar-start-more { display: none; }
+  .bar-start-more, .bar-wide { display: none; }
 }
 @media (max-width: 520px) {
   .bar .mark-word { display: none; }

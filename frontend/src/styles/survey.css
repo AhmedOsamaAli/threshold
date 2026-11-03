@@ -3,7 +3,7 @@
 @keyframes livePulse { 50% { transform: scale(.5); opacity: .45; } }
 
 /* ---------- Site head: the drawing's title block ---------- */
-.title-block { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--ink); border: var(--rule); }
+.title-block { display: grid; grid-template-columns: repeat(var(--cols, 4), minmax(0, 1fr)); gap: 1px; background: var(--ink); border: var(--rule); }
 .title-block > div { min-width: 0; padding: 9px 12px 11px; background: var(--card); }
 .title-block dt { color: var(--ash); font-size: 10px; }
 .title-block dd { margin-top: 5px; font-size: 13.5px; font-weight: 500; line-height: 1.35; overflow-wrap: anywhere; }
@@ -11,6 +11,7 @@
 .title-block dd span { display: block; }
 @container sheet (max-width: 480px) {
   .title-block { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .title-block > div:last-child:nth-child(odd) { grid-column: 1 / -1; }
 }
 .ghost {
   flex: none; padding: 10px 17px; white-space: nowrap;

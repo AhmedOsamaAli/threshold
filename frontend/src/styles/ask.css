@@ -1,0 +1,133 @@
+/* The Ask, Proof and Check a spot pages: what a person can check and ask with. */
+
+/* ---------- Shared ---------- */
+.ask-side-title { margin: 6px 0 12px; font: 400 clamp(22px, 2.2vw, 28px)/1.1 var(--f-serif); letter-spacing: -.015em; text-wrap: balance; }
+.ask-limits, .ask-chat, .spot-form, .spot-result { padding: 38px var(--pad) 44px; border-bottom: var(--rule); }
+.ask-limits-lede { max-width: 62ch; margin-bottom: 22px; font-size: 15.5px; line-height: 1.5; color: var(--text-3); text-wrap: pretty; }
+.ask-fields { min-width: 0; margin: 0 0 20px; padding: 0; border: 0; }
+select.field-input, textarea.field-input { font-family: inherit; }
+
+/* ---------- Limits ---------- */
+.ask-kinds { min-width: 0; margin: 0; padding: 0; border: 0; }
+.ask-kinds .label { margin: 0 0 10px; }
+.ask-kind-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.ask-kind { display: inline-flex; align-items: center; gap: 7px; padding: 7px 12px; border: 1px solid var(--edge); border-radius: 999px; background: var(--card); font-size: 14px; cursor: pointer; transition: background .25s, border-color .25s; }
+.ask-kind:hover { border-color: var(--ink); }
+.ask-kind.on { background: var(--blue-wash); border-color: var(--blue); color: var(--blue); }
+.ask-kind input, .ask-check input { width: 16px; height: 16px; margin: 0; accent-color: var(--blue-fill); }
+.ask-check { display: inline-flex; align-items: center; gap: 10px; font-size: 15px; cursor: pointer; }
+.ask-near { gap: 10px; }
+.ask-km { width: 96px; }
+.ask-limits-wait { color: var(--ash); }
+.ask-limits-lines { display: grid; gap: 0; max-width: 62ch; margin: 0 0 18px; padding: 0; list-style: none; border-top: var(--hair); }
+.ask-limits-lines li { padding: 10px 0; border-bottom: var(--hair); font-size: 16px; }
+.ask-left { max-width: 62ch; margin-bottom: 18px; }
+.ask-left p { margin-bottom: 8px; font-size: 16px; }
+.ask-left .mono { color: var(--ash); font-size: 10.5px; }
+.ask-meter { display: block; height: 8px; overflow: hidden; border: 1px solid var(--ink); border-radius: 99px; background: var(--card); }
+.ask-meter i { display: block; width: calc(var(--p, 0) * 100%); height: 100%; background: var(--blue-fill); transition: width .6s var(--ease); }
+
+/* ---------- Conversation ---------- */
+.ask-log { display: grid; gap: 20px; margin: 0 0 18px; padding: 0; list-style: none; }
+.ask-msg { min-width: 0; }
+.ask-msg.me { justify-self: end; max-width: min(60ch, 92%); padding: 11px 16px; border-radius: var(--r-m) var(--r-m) 4px var(--r-m); background: var(--ink); color: var(--on-ink); font-size: 16px; line-height: 1.45; overflow-wrap: anywhere; }
+.ask-msg.bot { display: grid; gap: 12px; max-width: 880px; padding-left: 18px; border-left: 3px solid var(--blue-fill); }
+.ask-reply { max-width: 66ch; font-size: 17px; line-height: 1.5; text-wrap: pretty; overflow-wrap: anywhere; }
+.ask-mode { font-size: 10px; color: var(--ash); }
+.ask-refusal { color: var(--red); font-size: 11px; }
+.ask-thinking { margin: 0 0 14px; color: var(--ash); }
+.ask-suggestions { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 18px; padding: 0; list-style: none; }
+.ask-composer { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: end; }
+.ask-composer textarea { min-height: 56px; resize: vertical; font: inherit; }
+
+.ask-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; margin: 0; padding: 0; list-style: none; }
+.ask-card { display: grid; gap: 10px; height: 100%; padding: 16px 18px 18px; border: var(--rule); background: var(--card); box-shadow: var(--shadow-s); }
+.ask-card-kicker { font-size: 10px; color: var(--blue); }
+.ask-card-title { font: 400 clamp(21px, 2vw, 26px)/1.08 var(--f-serif); letter-spacing: -.015em; overflow-wrap: anywhere; text-wrap: balance; }
+.ask-card-title a { color: inherit; text-decoration: none; }
+.ask-card-title a:hover { text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 1px; }
+.ask-card-sub { font-size: 14.5px; color: var(--text-3); }
+.ask-card-count { font-size: 14px; color: var(--text-2); }
+.ask-card-count b { font: 500 20px/1 var(--f-sans); color: var(--ink); }
+.ask-card-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; margin-top: auto; padding-top: 10px; border-top: var(--hair); }
+.ask-card-closed { color: var(--ash); font-size: 10.5px; }
+
+.ask-pledge { display: grid; gap: 12px; max-width: 640px; padding: 18px 20px 20px; border: var(--rule); background: var(--card); box-shadow: 8px 8px 0 var(--marker); }
+.ask-pledge-kicker { font-size: 10.5px; color: var(--blue); }
+.ask-pledge-title { font: 400 clamp(22px, 2.2vw, 28px)/1.1 var(--f-serif); letter-spacing: -.015em; overflow-wrap: anywhere; }
+.ask-pledge-terms { font-size: 15px; line-height: 1.5; color: var(--text-2); }
+.ask-pledge-go { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px; }
+.ask-pledge-go a.go { text-decoration: none; }
+.ask-pledge-note { max-width: 36ch; font-size: 13.5px; line-height: 1.4; color: var(--text-3); }
+.ask-pledge-proof { font-size: 13.5px; color: var(--text-3); line-height: 1.5; }
+
+.ask-trace { font-size: 14px; }
+.ask-trace summary { cursor: pointer; color: var(--ash); font-size: 10.5px; }
+.ask-trace ol { display: grid; gap: 6px; margin: 10px 0 0; padding-left: 22px; color: var(--text-3); }
+.ask-trace li .mono { margin-right: 6px; color: var(--blue); font-size: 10px; }
+.ask-trace li.held { color: var(--red); }
+.ask-trace li.held .mono { color: var(--red); }
+
+/* ---------- Proof ---------- */
+.proof .pg-sec { padding-top: 38px; padding-bottom: 44px; }
+.proof-summary { max-width: 66ch; font-size: 17px; line-height: 1.5; }
+.proof-pledges { display: grid; gap: 14px; margin: 18px 0 0; padding: 0; list-style: none; }
+.proof-pledge { display: grid; gap: 8px; max-width: 760px; padding: 14px 18px 16px; border: var(--rule); background: var(--card); }
+.proof-pledge-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 14px; }
+.proof-pledge-line { font-size: 15px; color: var(--text-2); }
+.proof-verdict { padding: 3px 10px; border: 1px solid currentColor; border-radius: 99px; font: 500 11.5px/1.4 var(--f-mono); letter-spacing: .05em; text-transform: uppercase; }
+.proof-verdict.ok { color: var(--blue); background: var(--blue-wash); }
+.proof-verdict.bad { color: var(--red); }
+.proof-verdict.idle { color: var(--ash); }
+.proof-marks { display: grid; gap: 5px; margin: 0; padding: 0; list-style: none; font-size: 14px; }
+.proof-marks li { display: grid; grid-template-columns: 8.5em minmax(0, 1fr); gap: 10px; color: var(--text-3); }
+.proof-marks .mono { font-size: 10px; color: var(--ash); padding-top: 2px; }
+.proof-marks li.ok { color: var(--ink); }
+.proof-marks li.bad { color: var(--red); font-weight: 500; }
+.proof-problems { margin: 0; padding: 10px 14px 10px 30px; font-size: 14px; }
+.proof-ids { overflow-wrap: anywhere; color: var(--ash); font-size: 10px; line-height: 1.6; }
+.proof-terms { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); max-width: 900px; }
+.proof-how { max-width: 66ch; margin-top: 16px; font-size: 15px; line-height: 1.5; color: var(--text-2); }
+.proof-key { max-width: 66ch; margin-top: 12px; font-size: 14px; line-height: 1.5; color: var(--text-3); }
+.proof-money, .proof-steps { display: grid; gap: 10px; max-width: 66ch; margin: 0; padding-left: 22px; font-size: 16px; line-height: 1.5; }
+.proof-money { padding-left: 0; list-style: none; }
+.proof-money li { padding: 10px 0; border-bottom: var(--hair); }
+.proof-actions { padding: 26px var(--pad) 44px; }
+
+/* ---------- Check a spot ---------- */
+.spot-form .cf-grid { margin-bottom: 18px; }
+.spot-examples { display: flex; flex-wrap: wrap; gap: 8px 22px; margin: 16px 0 0; padding: 0; list-style: none; }
+.spot-wait { padding: 22px var(--pad); color: var(--text-3); }
+.spot-summary { max-width: 52ch; margin-bottom: 22px; font-size: clamp(22px, 2.4vw, 30px); line-height: 1.25; text-wrap: balance; }
+.spot-grid { display: grid; grid-template-columns: minmax(260px, 380px) minmax(0, 1fr); gap: 28px 40px; align-items: start; }
+.spot-plan { margin: 0; }
+.spot-plan svg { display: block; width: 100%; height: auto; border: var(--rule); background: var(--card); }
+.spot-plan figcaption { margin-top: 10px; font-size: 10px; line-height: 1.6; color: var(--ash); }
+.spot-ring { fill: var(--blue-wash); stroke: var(--blue); stroke-width: 1.5; stroke-linejoin: round; }
+.spot-dot { fill: var(--card); stroke: var(--ash); stroke-width: 1.2; }
+.spot-dot.same { fill: var(--blue-fill); stroke: var(--ink); stroke-width: 1.2; }
+.spot-centre circle { fill: var(--yellow); stroke: var(--ink); stroke-width: 1.5; }
+.spot-centre path { fill: none; stroke: var(--ink); stroke-width: 1.5; }
+.spot-north { fill: var(--ash); font-size: 11px; text-anchor: middle; }
+.spot-facts { display: grid; gap: 8px; }
+.spot-facts .label { margin: 14px 0 4px; }
+.spot-count { font-size: 17px; }
+.spot-count b { font: 500 28px/1 var(--f-sans); letter-spacing: -.02em; margin-right: 4px; }
+.spot-nearest { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; border-top: var(--hair); }
+.spot-nearest li { display: flex; justify-content: space-between; gap: 14px; padding: 9px 0; border-bottom: var(--hair); font-size: 15.5px; }
+.spot-nearest .mono { color: var(--blue); }
+.spot-kinds { font-size: 15px; color: var(--text-3); overflow-wrap: anywhere; }
+.spot-note { max-width: 66ch; margin-top: 26px; font-size: 14px; line-height: 1.5; color: var(--text-3); }
+.spot-source { margin-top: 10px; color: var(--ash); font-size: 10px; line-height: 1.6; }
+
+/* The blue pen without its arrow: even padding, and a smaller one on a card. */
+.ask-limits .go, .ask-pledge .go, .ask-composer .go, .spot-form .go, .spot-result .go { padding: 0 28px; text-decoration: none; }
+.ask-card .go { height: 42px; padding: 0 20px; font-size: 15px; }
+
+@media (max-width: 720px) {
+  .ask-composer { grid-template-columns: minmax(0, 1fr); }
+  .ask-composer .go { justify-self: start; }
+  .ask-msg.bot { padding-left: 12px; }
+  .proof-marks li { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .spot-grid { grid-template-columns: minmax(0, 1fr); }
+}

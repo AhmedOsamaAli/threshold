@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, type ReactNode, type Ref } from "react";
+import { cssVars } from "../lib/css";
+import { PRODUCT_NAME } from "../lib/product";
 import { PRIVACY_URL } from "../lib/routes";
 import { Link } from "./Link";
 
@@ -12,13 +14,13 @@ export function useFocusOnMount(): (node: HTMLElement | null) => void {
   }, []);
 }
 
-/** "My campaigns · Walk-in" in the tab while the page shows; back to "Walk-in" after. */
+/** "My campaigns · Day One" in the tab while the page shows; back to the name alone after. */
 export function useDocumentTitle(title: string | null): void {
   useEffect(() => {
     if (!title) return;
-    document.title = `${title} · Walk-in`;
+    document.title = `${title} · ${PRODUCT_NAME}`;
     return () => {
-      document.title = "Walk-in";
+      document.title = PRODUCT_NAME;
     };
   }, [title]);
 }
@@ -59,7 +61,7 @@ export function PageHead({ eyebrow, title, titleRef, standfirst, fields, actions
       </h1>
       {standfirst ? <p className="page-standfirst serif">{standfirst}</p> : null}
       {fields?.length ? (
-        <dl className="title-block">
+        <dl className="title-block" style={cssVars({ "--cols": fields.length })}>
           {fields.map((field) => (
             <div key={field.label}>
               <dt className="mono">{field.label}</dt>
@@ -84,7 +86,7 @@ export function Page({ children, className }: { children: ReactNode; className?:
         {children}
         <footer className="page-foot mono">
           <p>
-            Walk-in · <Link href={PRIVACY_URL}>Privacy</Link>
+            {PRODUCT_NAME} · <Link href={PRIVACY_URL}>Privacy</Link>
           </p>
         </footer>
       </div>

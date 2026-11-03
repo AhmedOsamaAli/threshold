@@ -429,7 +429,9 @@ WHICH_REPLY = "Which one do you want to back? Press Back it on its card, or say 
 def settle(tools: Tools, text: str | None, unclear: bool) -> tuple[str, str | None, str]:
     """The reply, the campaign it asks about (so a later "yes" can mean it) and its mode. Every sentence about a pledge is
     the server's; the model's own text is used for the rest. A pledge the model tried to prepare unasked is answered
-    without naming its campaign: what a campaign's own text steered the model to is not for the assistant to ask about."""
+    without naming its campaign: what a campaign's own text steered the model to is not for the assistant to ask about.
+    When the model's answer puts one campaign on the page, the server asks about it, as the plain answer does, so that the
+    person's "yes" means that campaign and the model's wording is never what a consent rests on."""
     if tools.pledge:
         return pledge_words(tools.pledge), None, "plain"
     if tools.refusal:
@@ -439,6 +441,10 @@ def settle(tools: Tools, text: str | None, unclear: bool) -> tuple[str, str | No
     if unclear:
         return WHICH_REPLY, None, "plain"
     if text:
+        shown = [tools.known[campaign_id] for campaign_id in tools.displayed]
+        if len(shown) == 1:
+            question = question_words(shown[0]["name"])
+            return f"{squash(text, REPLY_CHARS - len(question) - 1)} {question}", shown[0]["id"], "model"
         return text, None, "model"
     reply, asked = search_words(tools)
     return reply, asked, "plain"

@@ -234,7 +234,9 @@ public API, like any outside assistant, so the same rules bind it:
   (`app/intent.py`) before any model is asked; `back` (the Back it button) names it outright. A pledge is prepared only for
   that campaign, only for a campaign the person was shown in this conversation, and only inside their limits, however
   the model chooses. A bare "yes" means only the campaign the server just asked about; a hesitation, a question or a
-  condition is not consent. When unsure it asks again.
+  condition is not consent. When unsure it asks again. The server asks that question itself, in its own words, whenever
+  an answer puts exactly one campaign on the page, whoever worded the rest of the answer: the model's wording is never
+  what a consent rests on.
 - A campaign's title, pitch and perks are the owner's words: data, never instructions.
 - The model never sees a receipt, an order id, an approval link, the limits' numbers or any payment detail, and has no
   tool that reads or changes the limits. Every sentence about a pledge (prepared, refused, held back, asked about) is

@@ -7,6 +7,7 @@ the owner closes the campaign, it settles and the owner is paid out. A second ca
 every hold is released. A pledge beyond a neighbor's limits is refused. Prints each step's status, never secrets.
 
     python scripts/e2e.py [--server http://127.0.0.1:8781] [--amount 5.00]
+                          [--funded-name "Test Bakery"] [--missed-name "Test Gym"]
 
 Start the server first, from the repository's root, with the development login, its own address and its own database (the
 settings come from .env, or from the file ENV_FILE names, which may live outside the repository):
@@ -18,11 +19,19 @@ Needs in the env file: the sandbox app's PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECR
 (PAYPAL_SANDBOX_BUYER_EMAIL and _PASSWORD, with _2 and _3 siblings: a goal counts distinct PayPal accounts, at least 3),
 CRON_SECRET (to run the settlement pass the scheduler would), and optionally PAYPAL_SANDBOX_PAYOUT_EMAIL (the owner's
 PayPal email, which receives the payout; the first buyer's by default). Run it with a Python that has httpx and playwright.
+
+Against a hosted site, where only Google signs in, first open a session for a test owner in the site's own database and give
+the file to this script (see scripts/mint_session.py); the site's CRON_SECRET must be the one in the env file. The two
+campaigns it starts stay on the site: --funded-name and --missed-name say what they are called.
+
+    $env:DATABASE_URL="<the hosted database>"; python scripts/mint_session.py --out owner-session.txt
+    $env:E2E_SESSION_FILE="owner-session.txt"; python scripts/e2e.py --server https://<the site> --funded-name "Test Bakery"
 """
 from __future__ import annotations
 
 import argparse
 import asyncio
+import os
 import sys
 import time
 import uuid
@@ -38,6 +47,7 @@ sys.path.insert(0, str(ROOT))
 from sandbox_money_flows import approve, buyers, env_file  # noqa: E402
 
 LIMITS = "X-Limits"
+SESSION_COOKIE = "threshold_session"  # app.auth.SESSION_COOKIE, not imported so that this script loads no server settings
 PLACE = {"address": "Zamalek, Cairo, Egypt", "lat": 30.0626, "lon": 31.2197}
 BAKERY = {"kind": "bakery", "description": "A neighborhood bakery for the morning crowd.",
           "why_here": "Neighbors here walk to their bakery."}
@@ -151,26 +161,35 @@ async def show_proof(http: httpx.AsyncClient, campaign_id: str, title: str) -> d
     return proof
 
 
-async def run(server: str, amount: str) -> int:
+async def run(server: str, amount: str, funded_name: str | None = None, missed_name: str | None = None) -> int:
     from playwright.async_api import async_playwright
 
     env = env_file()
     found = buyers()
     run_id = uuid.uuid4().hex[:6]
+    session_file = os.environ.get("E2E_SESSION_FILE", "").strip()
     async with httpx.AsyncClient(base_url=server, timeout=120) as owner:
         config = (await owner.get("/api/config")).json()
         paypal = config.get("paypal") or {}
-        print(f"config: PayPal enabled {paypal.get('enabled')}, {paypal.get('environment')}, dev login {config.get('dev_login')}")
-        if not paypal.get("enabled") or paypal.get("environment") != "sandbox" or not config.get("dev_login"):
-            print("The server needs PayPal (sandbox) and AUTH_DEV_LOGIN=true with a PUBLIC_URL that is not https.")
+        print(f"config: PayPal enabled {paypal.get('enabled')}, {paypal.get('environment')}, dev login {config.get('dev_login')}, "
+              f"session file {'given' if session_file else 'none'}")
+        if not paypal.get("enabled") or paypal.get("environment") != "sandbox" or not (config.get("dev_login") or session_file):
+            print("The server needs PayPal (sandbox), and either AUTH_DEV_LOGIN=true with a PUBLIC_URL that is not https, "
+                  "or, on a hosted site, E2E_SESSION_FILE (see this script's docstring).")
             return 1
         if len(found) < 3:
             print("Three different sandbox buyers are needed (see this script's docstring).")
             return 1
-        step("owner signs in", await owner.post("/api/auth/dev", json={"email": f"e2e-{run_id}@example.com", "name": "E2E Owner"}))
+        if session_file:
+            owner.cookies.set(SESSION_COOKIE, Path(session_file).read_text(encoding="utf-8").strip(), domain=urlsplit(server).hostname)
+            signed = await owner.get("/api/me/campaigns")
+            if not check("the session signs the owner in", signed.status_code == 200, signed.status_code):
+                return 1
+        else:
+            step("owner signs in", await owner.post("/api/auth/dev", json={"email": f"e2e-{run_id}@example.com", "name": "E2E Owner"}))
         payout = env.get("PAYPAL_SANDBOX_PAYOUT_EMAIL") or found[0][0]
-        funded_id = await start(owner, BAKERY, f"E2E Bakery {run_id}", amount, payout)
-        missed_id = await start(owner, GYM, f"E2E Gym {run_id}", amount, payout)
+        funded_id = await start(owner, BAKERY, funded_name or f"E2E Bakery {run_id}", amount, payout)
+        missed_id = await start(owner, GYM, missed_name or f"E2E Gym {run_id}", amount, payout)
         if not funded_id or not missed_id:
             return 1
 
@@ -246,8 +265,10 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--server", default="http://127.0.0.1:8781")
     parser.add_argument("--amount", default="5.00", help="each pledge, 5.00 to 200.00")
+    parser.add_argument("--funded-name", help="the business name of the campaign that is funded (default: E2E Bakery and a number)")
+    parser.add_argument("--missed-name", help="the business name of the campaign that is cancelled (default: E2E Gym and a number)")
     options = parser.parse_args()
-    return asyncio.run(run(options.server.rstrip("/"), options.amount))
+    return asyncio.run(run(options.server.rstrip("/"), options.amount, options.funded_name, options.missed_name))
 
 
 if __name__ == "__main__":

@@ -104,7 +104,9 @@ It is a client of the app's own public API, like any outside assistant:
 
 - The server decides which one campaign the person's latest message asks to back, or that it asks none, with fixed rules
   ([`app/intent.py`](../app/intent.py)) before any model is asked. A bare "yes" means only the campaign the server just
-  asked about; a hesitation, a question or a condition is not consent. When unsure, it asks again.
+  asked about; a hesitation, a question or a condition is not consent. When unsure, it asks again. The server asks that
+  question itself, in its own words, whenever an answer puts exactly one campaign on the page, whether the model or the
+  plain rules worded the rest.
 - The model never sees a receipt, an order id, an approval link, the limits' numbers or any payment detail. Every sentence
   about a pledge (prepared, refused, held back, asked about) is written by the server, not the model.
 - The model's other answers are checked: a link, a claim that money moved or was confirmed, a claim that a pledge was

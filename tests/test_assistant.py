@@ -305,8 +305,11 @@ def test_the_model_finds_and_explains_and_the_page_shows_what_it_found():
     with site(model) as s:
         bakery = open_campaign(s, "Crumb Theory", "bakery")
         answer = Chat(s).say("is anyone opening a bakery near me?")
-        assert answer["mode"] == "model" and answer["reply"] == "Crumb Theory is the bakery nearest you, and it only opens if enough neighbors join."
-        assert [c["id"] for c in answer["cards"]] == answer["shown"] == [bakery] and answer["asked"] is None
+        # The model words the explanation; the server asks about the one campaign on the page, as the plain answer does.
+        assert answer["mode"] == "model" and answer["reply"] == (
+            "Crumb Theory is the bakery nearest you, and it only opens if enough neighbors join. "
+            "Do you want me to prepare a pledge for Crumb Theory? Say yes, or press Back it on its card.")
+        assert [c["id"] for c in answer["cards"]] == answer["shown"] == [bakery] and answer["asked"] == bakery
         assert "Searched open campaigns near Testville" in answer["trace"][0]["summary"]
         first, second = model.requests
         assert [tool["function"]["name"] for tool in first["tools"]] == ["find_campaigns", "get_campaign", "prepare_pledge"]
@@ -314,6 +317,46 @@ def test_the_model_finds_and_explains_and_the_page_shows_what_it_found():
         assert first["messages"][-1] == {"role": "user", "content": "is anyone opening a bakery near me?"}
         assert model.tool_results()[0]["count"] == 1 and model.tool_results()[0]["campaigns"][0]["name"] == "Crumb Theory"
         assert second["messages"][-1]["role"] == "tool" and nothing_prepared(s)
+
+
+def test_a_yes_to_the_servers_question_after_the_models_answer_prepares_exactly_one_pledge():
+    model = ScriptedModel(
+        call(use("find_campaigns", place="Testville", kind="bakery")), say("Crumb Theory is the bakery nearest you."),
+        say("Okay."),  # the model does nothing about the yes: the server prepares what the person asked for
+    )
+    with site(model) as s:
+        bakery = open_campaign(s, "Crumb Theory", "bakery")
+        chat = Chat(s, token(s))
+        found = chat.say("is anyone opening a bakery near me?")
+        assert found["mode"] == "model" and found["asked"] == bakery and nothing_prepared(s)
+        done = chat.say("yes")
+        assert done["pledge"]["campaign_id"] == bakery and done["mode"] == "plain" and done["asked"] is None
+        assert done["reply"].startswith("I prepared your pledge for Crumb Theory.")
+        assert [r["campaign_id"] for r in table(s.client, pledges)] == [bakery] and len(orders(s)) == 1
+
+
+def test_the_model_asks_nothing_about_two_campaigns_and_a_yes_then_backs_nothing():
+    model = ScriptedModel(
+        call(use("find_campaigns", place="Testville", kind="cafe")), say("Two cafes are open near you."), say("Happy to help."),
+    )
+    with site(model) as s:
+        open_campaign(s, "Crumb Theory"), open_campaign(s, "Low End")
+        chat = Chat(s, token(s))
+        found = chat.say("what cafes are open near me?")
+        assert found["mode"] == "model" and found["reply"] == "Two cafes are open near you." and found["asked"] is None
+        assert len(found["shown"]) == 2
+        assert chat.say("yes")["pledge"] is None and nothing_prepared(s)
+
+
+def test_a_long_answer_of_the_model_never_cuts_the_servers_question_short():
+    model = ScriptedModel(call(use("find_campaigns", place="Testville", kind="bakery")), say("Crumb Theory is a neighborhood bakery. " * 40))
+    with site(model) as s:
+        bakery = open_campaign(s, "Crumb Theory", "bakery")
+        answer = Chat(s).say("is anyone opening a bakery near me?")
+        question = "Do you want me to prepare a pledge for Crumb Theory? Say yes, or press Back it on its card."
+        assert answer["mode"] == "model" and answer["asked"] == bakery
+        assert answer["reply"].endswith(question) and len(answer["reply"]) <= 700
+        assert answer["reply"].count("…") == 1  # the model's words were shortened, not the question
 
 
 def test_the_model_never_sees_the_receipt_the_approval_link_the_limits_or_the_terms_hash():

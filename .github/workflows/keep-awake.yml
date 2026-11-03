@@ -1,10 +1,11 @@
 name: Keep the demo awake
 
 # The free Render instance sleeps after 15 idle minutes and takes about a minute to wake (the Cloudflare front door shows
-# a note meanwhile). This pings it every 10 minutes on the days people are likely to open it: around the submission
-# (Nov 9-16) and through judging (Dec 1-16), and wakes it if Render ever lets it sleep. Dates are UTC. Scheduled runs
-# are free for public repositories, and the 750 free instance hours a month cover that many days awake. Set the
-# repository secret BACKEND_URL (the backend's own address, such as https://threshold.onrender.com).
+# a note meanwhile). The app keeps itself awake on these same days (KEEP_AWAKE_URL and KEEP_AWAKE_WINDOWS, app/keepawake.py);
+# this pings it every 10 minutes on the days people are likely to open it: around the submission (Nov 9-16) and through
+# judging (Dec 1-16), which wakes it at the start of a window and again if Render ever lets it sleep. Dates are UTC.
+# Scheduled runs are free for public repositories, and the 750 free instance hours a month cover that many days awake.
+# Set the repository secret BACKEND_URL (the backend's own address, such as https://threshold-hwl6.onrender.com).
 on:
   schedule:
     - cron: "*/10 * 9-16 11 *"  # the submission, and a margin

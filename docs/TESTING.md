@@ -159,8 +159,8 @@ This needs three different sandbox buyers: one PayPal account counts once, howev
    released.
 
 While a campaign is short of its goal, **Close and collect** is not offered; once the goal is met, only **Close and
-collect** is. At the deadline, a campaign short of its goal expires and every hold is voided. The free server's scheduled
-settlement runs every 3 hours, and the app's own every few minutes while it is awake, so this happens soon after the
+collect** is. At the deadline, a campaign short of its goal expires and every hold is voided. The server's own settlement
+pass runs every 30 minutes while it is awake (and a scheduled job can wake it), so this happens soon after the
 deadline; until then the owner sees **Settle now**, which settles at once.
 
 ## 9. From another AI assistant (MCP)

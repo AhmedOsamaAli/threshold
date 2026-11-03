@@ -17,9 +17,12 @@ services:
       - key: PROXY_SECRET
         sync: false
       # The front door's health check (https://<the Pages address>/api/health): the app visits it every 5 minutes so
-      # the free instance never sleeps.
+      # the free instance does not sleep, but only on these days (UTC, both ends included), so the workspace's 750 free
+      # hours a month last: the submission, and judging with its margin.
       - key: KEEP_AWAKE_URL
         sync: false
+      - key: KEEP_AWAKE_WINDOWS
+        value: 2026-11-09/2026-11-16,2026-12-01/2026-12-16
       - key: LLM_API_KEY
         sync: false
       - key: LLM_BASE_URL
@@ -35,7 +38,8 @@ services:
       - key: GROQ_API_KEY
         sync: false
       # PayPal (the sandbox until PAYPAL_ENV=live), its webhook, the scheduled settlement's secret
-      # and the in-app settlement period.
+      # and the in-app settlement period: every half hour, because each pass keeps the free Neon database awake for 5
+      # minutes, and an owner's "Close and collect" does not wait for a pass.
       - key: PAYPAL_CLIENT_ID
         sync: false
       - key: PAYPAL_CLIENT_SECRET
@@ -47,7 +51,7 @@ services:
       - key: CRON_SECRET
         sync: false
       - key: SETTLE_EVERY_S
-        value: "180"
+        value: "1800"
       # Signs each pledge's terms and the limits a person sets; a hosted site prepares no pledges without it.
       - key: SIGNING_KEY
         sync: false

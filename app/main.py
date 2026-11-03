@@ -128,7 +128,10 @@ def create_app(
         app.state.map_limiter = RateLimiter(MAP_REQUESTS_PER_HOUR, 3600)
         app.state.auth_limiter = RateLimiter(SIGN_INS_PER_HOUR, 3600)
         app.state.responses = ResponseCache(settings.response_cache_mb * 1024 * 1024)
-        keeper = asyncio.create_task(keep_awake(settings.keep_awake_url)) if settings.keep_awake_url else None
+        keeper = (
+            asyncio.create_task(keep_awake(settings.keep_awake_url, windows=settings.keep_awake_windows))
+            if settings.keep_awake_url else None
+        )
         every = settings.settle_every if settle_every == SETTLE_FROM_SETTINGS else settle_every
         try:
             async with founders.running(app, every):

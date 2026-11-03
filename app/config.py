@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
+from datetime import date
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -55,6 +56,21 @@ def _env_or(name: str, default: float) -> float:
 
 def _env_flag(name: str) -> bool:
     return _env(name).lower() in ("1", "true", "yes", "on")
+
+
+def _date_windows(name: str) -> tuple[tuple[date, date], ...]:
+    """Days written 'first/last' (YYYY-MM-DD, both included, UTC), comma-separated; one day is just 'first'. A window that
+    is malformed or ends before it starts is left out rather than stopping the server."""
+    found: list[tuple[date, date]] = []
+    for item in _env_list(name):
+        first, _, last = item.partition("/")
+        try:
+            window = (date.fromisoformat(first.strip()), date.fromisoformat((last or first).strip()))
+        except ValueError:
+            continue
+        if window[0] <= window[1]:
+            found.append(window)
+    return tuple(found)
 
 
 def origin_of(url: str) -> str | None:
@@ -124,8 +140,9 @@ class Settings:
     # A free Render instance sleeps after 15 minutes without a visit and takes about 40 seconds to wake, so the app visits
     # this address every 5 minutes: the front door's health check (https://<the Pages address>/api/health), so each
     # visit comes back in through Cloudflare like a visitor's. Empty: off. A workspace's 750 free hours a month keep one
-    # instance awake, not two.
+    # instance awake, not two, so KEEP_AWAKE_WINDOWS can limit the visits to the days it matters (see keepawake.py).
     keep_awake_url: str = field(default_factory=lambda: _env("KEEP_AWAKE_URL"))
+    keep_awake_windows: tuple[tuple[date, date], ...] = field(default_factory=lambda: _date_windows("KEEP_AWAKE_WINDOWS"))
     # PayPal (developer.paypal.com, Apps & Credentials), the sandbox until PAYPAL_ENV=live. Without
     # the keys nobody can pledge, and the pages say why.
     paypal_client_id: str = field(default_factory=lambda: _env("PAYPAL_CLIENT_ID"))

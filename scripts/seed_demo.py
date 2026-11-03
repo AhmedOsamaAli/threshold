@@ -9,7 +9,8 @@ Never set PUBLIC_URL for it: the development sign-in is off when a site is hoste
     python scripts/seed_demo.py --payout owner@example.com --days 2    # deadlines two days away, for a short test
 
 The businesses are made up, and every page says its pledges are demo ones. A campaign lasts at most 27 days, so a showcase
-seeded for a judging period is seeded again when the first one runs out.
+seeded for a judging period is seeded again when the first one runs out: running this again starts every business whose
+campaign is no longer open, and leaves the open ones alone.
 """
 from __future__ import annotations
 
@@ -76,10 +77,11 @@ def main() -> int:
         if signed.status_code != 200:
             print(f"Could not sign in: {signed.status_code} {signed.text}. Is PUBLIC_URL set? Leave it unset for this.")
             return 1
-        started = {entry.get("name") or entry.get("title") for entry in client.get("/api/me/campaigns").json()["campaigns"]}
+        listed = client.get("/api/me/campaigns").json()["campaigns"]
         for item in chosen:
-            if item["name"] in started:
-                print(f"Already started: {item['name']}")
+            # A title reads "Be a founding supporter of <name>": a campaign still open for this business is not started again.
+            if any(item["name"] in (entry.get("title") or "") and entry.get("status") == "open" for entry in listed):
+                print(f"Already open: {item['name']}")
                 continue
             deadline = (datetime.now(UTC) + timedelta(days=args.days)).replace(microsecond=0).isoformat()
             terms = {key: value for key, value in item.items()} | {"deadline": deadline}

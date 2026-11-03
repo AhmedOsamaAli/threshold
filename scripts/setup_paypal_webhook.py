@@ -1,13 +1,14 @@
-"""One-off setup for Threshold: registers the PayPal webhook for a backend's address, writes its id to .env as
-PAYPAL_WEBHOOK_ID, and adds a CRON_SECRET there if there is none. Prints no secret values.
+"""One-off setup for Threshold: registers the PayPal webhook for a backend's address, writes its id to the settings file
+as PAYPAL_WEBHOOK_ID, and adds a CRON_SECRET there if there is none. Prints no secret values.
 
     python scripts/setup_paypal_webhook.py https://<the backend's address>
 
 The address is the backend's own (PayPal delivers to {address}/api/paypal/webhook, over HTTPS). A webhook already
 registered for that address is reused, its event types brought up to date. Uses PAYPAL_CLIENT_ID and
-PAYPAL_CLIENT_SECRET from .env (or the file ENV_FILE names), writes only to this repository's own .env, and refuses a
-live PayPal account: set the same PAYPAL_WEBHOOK_ID on the backend (Render's environment), and the same CRON_SECRET there
-and in the repository's secrets for .github/workflows/settle.yml.
+PAYPAL_CLIENT_SECRET from the settings file (.env, or the file ENV_FILE names) and writes only to that same file, so
+point ENV_FILE at Threshold's own file, never at another project's, whose webhook id this would replace. Refuses a live
+PayPal account: set the same PAYPAL_WEBHOOK_ID on the backend (Render's environment), and the same CRON_SECRET there and in
+the repository's secrets for .github/workflows/settle.yml.
 """
 from __future__ import annotations
 
@@ -21,10 +22,10 @@ import httpx
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from app.config import settings  # noqa: E402
+from app.config import env_path, settings  # noqa: E402
 from app.payments.paypal import WEBHOOK_EVENTS, PayPalClient, PayPalError  # noqa: E402
 
-ENV = ROOT / ".env"
+ENV = env_path()
 
 
 def set_env(key: str, value: str, replace: bool = True) -> bool:
@@ -80,9 +81,9 @@ async def main(address: str) -> int:
             return 1
     events = sorted(event.get("name") for event in hook.get("event_types") or [])
     print(f"Webhook id {masked(hook['id'])}, {len(events)} event types: {', '.join(events)}")
-    print("PAYPAL_WEBHOOK_ID", "written to .env" if set_env("PAYPAL_WEBHOOK_ID", hook["id"]) else "already in .env")
-    print("CRON_SECRET", "added to .env" if set_env("CRON_SECRET", secrets.token_urlsafe(32), replace=False)
-          else "already in .env (kept)")
+    print("PAYPAL_WEBHOOK_ID", f"written to {ENV.name}" if set_env("PAYPAL_WEBHOOK_ID", hook["id"]) else f"already in {ENV.name}")
+    print("CRON_SECRET", f"added to {ENV.name}" if set_env("CRON_SECRET", secrets.token_urlsafe(32), replace=False)
+          else f"already in {ENV.name} (kept)")
     print("Set the same PAYPAL_WEBHOOK_ID and CRON_SECRET on the backend, and BACKEND_URL and CRON_SECRET as the "
           "repository's secrets for .github/workflows/settle.yml.")
     return 0

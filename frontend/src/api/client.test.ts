@@ -141,7 +141,7 @@ describe("fetchAwake", () => {
     const watcher = { asking: vi.fn(), answered: vi.fn(), waking: vi.fn() };
     const stop = watchEngine(watcher);
     try {
-      const kept = (cache: string) => json({ id: "ex" }, 200, { "x-walkin-cache": cache });
+      const kept = (cache: string) => json({ id: "ex" }, 200, { "x-threshold-cache": cache });
       await fetchAwake("/api/runs/ex", {}, fakeDeps(kept("hit")).deps);
       await fetchAwake("/api/runs/ex", {}, fakeDeps(kept("stale")).deps);
       expect(watcher.answered).not.toHaveBeenCalled();
@@ -156,7 +156,7 @@ describe("fetchAwake", () => {
 
 describe("fromEdge", () => {
   it("is an answer the front door gave from a copy it keeps", () => {
-    const answer = (cache?: string) => json({}, 200, cache ? { "x-walkin-cache": cache } : {});
+    const answer = (cache?: string) => json({}, 200, cache ? { "x-threshold-cache": cache } : {});
     expect(fromEdge(answer("hit"))).toBe(true);
     expect(fromEdge(answer("stale"))).toBe(true);
     expect(fromEdge(answer("miss"))).toBe(false);

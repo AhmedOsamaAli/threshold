@@ -26,10 +26,10 @@ COPY migrations ./migrations
 RUN python -m compileall -q --invalidation-mode checked-hash app migrations
 COPY --from=frontend /frontend/dist ./frontend/dist
 
-RUN useradd --create-home --uid 10001 walkin \
+RUN useradd --create-home --uid 10001 threshold \
     && mkdir -p /srv/.cache /srv/.data \
-    && chown -R walkin /srv/.cache /srv/.data
-USER walkin
+    && chown -R threshold /srv/.cache /srv/.data
+USER threshold
 
 EXPOSE 8000
 # Render's proxy terminates HTTPS; trusting its X-Forwarded-Proto lets the app see https (secure cookies, absolute URLs).

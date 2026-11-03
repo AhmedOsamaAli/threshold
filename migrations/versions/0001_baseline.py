@@ -1,4 +1,4 @@
-"""Baseline: users and their sessions, and Walk-in Founders' campaigns, pledges, payouts and PayPal's webhook events.
+"""Baseline: users and their sessions, and the campaigns, pledges, payouts and PayPal's webhook events.
 
 Revision ID: 0001
 Revises:

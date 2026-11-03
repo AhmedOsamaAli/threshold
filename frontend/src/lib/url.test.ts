@@ -3,7 +3,7 @@ import { absoluteUrl, googleMapsUrl, safeUrl, shortLink } from "./url";
 
 describe("absoluteUrl", () => {
   it("makes a path the API returns a link to share", () => {
-    expect(absoluteUrl("/p/c4f1e2", "https://walk-in.example")).toBe("https://walk-in.example/p/c4f1e2");
+    expect(absoluteUrl("/p/c4f1e2", "https://threshold.example")).toBe("https://threshold.example/p/c4f1e2");
   });
 });
 

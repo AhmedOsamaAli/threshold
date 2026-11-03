@@ -28,8 +28,3 @@ class GeocodeHit(BaseModel):
     label: str | None
     lat: float
     lon: float
-
-
-class ReverseHit(BaseModel):
-    label: str = Field(description="The street address and the part of town: '110 Bedford Avenue, Williamsburg'")
-    address: str = Field(description="OpenStreetMap's full address line")

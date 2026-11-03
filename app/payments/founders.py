@@ -1,4 +1,4 @@
-"""Walk-in Founders, plugged into the app: campaigns, pledges, settlement and payouts with PayPal.
+"""Campaigns, plugged into the app: campaigns, pledges, settlement and payouts with PayPal.
 
 install() adds the endpoints (a pledge's private receipt included), the answers that carry more than a detail
 (records.Problem), and PayPal's and the scheduler's callbacks to the paths the Origin check lets through, and keeps
@@ -45,7 +45,7 @@ SHUTDOWN_GRACE_S = 10
 CALLBACKS = frozenset({"/api/paypal/webhook", "/api/cron/settle"})
 # The web app's pages: a campaign and its proof, the list of open campaigns, starting one, a pledge's private receipt, the
 # assistant and Check a spot.
-PAGES = ("/p/{key}", "/founders", "/founders/start", "/r/{key}", "/ask", "/spot", "/proof/{key}")
+PAGES = ("/p/{key}", "/browse", "/start", "/r/{key}", "/ask", "/spot", "/proof/{key}")
 
 
 def paypal_config(state) -> dict:

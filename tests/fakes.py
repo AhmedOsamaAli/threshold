@@ -33,8 +33,5 @@ class StubGeocoder:
     async def search(self, query: str) -> list[dict]:
         return [{"label": f"{query}, Testville", "lat": SITE[0], "lon": SITE[1]}]
 
-    async def reverse(self, lat: float, lon: float, wanted=None) -> dict | None:
-        return {"label": "1 Test Street, Testville", "address": "1, Test Street, Testville, Testland"}
-
     async def aclose(self) -> None:
         pass

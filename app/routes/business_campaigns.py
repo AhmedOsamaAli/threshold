@@ -16,7 +16,7 @@ from ..payments.records import CURRENCY, BusinessKind, Problem, email_problem, m
 from ..ratelimit import client_ip
 from .campaigns import MoneyTerms, check_terms
 
-log = logging.getLogger("walkin")
+log = logging.getLogger("threshold")
 router = APIRouter(prefix="/api")
 
 

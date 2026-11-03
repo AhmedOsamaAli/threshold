@@ -11,10 +11,10 @@
  * /api/* reaches the function, so nothing under /__edge/ is ever requested directly.
  */
 
-/** How the edge answered, in the `x-walkin-cache` header of every /api response. */
+/** How the edge answered, in the `x-threshold-cache` header of every /api response. */
 export type CacheStatus = "hit" | "miss" | "stale" | "bypass";
 
-export const CACHE_STATUS_HEADER = "x-walkin-cache";
+export const CACHE_STATUS_HEADER = "x-threshold-cache";
 
 /** The longest a stale copy is kept, whatever the answer's stale-if-error says: a week. */
 export const STALE_MAX_SECONDS = 7 * 24 * 60 * 60;
@@ -22,7 +22,7 @@ export const STALE_MAX_SECONDS = 7 * 24 * 60 * 60;
 /**
  * Bumped to drop every copy the edge holds at the next deploy, should a stored answer ever need to go at once. v2: stale
  * copies are kept only for answers with stale-if-error; none kept under the earlier rule can answer. v3: /api/config
- * gained PayPal's settings with Founders. v4: /api/config lost its survey switch, and the answers of the endpoints the
+ * gained PayPal's settings. v4: /api/config lost its survey switch, and the answers of the endpoints the
  * app no longer has are gone.
  */
 const KEY_VERSION = "v4";

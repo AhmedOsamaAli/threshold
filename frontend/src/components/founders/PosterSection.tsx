@@ -15,7 +15,7 @@ import { posterDesign, usePosterAppearance } from "../../state/poster";
 import { useSession } from "../../state/session";
 import { PosterArt, type PosterStatus } from "./PosterArt";
 
-const KEY = "walk-in-poster:";
+const KEY = "threshold-poster:";
 
 function stored(scope: string): { appearance: PosterAppearance; notice: string | null } {
   if (typeof window === "undefined") return { appearance: { ...DEFAULT_POSTER_APPEARANCE }, notice: null };

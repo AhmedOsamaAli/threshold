@@ -244,7 +244,7 @@ def test_the_client_asks_the_next_instance_when_one_fails_and_caches_the_answer(
     assert "opening_hours" not in scan.places[0]["tags"]  # only the tags the rules read are kept
     assert [str(r.url) for r in seen] == list(ENDPOINTS[:2])
     request = seen[1]
-    assert "github.com/AhmedOsamaAli/walk-in" in request.headers["user-agent"]
+    assert "github.com/AhmedOsamaAli/threshold" in request.headers["user-agent"]
     assert request.method == "POST" and b"poly%3A" in request.content
     assert len(list(tmp_path.glob("*.json"))) == 1
     # A second scan of the same walk reads the cache; the instance that failed is asked last next time.

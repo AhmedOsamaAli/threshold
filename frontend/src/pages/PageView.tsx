@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { foundersChunk, homeChunk, privacyChunk, trustChunk } from "../chunks";
+import { campaignsChunk, homeChunk, privacyChunk, trustChunk } from "../chunks";
 import { ErrorBoundary } from "../components/ErrorBoundary";
 import { lazyComponent } from "../lib/lazy";
 import { pageUrl, type Route } from "../lib/routes";
@@ -8,11 +8,11 @@ import { NotFoundPage } from "./NotFoundPage";
 // Each page loads with its own chunk the first time it opens.
 const PrivacyPage = lazyComponent(privacyChunk, (chunk) => chunk.PrivacyPage);
 const HomePage = lazyComponent(homeChunk, (chunk) => chunk.HomePage);
-const FoundersPage = lazyComponent(foundersChunk, (chunk) => chunk.FoundersPage);
-const CampaignPage = lazyComponent(foundersChunk, (chunk) => chunk.CampaignPage);
-const MyCampaignsPage = lazyComponent(foundersChunk, (chunk) => chunk.MyCampaignsPage);
-const ReceiptPage = lazyComponent(foundersChunk, (chunk) => chunk.ReceiptPage);
-const StartCampaignPage = lazyComponent(foundersChunk, (chunk) => chunk.StartCampaignPage);
+const BrowsePage = lazyComponent(campaignsChunk, (chunk) => chunk.BrowsePage);
+const CampaignPage = lazyComponent(campaignsChunk, (chunk) => chunk.CampaignPage);
+const MyCampaignsPage = lazyComponent(campaignsChunk, (chunk) => chunk.MyCampaignsPage);
+const ReceiptPage = lazyComponent(campaignsChunk, (chunk) => chunk.ReceiptPage);
+const StartCampaignPage = lazyComponent(campaignsChunk, (chunk) => chunk.StartCampaignPage);
 const AskPage = lazyComponent(trustChunk, (chunk) => chunk.AskPage);
 const ProofPage = lazyComponent(trustChunk, (chunk) => chunk.ProofPage);
 const SpotPage = lazyComponent(trustChunk, (chunk) => chunk.SpotPage);
@@ -44,8 +44,8 @@ function Shown({ route }: { route: Route }) {
   switch (route.page) {
     case "home":
       return <HomePage />;
-    case "founders":
-      return <FoundersPage />;
+    case "browse":
+      return <BrowsePage />;
     case "start-campaign":
       return <StartCampaignPage />;
     case "my-campaigns":

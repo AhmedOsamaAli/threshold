@@ -60,7 +60,6 @@ def test_everything_else_is_no_store():
             client.get("/api/campaigns/unknown"),  # 404
             client.get("/api/catchment", params={"lat": 40.0, "lon": -73.0}),
             client.get("/api/geocode", params={"q": "Main Street"}),
-            client.get("/api/reverse", params={"lat": 40.0, "lon": -73.0}),
             client.get("/api/catchment", params={"lat": 123, "lon": -73.0}),  # 422
             client.post("/api/auth/logout"),
             client.delete("/api/me"),  # 401

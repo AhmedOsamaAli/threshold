@@ -1,4 +1,4 @@
-"""Walk-in Founders' campaigns: finding them, the campaign page, and pledging. A signed-in owner starts a campaign in
+"""Campaigns: finding them, the campaign page, and pledging. A signed-in owner starts a campaign in
 app.routes.business_campaigns, from their own description of the business and the money terms they choose, and the AI
 drafts the words. Neighbors pledge with PayPal without an account: each pledge is an AUTHORIZE order, so PayPal only
 holds the money, and a supporter may withdraw while the campaign is open, on its page or with the pledge's private
@@ -36,7 +36,7 @@ from ..settlement import Refused
 from ..trust import limits as limit_rules
 from ..trust import terms as pledge_terms
 
-log = logging.getLogger("walkin")
+log = logging.getLogger("threshold")
 router = APIRouter(prefix="/api")
 CAMPAIGN_ID = r"^[A-Za-z0-9_-]{1,32}$"
 # A pledge's PayPal order id, or our own pledge id (the redirect flow's return link carries it).

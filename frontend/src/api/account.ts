@@ -7,7 +7,7 @@ export interface AppConfig {
   google_client_id: string | null;
   /** Development sign-in by email: never on the hosted site. */
   dev_login: boolean;
-  /** PayPal for Founders' pledges; a server without it sends none, or `enabled: false`. */
+  /** PayPal for pledges; a server without it sends none, or `enabled: false`. */
   paypal?: PayPalConfig;
 }
 
@@ -31,7 +31,7 @@ export const account = {
   signOut: () => request<undefined>("/api/auth/logout", post()),
   /** Deletes the account (204). */
   deleteMe: () => request<undefined>("/api/me", { method: "DELETE" }),
-  /** GET /api/me/campaigns: the account's Founders campaigns, newest first, at most 100. */
+  /** GET /api/me/campaigns: the account's campaigns, newest first, at most 100. */
   campaigns: async (signal?: AbortSignal) =>
     (await request<{ campaigns: MyCampaign[] }>("/api/me/campaigns", { signal })).campaigns,
 };

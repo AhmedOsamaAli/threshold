@@ -31,7 +31,7 @@ from . import tls
 if TYPE_CHECKING:
     from openai import APIStatusError, AsyncOpenAI
 
-log = logging.getLogger("walkin")
+log = logging.getLogger("threshold")
 
 ToolHandler = Callable[[dict], Awaitable[Any]]
 OnToolCall = Callable[[str, dict, str | None], Awaitable[None]]

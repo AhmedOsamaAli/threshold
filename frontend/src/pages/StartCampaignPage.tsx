@@ -23,7 +23,7 @@ export function StartCampaignPage() {
   const [error, setError] = useState<string | null>(null);
   const [business, setBusiness] = useState<BusinessDescription | null>(null);
   const search = useRef(0);
-  useDocumentTitle("Start a Founders campaign");
+  useDocumentTitle("Start a campaign");
   const paypal = paypalOf(config);
 
   async function findAddress() {
@@ -57,13 +57,13 @@ export function StartCampaignPage() {
 
   return (
     <Page>
-      <PageHead eyebrow="Founders your business" title="Opening something? Let the neighbors back it."
+      <PageHead eyebrow="Start · Your business" title="Opening something? Let the neighbors back it."
         titleRef={titleRef} standfirst="Describe your business, set the terms and share a campaign your neighbors can back with PayPal." />
       <section className="pg-sec start-campaign" aria-label="Start your campaign">
         {phase === "loading" ? <p role="status">Checking your sign-in...</p> : !user ? (
           <div className="prompt-card">
             <h2 className="cp-action-title">Sign in to be the campaign's owner</h2>
-            <p>You choose the terms and publish. Backing a campaign never needs a Walk-in account.</p>
+            <p>You choose the terms and publish. Backing a campaign never needs a Threshold account.</p>
             <SignInOptions />
           </div>
         ) : paypal?.enabled === false ? (
@@ -73,7 +73,7 @@ export function StartCampaignPage() {
             <div className="cp-said">
               <b>{business.name}</b> · {business.address}
               <p>{business.description}</p>
-              <p>Walk-in has not verified your description. AI may help write it, but cannot prove local demand.</p>
+              <p>Threshold has not verified your description. AI may help write it, but cannot prove local demand.</p>
               <button type="button" className="text-button" onClick={() => { setBusiness(null); }}>
                 Change the business details and start a fresh draft
               </button>

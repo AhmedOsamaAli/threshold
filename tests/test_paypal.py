@@ -140,7 +140,7 @@ def test_an_order_pays_now_without_shipping_and_carries_idempotency_headers():
             "description": "Walk-in order: Golden Hour",
         }],
         "payment_source": {"paypal": {"experience_context": {
-            "brand_name": "Walk-in", "shipping_preference": "NO_SHIPPING", "user_action": "PAY_NOW",
+            "brand_name": "Threshold", "shipping_preference": "NO_SHIPPING", "user_action": "PAY_NOW",
             "payment_method_preference": "IMMEDIATE_PAYMENT_REQUIRED",
         }}},
     }

@@ -159,7 +159,7 @@ def test_sign_out_ends_the_session_for_good(google):
         out = client.post("/api/auth/logout")
         assert out.status_code == 204
         cleared = set_cookie_headers(out, SESSION_COOKIE)[0].lower()
-        assert 'walkin_session=""' in cleared or "max-age=0" in cleared
+        assert 'threshold_session=""' in cleared or "max-age=0" in cleared
         assert rows(client, sessions) == []
         client.cookies.set(SESSION_COOKIE, token)  # the old cookie, replayed
         assert client.get("/api/me").json() == {"user": None}
@@ -258,7 +258,7 @@ def test_the_development_login_exists_only_in_development(monkeypatch):
         assert client.get("/api/config").json()["dev_login"] is True
         assert client.post("/api/auth/dev", json={"email": "not an email", "name": ""}).status_code == 400
 
-    for changes in ({"auth_dev_login": False}, {"public_url": "https://walk-in.example.com"}):
+    for changes in ({"auth_dev_login": False}, {"public_url": "https://threshold.example.com"}):
         configure(monkeypatch, **changes)
         with make_client(base_url="https://testserver") as client:
             assert client.post("/api/auth/dev", json={"email": "tester@example.com"}).status_code == 404
@@ -266,8 +266,8 @@ def test_the_development_login_exists_only_in_development(monkeypatch):
 
 
 def test_cookies_are_secure_on_https(monkeypatch, google):
-    configure(monkeypatch, public_url="https://walk-in.example.com")
-    with make_client(google=google, base_url="https://walk-in.example.com") as client:
+    configure(monkeypatch, public_url="https://threshold.example.com")
+    with make_client(google=google, base_url="https://threshold.example.com") as client:
         signed = client.post("/api/auth/google", json={"credential": google.token()})
         assert "secure" in set_cookie_headers(signed, SESSION_COOKIE)[0].lower()
         assert client.get("/api/me").json()["user"]
@@ -278,7 +278,7 @@ def test_cookies_are_secure_on_https(monkeypatch, google):
 
 
 def test_unsafe_api_calls_from_other_sites_are_refused(monkeypatch):
-    configure(monkeypatch, public_url="https://walk-in.example.com", allowed_origins=("https://preview.example.com",),
+    configure(monkeypatch, public_url="https://threshold.example.com", allowed_origins=("https://preview.example.com",),
               auth_dev_login=False)
     with make_client() as client:
         def post(origin: str | None, path: str = "/api/auth/logout") -> httpx.Response:
@@ -289,8 +289,8 @@ def test_unsafe_api_calls_from_other_sites_are_refused(monkeypatch):
         assert post("https://evil.example.com").json() == {"detail": refusal}
         assert post("null").status_code == 403
         assert post("http://localhost:5173").status_code == 403  # the hosted site trusts no dev server
-        assert post("https://walk-in.example.com").status_code == 204
-        assert post("https://Walk-In.example.com/").status_code == 204
+        assert post("https://threshold.example.com").status_code == 204
+        assert post("https://Threshold.example.com/").status_code == 204
         assert post("https://preview.example.com").status_code == 204
         assert post("http://testserver").status_code == 204  # the server's own origin
         assert post(None).status_code == 204

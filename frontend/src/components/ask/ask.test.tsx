@@ -105,7 +105,7 @@ describe("a pledge prepared for approval", () => {
 
   it("points to the signed terms, the proof and the person's private receipt", () => {
     const html = render();
-    expect(html).toContain("Signed terms a1b2c3d4e5f6");
+    expect(html).toContain('Signed terms <span class="raw">a1b2c3d4e5f6</span>');
     expect(html).toContain('href="/proof/c4f1e2"');
     expect(html).toContain(`https://dayone.test/r/${RECEIPT}`);
   });

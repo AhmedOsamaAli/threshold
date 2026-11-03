@@ -30,7 +30,7 @@ from .payments.paypal import (
 )
 from .payments.records import campaign_of, major, minor_or_none, pledge_of
 
-log = logging.getLogger("walkin")
+log = logging.getLogger("threshold")
 
 # What a settlement may change on a pledge, as the pledges module reports it.
 PLEDGE_FIELDS = ("status", "capture_id", "capture_status", "error", "reauthorization_id", "reauthorized_at")
@@ -219,7 +219,7 @@ class Settler:
         try:
             answer = await self.paypal.create_payout(
                 sender_batch_id=campaign_id, receiver=payout["email"], amount=amount, currency=payout["currency"],
-                note=f"{supporters} founding supporters backed {name} with Walk-in Founders. This is their pledges, "
+                note=f"{supporters} founding supporters backed {name} with Threshold. This is their pledges, "
                      f"after PayPal's fees.",
                 email_subject=PAYOUT_SUBJECT,
                 email_message=f"Your campaign for {name} met its goal: here is what your founding supporters pledged.",

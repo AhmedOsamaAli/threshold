@@ -1,4 +1,4 @@
-"""Walk-in Founders' records: pledge campaigns, their pledges and payouts, and what is due for settling."""
+"""Threshold's records: pledge campaigns, their pledges and payouts, and what is due for settling."""
 from __future__ import annotations
 
 import math

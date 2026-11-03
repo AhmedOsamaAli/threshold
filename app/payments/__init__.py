@@ -1,4 +1,4 @@
-"""Payments: Walk-in Founders' pledges and payouts, through PayPal.
+"""Payments: Threshold's pledges and payouts, through PayPal.
 
 paypal    the PayPal REST client (Orders v2, Payments v2, Payouts v1, Webhooks v1) and pure readers of its answers
 pledges   founding-supporter campaigns: terms, progress, settlement, the AI-drafted pitch and the rules its words keep

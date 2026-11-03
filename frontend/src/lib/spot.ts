@@ -63,7 +63,7 @@ export function topKindsText(kinds: readonly { kind: string; count: number }[]):
   return kinds.map((each) => `${each.kind} ${each.count}`).join(", ");
 }
 
-/** The places to try first, each one checked on a real run (docs/founders/CONTRACT.md). */
+/** The places to try first, each one checked on a real run (docs/CONTRACT.md). */
 export const SPOT_EXAMPLES = [
   { address: "East Austin, Austin", kind: "cafe" },
   { address: "Logan Square, Chicago", kind: "gym" },

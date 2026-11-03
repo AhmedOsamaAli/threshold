@@ -1,4 +1,4 @@
-/* The Ask page's assistant (POST /api/assistant), as docs/founders/CONTRACT.md has it. */
+/* The Ask page's assistant (POST /api/assistant), as docs/CONTRACT.md has it. */
 import { LIMITS_HEADER, type Limits } from "./trust";
 import { post, request } from "./client";
 

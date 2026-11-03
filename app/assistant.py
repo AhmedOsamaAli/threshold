@@ -37,7 +37,7 @@ from .payments.records import CURRENCY, KINDS
 from .ratelimit import client_ip
 from .trust import limits as limit_rules
 
-log = logging.getLogger("walkin")
+log = logging.getLogger("threshold")
 
 MAX_STEPS = 5
 MODEL_SECONDS = 24.0

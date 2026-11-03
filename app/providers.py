@@ -15,7 +15,7 @@ from typing import Any
 from .config import Settings
 from .llm import LLM, Provider
 
-log = logging.getLogger("walkin")
+log = logging.getLogger("threshold")
 
 
 def build_llm(settings: Settings) -> LLM:

@@ -1,16 +1,16 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { preloadLink, preloadRoute, routeOf } from "./preload";
 
-const spies = vi.hoisted(() => ({ privacy: vi.fn(), founders: vi.fn(), home: vi.fn(), trust: vi.fn() }));
+const spies = vi.hoisted(() => ({ privacy: vi.fn(), campaigns: vi.fn(), home: vi.fn(), trust: vi.fn() }));
 
 vi.mock("./chunks", () => ({
   privacyChunk: { preload: spies.privacy },
-  foundersChunk: { preload: spies.founders },
+  campaignsChunk: { preload: spies.campaigns },
   homeChunk: { preload: spies.home },
   trustChunk: { preload: spies.trust },
 }));
 
-const BASE = "https://walkin.test/founders";
+const BASE = "https://threshold.test/browse";
 const TOKEN = "Av7v5rcNyjXToUQ9JyFkEyHFEHJ_jijs";
 
 afterEach(() => {
@@ -22,21 +22,21 @@ describe("what an address needs", () => {
   it("starts the chunk that draws each page", () => {
     preloadRoute({ page: "privacy" });
     expect(spies.privacy).toHaveBeenCalledTimes(1);
-    expect(spies.founders).not.toHaveBeenCalled();
+    expect(spies.campaigns).not.toHaveBeenCalled();
 
-    preloadRoute({ page: "founders" });
+    preloadRoute({ page: "browse" });
     preloadRoute({ page: "start-campaign" });
     preloadRoute({ page: "my-campaigns" });
     preloadRoute({ page: "campaign", id: "c4f1e2", pledge: null, cancelled: false });
     preloadRoute({ page: "receipt", token: TOKEN });
-    expect(spies.founders).toHaveBeenCalledTimes(5);
+    expect(spies.campaigns).toHaveBeenCalledTimes(5);
     expect(spies.privacy).toHaveBeenCalledTimes(1);
   });
 
   it("starts the home page's own chunk, and the trust chunk for the assistant, a proof and Check a spot", () => {
     preloadRoute({ page: "home" });
     expect(spies.home).toHaveBeenCalledTimes(1);
-    expect(spies.founders).not.toHaveBeenCalled();
+    expect(spies.campaigns).not.toHaveBeenCalled();
 
     preloadRoute({ page: "ask" });
     preloadRoute({ page: "spot" });
@@ -47,7 +47,7 @@ describe("what an address needs", () => {
 
   it("starts nothing for an address the app has no page for", () => {
     preloadRoute({ page: "not-found", path: "/s/099134cbfaec" });
-    expect(spies.founders).not.toHaveBeenCalled();
+    expect(spies.campaigns).not.toHaveBeenCalled();
     expect(spies.privacy).not.toHaveBeenCalled();
     expect(spies.home).not.toHaveBeenCalled();
     expect(spies.trust).not.toHaveBeenCalled();
@@ -60,7 +60,7 @@ describe("what an address needs", () => {
       pledge: "5O190127TN364715T",
       cancelled: false,
     });
-    expect(routeOf(`https://walkin.test/r/${TOKEN}`, BASE)).toEqual({ page: "receipt", token: TOKEN });
+    expect(routeOf(`https://threshold.test/r/${TOKEN}`, BASE)).toEqual({ page: "receipt", token: TOKEN });
     expect(routeOf("https://www.paypal.com/", BASE)).toBeNull();
     expect(routeOf("http://[", BASE)).toBeNull();
   });
@@ -68,11 +68,11 @@ describe("what an address needs", () => {
   it("starts the code of a link's page, and nothing for a link that leaves the app", () => {
     vi.stubGlobal("window", { location: { href: BASE } });
     preloadLink("https://www.paypal.com/");
-    expect(spies.founders).not.toHaveBeenCalled();
+    expect(spies.campaigns).not.toHaveBeenCalled();
     expect(spies.privacy).not.toHaveBeenCalled();
     preloadLink("/privacy");
     expect(spies.privacy).toHaveBeenCalledTimes(1);
-    preloadLink("/founders/start");
-    expect(spies.founders).toHaveBeenCalledTimes(1);
+    preloadLink("/start");
+    expect(spies.campaigns).toHaveBeenCalledTimes(1);
   });
 });

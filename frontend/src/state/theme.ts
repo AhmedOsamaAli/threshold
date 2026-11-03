@@ -8,7 +8,7 @@ export type Theme = "light" | "dark";
 export const ThemeContext = createContext<Theme>("light");
 
 /** Shared with public/theme.js, which applies the theme before the first paint. */
-const STORAGE_KEY = "walk-in-theme";
+const STORAGE_KEY = "threshold-theme";
 const THEME_COLORS: Record<Theme, string> = { light: "#f5f4ef", dark: "#0d111c" };
 
 function savedTheme(): Theme | null {

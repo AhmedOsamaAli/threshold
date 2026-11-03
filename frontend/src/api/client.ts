@@ -75,7 +75,7 @@ export async function isWaking(response: Response): Promise<boolean> {
  * an answer says nothing about whether the engine is up.
  */
 export function fromEdge(response: Response): boolean {
-  const cached = response.headers.get("x-walkin-cache");
+  const cached = response.headers.get("x-threshold-cache");
   return cached === "hit" || cached === "stale";
 }
 

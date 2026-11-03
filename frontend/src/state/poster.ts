@@ -1,7 +1,7 @@
 import { useMemo, useSyncExternalStore } from "react";
 import { DEFAULT_POSTER_APPEARANCE, readPosterAppearance, type PosterAppearance } from "../lib/posterBrand";
 
-const KEY = "walk-in-poster:";
+const KEY = "threshold-poster:";
 type PosterStorage = Pick<Storage, "getItem" | "setItem">;
 
 /** One saved design per campaign, kept for this visit when the browser refuses storage. */

@@ -46,7 +46,7 @@ async function posterBlob(svg: SVGSVGElement, raster: boolean): Promise<Blob> {
 
 export function posterFileName(name: string, extension: "svg" | "png"): string {
   const slug = name.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-  return `${slug || "walk-in"}-poster.${extension}`;
+  return `${slug || "threshold"}-poster.${extension}`;
 }
 
 export async function downloadPoster(svg: SVGSVGElement, name: string, format: "svg" | "png"): Promise<void> {

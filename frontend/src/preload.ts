@@ -1,6 +1,6 @@
 /* What each address of the app needs before it can show, started ahead of need: the chunk of code that draws its page.
    Links start it as they are hovered, focused or touched; the app starts it for the address it opens on. */
-import { foundersChunk, homeChunk, privacyChunk, trustChunk } from "./chunks";
+import { campaignsChunk, homeChunk, privacyChunk, trustChunk } from "./chunks";
 import { parseRoute, type Route } from "./lib/routes";
 
 /** The chunk that draws a route's page; the page for an address the app does not have is part of the app itself. */
@@ -10,12 +10,12 @@ function chunkOf(route: Route) {
       return privacyChunk;
     case "home":
       return homeChunk;
-    case "founders":
+    case "browse":
     case "start-campaign":
     case "my-campaigns":
     case "campaign":
     case "receipt":
-      return foundersChunk;
+      return campaignsChunk;
     case "ask":
     case "spot":
     case "proof":

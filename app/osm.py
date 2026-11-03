@@ -35,7 +35,7 @@ from . import jsonio, tls
 from .catchment import Catchment
 from .geo import distance_m
 
-log = logging.getLogger("walkin")
+log = logging.getLogger("threshold")
 
 # Public instances with worldwide data, in the order they are asked. The French community instance answered when the
 # others did not (October 2026), with data some weeks old: each answer carries its date.
@@ -47,7 +47,7 @@ ENDPOINTS = (
     "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
     "https://overpass-api.de/api/interpreter",
 )
-USER_AGENT = "Walk-in/0.3 (+https://github.com/AhmedOsamaAli/walk-in)"
+USER_AGENT = "Threshold/0.1 (+https://github.com/AhmedOsamaAli/threshold)"
 CREDIT = "© OpenStreetMap contributors"  # the data is ODbL: https://www.openstreetmap.org/copyright
 
 TIMEOUT_S = 12.0  # one request
@@ -668,68 +668,6 @@ class OsmClient:
                 self.calls += 1
                 as_of = (data.get("osm3s") or {}).get("timestamp_osm_base")
                 return {"source": host, "as_of": as_of, "elements": elements}
-            raise OsmError("; ".join(problems) or "no time left to ask OpenStreetMap")
-        finally:
-            self._gate.release()
-
-    # ---------- Other queries: the street map (app.basemap) ----------
-
-    async def ask(
-        self, query: str, shape: Callable[[dict], dict], *, name: str, timeout: float = TIMEOUT_S,
-        budget: float | None = None,
-    ) -> dict:
-        """Another Overpass query, asked the way scan's is: the same instances in the same order, each resting
-        after it fails, two queries at a time at most, and the answer kept on disk for a week, as '{name}-{hash}.json'.
-        `shape` turns an Overpass answer into what is kept, raising OsmError when it holds nothing usable, so the next
-        instance is asked. Raises OsmError when none answers in `budget` seconds and no older answer is on disk."""
-        key = hashlib.sha1(query.encode("utf-8")).hexdigest()
-        cache_file = self._cache_dir / f"{name}-{key}.json"
-        saved = await asyncio.to_thread(jsonio.read, cache_file)
-        if saved and time.time() - saved[1] < self._max_age_s:
-            self.cache_hits += 1
-            return saved[0]
-        try:
-            data = await self._fetch_shaped(query, shape, timeout, self._budget if budget is None else budget)
-        except OsmError as exc:
-            if not saved:
-                raise
-            log.warning("OpenStreetMap did not answer (%s); using its answer from %s", exc, time.ctime(saved[1]))
-            self.cache_hits += 1
-            return saved[0]
-        await asyncio.to_thread(_save, cache_file, data)
-        return data
-
-    async def _fetch_shaped(self, query: str, shape: Callable[[dict], dict], timeout: float, budget: float) -> dict:
-        deadline = time.monotonic() + budget
-        try:
-            async with asyncio.timeout(budget):
-                await self._gate.acquire()
-        except TimeoutError:
-            raise OsmError("other queries were asking OpenStreetMap") from None
-        try:
-            problems = []
-            for url in self._order():
-                remaining = deadline - time.monotonic()
-                if remaining < 1:
-                    break
-                limit = min(timeout, remaining)
-                host = urlsplit(url).hostname or url
-                try:
-                    async with asyncio.timeout(limit):
-                        response = await self._http.post(
-                            url, data={"data": query}, timeout=httpx.Timeout(limit, connect=min(CONNECT_S, limit)),
-                        )
-                    data = _answer_of(response)
-                    # Shaping a big area's answer is pure Python and can take seconds: off the event loop, so the app
-                    # and its health checks keep answering meanwhile.
-                    kept = await asyncio.to_thread(shape, data)
-                except (httpx.HTTPError, TimeoutError, OsmError, ValueError, KeyError, TypeError, AttributeError) as exc:
-                    self._failed[url] = time.monotonic()
-                    problems.append(f"{host}: {_describe(exc)}")
-                    continue
-                self._failed.pop(url, None)
-                self.calls += 1
-                return {"source": host, "as_of": (data.get("osm3s") or {}).get("timestamp_osm_base"), **kept}
             raise OsmError("; ".join(problems) or "no time left to ask OpenStreetMap")
         finally:
             self._gate.release()

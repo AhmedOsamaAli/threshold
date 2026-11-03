@@ -2,8 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import { freshKey, STALE_MAX_SECONDS, staleKey, type EdgeCache } from "./cache";
 import { frontDoor, STALE_AFTER_MS, upstreamRequest, type FrontDoorDeps } from "./proxy";
 
-const FRONT = "https://walkin-app.pages.dev";
-const BACKEND = "https://walk-in-backend.example";
+const FRONT = "https://threshold.pages.dev";
+const BACKEND = "https://threshold-backend.example";
 const ENV = { BACKEND_ORIGIN: BACKEND, PROXY_SECRET: "s3cret" };
 const SHARED = "public, max-age=300, s-maxage=3600";
 /** What the backend sends with what belongs to no visitor (the public settings): a stale copy is allowed. */
@@ -93,14 +93,14 @@ function setup(...answers: Answer[]) {
   };
 }
 
-const status = (response: Response) => response.headers.get("x-walkin-cache");
+const status = (response: Response) => response.headers.get("x-threshold-cache");
 
 describe("the front door", () => {
   it("passes requests on to the backend with the proxy's headers, and the visitor's own", async () => {
     const { send, asked } = setup(json([]));
     await send("/api/config?x=1", {
       headers: {
-        cookie: "walkin_session=abc",
+        cookie: "threshold_session=abc",
         "cf-connecting-ip": "203.0.113.7",
         "x-client-ip": "1.2.3.4",
         "x-proxy-secret": "forged",
@@ -111,8 +111,8 @@ describe("the front door", () => {
     expect(request.url).toBe(`${BACKEND}/api/config?x=1`);
     expect(request.headers.get("x-client-ip")).toBe("203.0.113.7");
     expect(request.headers.get("x-proxy-secret")).toBe("s3cret");
-    expect(request.headers.get("x-forwarded-host")).toBe("walkin-app.pages.dev");
-    expect(request.headers.get("cookie")).toBe("walkin_session=abc");
+    expect(request.headers.get("x-forwarded-host")).toBe("threshold.pages.dev");
+    expect(request.headers.get("cookie")).toBe("threshold_session=abc");
     expect(init?.redirect).toBe("manual");
   });
 
@@ -137,7 +137,7 @@ describe("the front door", () => {
     expect(await first.json()).toEqual({ dev_login: false });
 
     // Another visitor, with other cookies and headers: the URL alone is the key.
-    const second = await send("/api/config", { headers: { cookie: "walkin_session=other", accept: "*/*" } });
+    const second = await send("/api/config", { headers: { cookie: "threshold_session=other", accept: "*/*" } });
     expect(status(second)).toBe("hit");
     expect(second.headers.get("cache-control")).toBe(SHARED);
     expect(await second.json()).toEqual({ dev_login: false });
@@ -180,13 +180,13 @@ describe("the front door", () => {
 
   it("never keeps an answer that sets a cookie, and passes its cookies on untouched", async () => {
     const headers = new Headers({ "content-type": "application/json", "cache-control": SHARED });
-    headers.append("set-cookie", "walkin_session=abc; Path=/; HttpOnly; Secure; SameSite=Lax");
+    headers.append("set-cookie", "threshold_session=abc; Path=/; HttpOnly; Secure; SameSite=Lax");
     headers.append("set-cookie", "g_state=; Max-Age=0; Path=/");
     const { send, cache } = setup(new Response('{"user":null}', { headers }));
     const response = await send("/api/me");
     expect(status(response)).toBe("bypass");
     expect(response.headers.getSetCookie()).toEqual([
-      "walkin_session=abc; Path=/; HttpOnly; Secure; SameSite=Lax",
+      "threshold_session=abc; Path=/; HttpOnly; Secure; SameSite=Lax",
       "g_state=; Max-Age=0; Path=/",
     ]);
     expect(cache.entries.size).toBe(0);

@@ -1,5 +1,5 @@
 /**
- * Walk-in's front door. Cloudflare Pages serves the web app, which never sleeps, and this function hands every /api
+ * Threshold's front door. Cloudflare Pages serves the web app, which never sleeps, and this function hands every /api
  * request to the backend on Render, so the app and its sign-in cookie share one origin.
  *
  * Render's free instance sleeps after 15 idle minutes and takes about a minute to wake. Until it answers, API calls get

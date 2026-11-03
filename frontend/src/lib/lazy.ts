@@ -37,7 +37,7 @@ export function lazyModule<M>(importer: () => Promise<M>): LazyModule<M> {
 }
 
 /** When the page last reloaded itself for a chunk it could not load, in this tab. */
-const RELOADED_AT = "walk-in-reloaded-for-chunk";
+const RELOADED_AT = "threshold-reloaded-for-chunk";
 const RELOAD_GAP_MS = 60_000;
 
 /**

@@ -11,7 +11,7 @@ from app import config, main
 from app.keepawake import keep_awake
 from tests.account_fakes import make_client
 
-URL = "https://walk-in.example/api/health"
+URL = "https://threshold.example/api/health"
 
 
 def visits(*answers: int | Exception) -> list[httpx.Request]:
@@ -43,7 +43,7 @@ def visits(*answers: int | Exception) -> list[httpx.Request]:
 def test_it_visits_the_health_check_again_and_again():
     seen = visits(200, 200, 200)
     assert [(request.method, str(request.url)) for request in seen] == [("GET", URL)] * 3
-    assert seen[0].headers["user-agent"] == "Walk-in keep-awake"
+    assert seen[0].headers["user-agent"] == "Threshold keep-awake"
 
 
 def test_a_failed_visit_does_not_stop_the_next():

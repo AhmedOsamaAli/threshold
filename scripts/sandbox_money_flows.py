@@ -1,15 +1,16 @@
-"""Real PayPal sandbox check of the money flows Walk-in Founders uses, each approved by a sandbox buyer in headless
+"""Real PayPal sandbox check of the money flows Threshold uses, each approved by a sandbox buyer in headless
 Chromium (locale en_US): a pledge held then released (AUTHORIZE, approve, authorize, void), a pledge held then collected
 (a renewal PayPal refuses within the 3-day honor period, then capture and its net after PayPal's fee), a payout (sent,
 then sent again with the same and with a new request id: each refused, linking back to the batch), and the capture
 refunded. Prints statuses only, never secrets.
 
-    python docs/founders/sandbox_money_flows.py
+    python scripts/sandbox_money_flows.py
 
-Needs in .env: PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET of a sandbox app whose business account can take payments (a
-US business account), PAYPAL_SANDBOX_BUYER_EMAIL and PAYPAL_SANDBOX_BUYER_PASSWORD (a US personal sandbox account), and
-optionally PAYPAL_SANDBOX_PAYOUT_EMAIL (who receives the test payout; the buyer by default). Run it with a Python that
-has httpx and playwright (python -m playwright install chromium). Refuses a live PayPal account.
+Needs in .env (or the file ENV_FILE names): PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET of a sandbox app whose business
+account can take payments (a US business account), PAYPAL_SANDBOX_BUYER_EMAIL and PAYPAL_SANDBOX_BUYER_PASSWORD (a US
+personal sandbox account), and optionally PAYPAL_SANDBOX_PAYOUT_EMAIL (who receives the test payout; the buyer by
+default). Run it with a Python that has httpx and playwright (python -m playwright install chromium). Refuses a live
+PayPal account.
 """
 from __future__ import annotations
 
@@ -22,15 +23,15 @@ from pathlib import Path
 
 import httpx
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from app import config as pp_config  # noqa: E402
 from app.config import settings  # noqa: E402
 from app.payments import paypal as pp  # noqa: E402
 
-RETURN = "https://example.com/walkin-return"
-CANCEL = "https://example.com/walkin-cancel"
+RETURN = "https://example.com/threshold-return"
+CANCEL = "https://example.com/threshold-cancel"
 SHOTS = ROOT / ".data" / "sandbox-shots"
 BUTTON = re.compile(
     r"^(Next|Log In|Pay Now|Pay|Continue|Agree & Continue|Continue to Review Order|Complete Purchase|Save and Continue)$",
@@ -186,10 +187,10 @@ async def main() -> int:
             print(f"  capture read back: {read.get('status')}, net {pp.net_amount(read)}")
 
             print("3. Payout of $1.00 to the receiver, idempotent")
-            sender = f"walkin-test-{run}"
+            sender = f"threshold-test-{run}"
             sent = await client.create_payout(
-                sender_batch_id=sender, receiver=receiver, amount="1.00", currency="USD", note="Walk-in Founders sandbox test",
-                email_subject="Walk-in Founders sandbox test", email_message="A sandbox test payout.",
+                sender_batch_id=sender, receiver=receiver, amount="1.00", currency="USD", note="Threshold sandbox test",
+                email_subject="Threshold sandbox test", email_message="A sandbox test payout.",
                 request_id=pp.request_key("test-payout", run),
             )
             facts = pp.summarize_payout(sent)

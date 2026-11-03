@@ -4,7 +4,7 @@ import { createPosterDesignStore } from "./poster";
 
 describe("a campaign's poster design", () => {
   it("restores and updates one campaign's design without changing other campaigns'", () => {
-    const values = new Map<string, string>([["walk-in-poster:campaign:a", '{"choice":"botanical"}']]);
+    const values = new Map<string, string>([["threshold-poster:campaign:a", '{"choice":"botanical"}']]);
     const store = createPosterDesignStore(() => ({
       getItem: (key) => values.get(key) ?? null,
       setItem: (key, value) => { values.set(key, value); },

@@ -106,7 +106,7 @@ class Settings:
     # Where users, campaigns and pledges live: a local SQLite file by default, or a Postgres URL (Neon's free tier, for
     # example) on a host whose disk does not survive a restart.
     database_url: str = field(
-        default_factory=lambda: _env("DATABASE_URL") or f"sqlite:///{(ROOT / '.data' / 'walkin.db').as_posix()}"
+        default_factory=lambda: _env("DATABASE_URL") or f"sqlite:///{(ROOT / '.data' / 'threshold.db').as_posix()}"
     )
     # The app's public address (https://...). When it is https, cookies are Secure and the development login is off.
     public_url: str = field(default_factory=lambda: _env("PUBLIC_URL").rstrip("/"))
@@ -126,12 +126,12 @@ class Settings:
     # visit comes back in through Cloudflare like a visitor's. Empty: off. A workspace's 750 free hours a month keep one
     # instance awake, not two.
     keep_awake_url: str = field(default_factory=lambda: _env("KEEP_AWAKE_URL"))
-    # Walk-in Founders: PayPal (developer.paypal.com, Apps & Credentials), the sandbox until PAYPAL_ENV=live. Without
+    # PayPal (developer.paypal.com, Apps & Credentials), the sandbox until PAYPAL_ENV=live. Without
     # the keys nobody can pledge, and the pages say why.
     paypal_client_id: str = field(default_factory=lambda: _env("PAYPAL_CLIENT_ID"))
     paypal_client_secret: str = field(default_factory=lambda: _env("PAYPAL_CLIENT_SECRET"))
     paypal_env: str = field(default_factory=lambda: _env("PAYPAL_ENV", "sandbox").lower())
-    # The webhook registered for this server's address (docs/founders/setup_paypal_webhook.py writes it); without it
+    # The webhook registered for this server's address (scripts/setup_paypal_webhook.py writes it); without it
     # POST /api/paypal/webhook does not exist, and settlement keeps pledges and payouts in step on its own.
     paypal_webhook_id: str = field(default_factory=lambda: _env("PAYPAL_WEBHOOK_ID"))
     # The secret a scheduled job sends to POST /api/cron/settle (X-Cron-Secret); without it that endpoint does not exist.

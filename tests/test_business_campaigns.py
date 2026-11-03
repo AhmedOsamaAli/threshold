@@ -51,7 +51,7 @@ def test_an_owner_starts_a_campaign_and_it_is_never_presented_as_measured_eviden
     assert view["name"] == BUSINESS["name"] and view["evidence"] == [BUSINESS["why_here"]]
     assert client.get("/api/campaigns").json()["campaigns"][0]["id"] == campaign_id
     assert client.get("/api/me/campaigns").status_code == 200
-    assert client.get("/founders/start").status_code == 200
+    assert client.get("/start").status_code == 200
 
 
 def test_business_campaigns_use_the_same_real_hold_capture_and_payout_code(business_world):

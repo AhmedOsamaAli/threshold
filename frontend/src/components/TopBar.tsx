@@ -3,7 +3,7 @@ import { replays } from "../lib/brand";
 import { prefersReducedMotion } from "../lib/motion";
 import { isPlainClick } from "../lib/navigation";
 import { PRODUCT_NAME } from "../lib/product";
-import { ASK_URL, FOUNDERS_URL, HOME_URL, SPOT_URL, START_CAMPAIGN_URL, type Route } from "../lib/routes";
+import { ASK_URL, BROWSE_URL, HOME_URL, SPOT_URL, START_CAMPAIGN_URL, type Route } from "../lib/routes";
 import type { Theme } from "../state/theme";
 import { AccountMenu } from "./AccountMenu";
 import { BrandMark } from "./BrandMark";
@@ -23,7 +23,7 @@ export function TopBar({ route, theme, onToggleTheme }: TopBarProps) {
   const [replay, setReplay] = useState(0);
   /** When the last walk-in started, on performance.now()'s clock; the first plays as the page loads. */
   const playedAt = useRef(0);
-  const browsing = route.page === "founders";
+  const browsing = route.page === "browse";
 
   useEffect(() => {
     playedAt.current = performance.now();
@@ -60,7 +60,7 @@ export function TopBar({ route, theme, onToggleTheme }: TopBarProps) {
       <div className="bar-end">
         <Link
           className="bar-link mono"
-          href={FOUNDERS_URL}
+          href={BROWSE_URL}
           aria-current={browsing ? "page" : undefined}
           title="Businesses their neighbors can back with PayPal before they open"
         >

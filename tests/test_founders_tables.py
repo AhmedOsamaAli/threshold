@@ -1,4 +1,4 @@
-"""Walk-in Founders' columns hold the longest value the code writes into them, in app/db/tables.py and in the baseline
+"""The campaign tables' columns hold the longest value the code writes into them, in app/db/tables.py and in the baseline
 migration alike. The tests run on SQLite, which ignores VARCHAR lengths; Postgres, in production, refuses a longer value,
 so a column too short fails only there (PayPal's capture status PARTIALLY_REFUNDED, 18 characters, once met a
 String(16))."""

@@ -43,7 +43,7 @@ from .paypal import (
 )
 from .wording import COMMON_NAME_WORDS, NATIONAL, PROPER_WORDS, SUPERLATIVE, WALKING, is_walk, mid_sentence
 
-log = logging.getLogger("walkin")
+log = logging.getLogger("threshold")
 
 # What the owner may choose. PayPal holds a pledge for 29 days (AUTHORIZATION_PERIOD) from the moment it is placed, so a
 # pledge made at the launch of the longest campaign must still be held when the campaign closes and settle() collects

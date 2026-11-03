@@ -18,7 +18,7 @@ describe("the home page", () => {
   });
 
   it("opens the ways in", () => {
-    for (const href of ["/founders", "/ask", "/spot", "/founders/start"]) expect(html).toContain(`href="${href}"`);
+    for (const href of ["/browse", "/ask", "/spot", "/start"]) expect(html).toContain(`href="${href}"`);
   });
 
   it("says the assistant only prepares, and that the money is test money", () => {

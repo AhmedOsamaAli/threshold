@@ -231,16 +231,16 @@ function StartOne() {
   );
 }
 
-/** Founders: the campaigns neighbors can back now, and how an owner starts one. */
-export function FoundersPage() {
+/** Browse: the campaigns neighbors can back now, and how an owner starts one. */
+export function BrowsePage() {
   const titleRef = useFocusOnMount();
   const { config } = useSession();
   const paypal = paypalOf(config);
-  useDocumentTitle("Founders");
+  useDocumentTitle("Browse");
   return (
     <Page className="founders-page">
       <PageHead
-        eyebrow="Founders · Back it before it opens"
+        eyebrow="Browse · Back it before it opens"
         title="Back a business before it opens"
         titleRef={titleRef}
         standfirst="Neighbors pledge with PayPal before the lease is signed. PayPal only holds each pledge: if enough people join by the deadline, everyone is charged and the money goes to the owner; if not, every hold is released and nobody pays."

@@ -1,5 +1,5 @@
-/* Walk-in Founders: neighbors back a business before its lease is signed. PayPal only holds each pledge; everyone is
-   charged only if enough people join by the deadline. The campaign API, as docs/founders/CONTRACT.md has it. Amounts are
+/* Threshold: neighbors back a business before its lease is signed. PayPal only holds each pledge; everyone is
+   charged only if enough people join by the deadline. The campaign API, as docs/CONTRACT.md has it. Amounts are
    strings with two decimals ("25.00"), times ISO 8601 in UTC. */
 import { ApiError, post, request } from "./client";
 

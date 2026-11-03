@@ -15,9 +15,9 @@ describe("account helpers", () => {
     expect(plainError(new ApiError("That Google sign-in has expired.", 400, true))).toBe("That Google sign-in has expired.");
     expect(plainError(new ApiError("Request failed (401).", 401))).toBe("You're signed out. Sign in and try again.");
     expect(plainError(new ApiError("Request failed (403).", 403))).toBe("The server refused this request. Reload the page and try again.");
-    expect(plainError(new ApiError("Request failed (502).", 502))).toBe("Walk-in's server had a problem. Try again in a moment.");
+    expect(plainError(new ApiError("Request failed (502).", 502))).toBe("Threshold's server had a problem. Try again in a moment.");
     expect(plainError(new ApiError("Too many requests. Try again in a while.", 429))).toBe("Too many requests. Try again in a while.");
-    expect(plainError(new TypeError("Failed to fetch"))).toBe("Walk-in can't be reached. Check your connection and try again.");
+    expect(plainError(new TypeError("Failed to fetch"))).toBe("Threshold can't be reached. Check your connection and try again.");
     expect(plainError(new Error("boom"), "Your campaigns could not be loaded.")).toBe("Your campaigns could not be loaded.");
   });
 });

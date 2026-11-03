@@ -257,7 +257,8 @@ class CatchmentService:
         self._url = url
         self._timeout = timeout
         self._http = httpx.AsyncClient(
-            timeout=timeout, headers={"User-Agent": "Walk-in/0.2"}, verify=tls.context(),
+            timeout=timeout, headers={"User-Agent": "Threshold/0.1 (+https://github.com/AhmedOsamaAli/threshold)"},
+            verify=tls.context(),
         )
 
     async def aclose(self) -> None:

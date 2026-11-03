@@ -1,13 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
+  ASK_URL,
+  BROWSE_URL,
   campaignUrl,
-  FOUNDERS_URL,
   HOME_URL,
   MY_CAMPAIGNS_URL,
   pageUrl,
   parseRoute,
   PRIVACY_URL,
+  proofUrl,
   receiptUrl,
+  SPOT_URL,
   START_CAMPAIGN_URL,
   type CampaignRoute,
   type Route,
@@ -19,14 +22,29 @@ describe("routes", () => {
   it("reads the pages with no id in their address, whatever the query or a closing slash", () => {
     expect(parseRoute("/", "")).toEqual({ page: "home" });
     expect(parseRoute("/", "?utm_source=poster")).toEqual({ page: "home" });
-    expect(parseRoute("/founders", "")).toEqual({ page: "founders" });
-    expect(parseRoute("/founders/", "?utm_source=poster")).toEqual({ page: "founders" });
-    expect(parseRoute("/founders/start", "")).toEqual({ page: "start-campaign" });
-    expect(parseRoute("/founders/start/", "?from=bar")).toEqual({ page: "start-campaign" });
+    expect(parseRoute("/browse", "")).toEqual({ page: "browse" });
+    expect(parseRoute("/browse/", "?utm_source=poster")).toEqual({ page: "browse" });
+    expect(parseRoute("/start", "")).toEqual({ page: "start-campaign" });
+    expect(parseRoute("/start/", "?from=bar")).toEqual({ page: "start-campaign" });
+    expect(parseRoute("/ask", "")).toEqual({ page: "ask" });
+    expect(parseRoute("/ask/", "?from=home")).toEqual({ page: "ask" });
+    expect(parseRoute("/spot", "")).toEqual({ page: "spot" });
+    expect(parseRoute("/spot/", "?from=home")).toEqual({ page: "spot" });
     expect(parseRoute("/me", "")).toEqual({ page: "my-campaigns" });
     expect(parseRoute("/me/", "?utm_source=x")).toEqual({ page: "my-campaigns" });
     expect(parseRoute("/privacy", "")).toEqual({ page: "privacy" });
     expect(parseRoute("/privacy/", "?from=footer")).toEqual({ page: "privacy" });
+  });
+
+  it("opens a campaign's proof by the campaign's id", () => {
+    const route = { page: "proof", id: "c4f1e2" } as const;
+    expect(parseRoute("/proof/c4f1e2", "")).toEqual(route);
+    expect(parseRoute("/proof/c4f1e2/", "?from=card")).toEqual(route);
+    expect(proofUrl("c4f1e2")).toBe("/proof/c4f1e2");
+    expect(pageUrl(route)).toBe("/proof/c4f1e2");
+    for (const invalid of ["/proof", "/proof/", "/proof/a.b", `/proof/${"a".repeat(65)}`, "/proof/c4f1e2/extra"]) {
+      expect(parseRoute(invalid, "")).toEqual({ page: "not-found", path: invalid });
+    }
   });
 
   it("opens private receipts by their 32-character token, which a public campaign URL never carries", () => {
@@ -82,8 +100,12 @@ describe("routes", () => {
       `/p/${"a".repeat(65)}`,
       "/pledge/c4f1e2",
       "/founder",
-      "/founders/x",
-      "/founders/start/x",
+      "/founders",
+      "/founders/start",
+      "/browse/x",
+      "/start/x",
+      "/ask/x",
+      "/spot/x",
       "/elsewhere",
     ]) {
       expect(parseRoute(path, "?sheet=1")).toEqual({ page: "not-found", path });
@@ -91,25 +113,30 @@ describe("routes", () => {
   });
 
   it("builds each page's address and reads it back", () => {
-    expect([HOME_URL, FOUNDERS_URL, START_CAMPAIGN_URL, MY_CAMPAIGNS_URL, PRIVACY_URL]).toEqual([
+    expect([HOME_URL, BROWSE_URL, START_CAMPAIGN_URL, ASK_URL, SPOT_URL, MY_CAMPAIGNS_URL, PRIVACY_URL]).toEqual([
       "/",
-      "/founders",
-      "/founders/start",
+      "/browse",
+      "/start",
+      "/ask",
+      "/spot",
       "/me",
       "/privacy",
     ]);
     const routes: Route[] = [
       { page: "home" },
-      { page: "founders" },
+      { page: "browse" },
       { page: "start-campaign" },
+      { page: "ask" },
+      { page: "spot" },
       { page: "my-campaigns" },
       { page: "privacy" },
+      { page: "proof", id: "A-b_9" },
       { page: "receipt", token: TOKEN },
       { page: "campaign", id: "A-b_9", pledge: null, cancelled: false },
       { page: "not-found", path: "/elsewhere" },
     ];
     for (const route of routes) {
-      const url = new URL(pageUrl(route), "https://walk-in.example");
+      const url = new URL(pageUrl(route), "https://threshold.example");
       expect(parseRoute(url.pathname, url.search)).toEqual(route);
     }
   });

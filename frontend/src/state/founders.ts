@@ -1,4 +1,4 @@
-/* A Founders campaign as its page follows it, and the pledges this browser placed, remembered so they can be withdrawn. */
+/* A campaign as its page follows it, and the pledges this browser placed, remembered so they can be withdrawn. */
 import { useCallback, useEffect, useState } from "react";
 import { ApiError } from "../api/client";
 import { founders, type Campaign, type CampaignProgress } from "../api/founders";
@@ -96,7 +96,7 @@ export function useCampaign(id: string, viewer: string | null | undefined) {
 
 // ---------- The pledges this browser placed: withdrawing one needs its PayPal order id ----------
 
-const PLEDGE_KEY = "walk-in-pledge:";
+const PLEDGE_KEY = "threshold-pledge:";
 
 export interface HeldPledge {
   /** The pledge's id, or PayPal's order id: withdrawing it asks for either. */
@@ -144,7 +144,7 @@ export function keepPledge(campaignId: string, pledge: HeldPledge | null): void 
 
 // ---------- A pledge prepared for approval in PayPal: its receipt waits for the hold ----------
 
-const PREPARED_KEY = "walk-in-prepared:";
+const PREPARED_KEY = "threshold-prepared:";
 /** How long a prepared pledge's receipt waits for the person to come back from PayPal. */
 export const PREPARED_FOR_MS = 24 * 60 * 60 * 1000;
 

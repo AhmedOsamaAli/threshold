@@ -138,7 +138,7 @@ export function SignInOptions({ why }: SignInOptionsProps) {
     return (
       <div className="signin">
         <p className="signin-error" role="alert">
-          {error ?? "Walk-in's settings could not be loaded."}{" "}
+          {error ?? "Threshold's settings could not be loaded."}{" "}
           <button
             type="button"
             className="text-button"
@@ -172,10 +172,10 @@ export function SignInOptions({ why }: SignInOptionsProps) {
       {google || config.dev_login ? (
         <p className="signin-privacy">
           {google
-            ? "Walk-in keeps your Google account id, email, name and picture link, only to show you're signed in and to list your campaigns. "
-            : "Walk-in keeps your email and name, only to show you're signed in and to list your campaigns. "}
+            ? "Threshold keeps your Google account id, email, name and picture link, only to show you're signed in and to list your campaigns. "
+            : "Threshold keeps your email and name, only to show you're signed in and to list your campaigns. "}
           <Link className="text-link" href={PRIVACY_URL}>
-            How Walk-in handles your data
+            How Threshold handles your data
           </Link>
         </p>
       ) : null}

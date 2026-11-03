@@ -49,18 +49,18 @@ function Facts({ proof }: { proof: Proof }) {
         ) : null}
         <div>
           <dt className="mono">Owner's PayPal</dt>
-          <dd className="mono">{terms.payee}</dd>
+          <dd className="mono raw">{terms.payee}</dd>
         </div>
         <div>
           <dt className="mono">Fingerprint</dt>
-          <dd className="mono" title={proof.terms_hash}>
+          <dd className="mono raw" title={proof.terms_hash}>
             {shortHash(proof.terms_hash, 24)}
           </dd>
         </div>
       </dl>
       <p className="proof-how">{terms.how_it_works}</p>
       <p className="proof-key">
-        Signed with key <span className="mono">{proof.key.kid}</span>. The public key is at{" "}
+        Signed with key <span className="mono raw">{proof.key.kid}</span>. The public key is at{" "}
         <a className="text-link" href={proof.key.jwks}>
           {proof.key.jwks}
         </a>
@@ -76,7 +76,9 @@ function PledgeRow({ pledge }: { pledge: ProofPledge }) {
   return (
     <li className="proof-pledge">
       <div className="proof-pledge-head">
-        <span className="mono">Pledge {pledge.ref}</span>
+        <span className="mono">
+          Pledge <span className="raw">{pledge.ref}</span>
+        </span>
         <span className={`proof-verdict ${verdict.tone}`}>{verdict.text}</span>
       </div>
       <p className="proof-pledge-line">
@@ -99,7 +101,7 @@ function PledgeRow({ pledge }: { pledge: ProofPledge }) {
         </ul>
       ) : null}
       {pledge.ids.authorization || pledge.ids.capture ? (
-        <p className="proof-ids mono">
+        <p className="proof-ids mono raw">
           {pledge.ids.authorization ? `PayPal authorization ${pledge.ids.authorization}` : ""}
           {pledge.ids.authorization && pledge.ids.capture ? " · " : ""}
           {pledge.ids.capture ? `capture ${pledge.ids.capture}` : ""}

@@ -45,7 +45,7 @@ def test_a_provider_without_its_key_is_off(monkeypatch):
 
 def test_entries_that_cannot_be_read_are_left_out_and_logged(caplog):
     environ = {"EXAMPLE_LLM_KEY": "k", "OTHER_LLM_KEY": "k"}
-    with caplog.at_level(logging.INFO, logger="walkin"):
+    with caplog.at_level(logging.INFO, logger="threshold"):
         assert extra_providers("{not json", environ) == []
         assert extra_providers('{"name": "not a list"}', environ) == []
         broken = [{**ONE, "base_url": "ftp://x"}, {**ONE, "models": []}, {**ONE, "key_env": ""}, "text",

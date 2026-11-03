@@ -63,7 +63,7 @@ export function createSessionStore(api: SessionApi): SessionStore {
     loading = Promise.allSettled([api.config(), api.me()]).then(([config, me]) => {
       if (me.status === "fulfilled" && asked === generation) set({ user: me.value.user });
       if (config.status === "fulfilled") set({ phase: "ready", config: config.value });
-      else set({ phase: "failed", error: plainError(config.reason, "Walk-in's settings could not be loaded.") });
+      else set({ phase: "failed", error: plainError(config.reason, "Threshold's settings could not be loaded.") });
     });
     return loading;
   }

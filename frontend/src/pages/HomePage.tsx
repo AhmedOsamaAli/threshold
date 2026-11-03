@@ -2,7 +2,7 @@ import "../styles/home.css";
 import { Link } from "../components/Link";
 import { Page, PageHead, useFocusOnMount } from "../components/Page";
 import { SectionHead } from "../components/SectionHead";
-import { ASK_URL, FOUNDERS_URL, SPOT_URL, START_CAMPAIGN_URL } from "../lib/routes";
+import { ASK_URL, BROWSE_URL, SPOT_URL, START_CAMPAIGN_URL } from "../lib/routes";
 
 const STEPS = [
   {
@@ -53,7 +53,7 @@ export function HomePage() {
         ]}
       />
       <div className="home-cta">
-        <Link className="go" href={FOUNDERS_URL}>
+        <Link className="go" href={BROWSE_URL}>
           See what neighbors are backing
         </Link>
         <Link className="ghost mono" href={ASK_URL}>
@@ -105,7 +105,7 @@ export function HomePage() {
             campaign's proof page checks those signatures against PayPal's own record of each pledge, and says plainly when anything
             differs.
           </p>
-          <Link className="text-link" href={FOUNDERS_URL}>
+          <Link className="text-link" href={BROWSE_URL}>
             Pick a campaign and open its proof <span aria-hidden="true">→</span>
           </Link>
         </div>

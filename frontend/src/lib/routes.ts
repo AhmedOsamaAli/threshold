@@ -4,7 +4,7 @@
  */
 export type Route =
   | { page: "home" }
-  | { page: "founders" }
+  | { page: "browse" }
   | { page: "start-campaign" }
   | { page: "my-campaigns" }
   | { page: "ask" }
@@ -15,7 +15,7 @@ export type Route =
   | CampaignRoute
   | { page: "not-found"; path: string };
 
-/** A Founders campaign (/p/{id}), with what PayPal sent a supporter back with from its own page. */
+/** A campaign (/p/{id}), with what PayPal sent a supporter back with from its own page. */
 export interface CampaignRoute {
   page: "campaign";
   id: string;
@@ -27,16 +27,16 @@ export interface CampaignRoute {
 }
 
 export const HOME_URL = "/";
-/** The open Founders campaigns. */
-export const FOUNDERS_URL = "/founders";
-export const START_CAMPAIGN_URL = "/founders/start";
+/** The open campaigns. */
+export const BROWSE_URL = "/browse";
+export const START_CAMPAIGN_URL = "/start";
 export const MY_CAMPAIGNS_URL = "/me";
 export const ASK_URL = "/ask";
 export const SPOT_URL = "/spot";
 export const PRIVACY_URL = "/privacy";
 
-const FOUNDERS_PATH = /^\/founders\/?$/;
-const START_CAMPAIGN_PATH = /^\/founders\/start\/?$/;
+const BROWSE_PATH = /^\/browse\/?$/;
+const START_CAMPAIGN_PATH = /^\/start\/?$/;
 const MY_CAMPAIGNS_PATH = /^\/me\/?$/;
 const ASK_PATH = /^\/ask\/?$/;
 const SPOT_PATH = /^\/spot\/?$/;
@@ -50,7 +50,7 @@ const ORDER_ID = /^[A-Za-z0-9_-]{1,64}$/;
 
 export function parseRoute(pathname: string, search: string): Route {
   if (pathname === HOME_URL) return { page: "home" };
-  if (FOUNDERS_PATH.test(pathname)) return { page: "founders" };
+  if (BROWSE_PATH.test(pathname)) return { page: "browse" };
   if (START_CAMPAIGN_PATH.test(pathname)) return { page: "start-campaign" };
   if (MY_CAMPAIGNS_PATH.test(pathname)) return { page: "my-campaigns" };
   if (ASK_PATH.test(pathname)) return { page: "ask" };
@@ -74,7 +74,7 @@ export function parseRoute(pathname: string, search: string): Route {
   return { page: "not-found", path: pathname };
 }
 
-/** "/p/{id}": a Founders campaign's page. */
+/** "/p/{id}": a campaign's page. */
 export function campaignUrl(id: string): string {
   return `/p/${encodeURIComponent(id)}`;
 }
@@ -93,8 +93,8 @@ export function pageUrl(route: Route): string {
   switch (route.page) {
     case "home":
       return HOME_URL;
-    case "founders":
-      return FOUNDERS_URL;
+    case "browse":
+      return BROWSE_URL;
     case "start-campaign":
       return START_CAMPAIGN_URL;
     case "my-campaigns":

@@ -1,4 +1,4 @@
-"""Walk-in Founders around the endpoints: money in minor units, PayPal's refusals as HTTP answers, campaigns and pledges
+"""Threshold around the endpoints: money in minor units, PayPal's refusals as HTTP answers, campaigns and pledges
 from their rows as app.payments.pledges sees them, and the owner's PayPal email, checked and masked."""
 from __future__ import annotations
 

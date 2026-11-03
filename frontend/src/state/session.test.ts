@@ -53,7 +53,7 @@ describe("session", () => {
     const store = createSessionStore(api);
     await store.load();
     expect(store.get().phase).toBe("failed");
-    expect(store.get().error).toBe("Walk-in can't be reached. Check your connection and try again.");
+    expect(store.get().error).toBe("Threshold can't be reached. Check your connection and try again.");
     await store.load();
     expect(store.get()).toMatchObject({ phase: "ready", config: CONFIG, error: null });
   });
@@ -107,7 +107,7 @@ describe("session", () => {
     const failing = createSessionStore(fakeApi({ me: vi.fn(() => Promise.resolve({ user: BOB })), signOut: () => Promise.reject(new ApiError("Request failed (500).", 500)) }));
     await failing.load();
     expect(await failing.signOut()).toBe(false);
-    expect(failing.get()).toMatchObject({ user: BOB, error: "Walk-in's server had a problem. Try again in a moment." });
+    expect(failing.get()).toMatchObject({ user: BOB, error: "Threshold's server had a problem. Try again in a moment." });
   });
 
   it("checks again who is signed in", async () => {
@@ -137,7 +137,7 @@ describe("session", () => {
     );
     await store.load();
     expect(await store.deleteAccount()).toBe(false);
-    expect(store.get()).toMatchObject({ user: ADA, busy: false, error: "Walk-in's server had a problem. Try again in a moment." });
+    expect(store.get()).toMatchObject({ user: ADA, busy: false, error: "Threshold's server had a problem. Try again in a moment." });
     const offline = createSessionStore(
       fakeApi({ me: vi.fn(() => Promise.resolve({ user: ADA })), deleteMe: () => Promise.reject(new Error("?")) }),
     );

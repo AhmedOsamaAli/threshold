@@ -1,5 +1,5 @@
 /* What a person can check: the limits they give an assistant, the service's public key and a campaign's proof, as
-   docs/founders/CONTRACT.md has them. Amounts are strings with two decimals ("25.00"), times ISO 8601 in UTC. */
+   docs/CONTRACT.md has them. Amounts are strings with two decimals ("25.00"), times ISO 8601 in UTC. */
 import { post, request } from "./client";
 import type { BusinessKind, CampaignStatus } from "./founders";
 

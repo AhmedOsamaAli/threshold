@@ -24,11 +24,11 @@ from fastapi import Depends, HTTPException, Request, Response
 from . import tls
 from .config import origin_of, settings
 
-log = logging.getLogger("walkin")
+log = logging.getLogger("threshold")
 
 GOOGLE_CERTS = "https://www.googleapis.com/oauth2/v3/certs"
 GOOGLE_ISSUERS = ("accounts.google.com", "https://accounts.google.com")
-SESSION_COOKIE = "walkin_session"
+SESSION_COOKIE = "threshold_session"
 UNSAFE_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 # Seconds a token's times may be off by, for clocks that differ between Google and this server.
 LEEWAY = 60

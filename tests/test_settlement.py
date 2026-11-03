@@ -1,4 +1,4 @@
-"""Walk-in Founders' settlement over a fake PayPal: a funded campaign collects every hold (renewing those past PayPal's
+"""Settlement over a fake PayPal: a funded campaign collects every hold (renewing those past PayPal's
 3-day honor period) and pays its owner the net collected total once; a campaign short of its goal, or cancelled,
 releases every hold; a settlement cut short resumes on its stored decision; captures PayPal reviews are paid out once
 completed; the in-app loop, the cron endpoint and PayPal's webhooks (verified, handled once) keep it all in step."""

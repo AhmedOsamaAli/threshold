@@ -14,7 +14,7 @@ from ..payments.paypal import PAYOUT_BATCH_EVENTS, PAYOUT_ITEM_EVENTS, RESOURCE_
 from ..payments.records import Problem, minor_or_none
 from .campaigns import hold_pledge
 
-log = logging.getLogger("walkin")
+log = logging.getLogger("threshold")
 router = APIRouter(prefix="/api")
 LARGEST_EVENT = 1_000_000
 # A capture's refusal or reversal, as the pledge's status and its error.

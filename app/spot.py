@@ -146,7 +146,7 @@ def ring_of(area: Any) -> list[list[float]]:
     return [[lat, lon] for lon, lat in osm.simplify(area.ring, RING_POINTS)]
 
 
-log = logging.getLogger("walkin")
+log = logging.getLogger("threshold")
 # Checks that outlasted their visitor's patience, kept here so they finish and fill the caches for the next ask.
 _BACKGROUND: set[asyncio.Task] = set()
 

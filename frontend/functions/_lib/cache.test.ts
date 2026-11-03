@@ -13,7 +13,7 @@ import {
   type EdgeCache,
 } from "./cache";
 
-const FRONT = "https://walkin-app.pages.dev";
+const FRONT = "https://threshold.pages.dev";
 
 function answer(cacheControl: string | null, init: { status?: number; headers?: Record<string, string> } = {}): Response {
   const headers = new Headers({ "content-type": "application/json", ...init.headers });
@@ -57,7 +57,7 @@ describe("edgeSeconds", () => {
   it.each([
     ["another status", answer("public, s-maxage=600", { status: 404 })],
     ["a redirect", answer("public, s-maxage=600", { status: 307, headers: { location: "/elsewhere" } })],
-    ["a cookie", answer("public, s-maxage=600", { headers: { "set-cookie": "walkin_session=abc; HttpOnly" } })],
+    ["a cookie", answer("public, s-maxage=600", { headers: { "set-cookie": "threshold_session=abc; HttpOnly" } })],
     ["Vary: *", answer("public, s-maxage=600", { headers: { vary: "*" } })],
     ["no Cache-Control", answer(null)],
     ["no-store", answer("no-store")],
@@ -166,9 +166,9 @@ describe("lookUp", () => {
 describe("withHeaders", () => {
   it("sets headers on a copy and keeps the status, the other headers and the body", async () => {
     const original = answer("public, s-maxage=60", { status: 200, headers: { etag: '"1"' } });
-    const copy = withHeaders(original, { "x-walkin-cache": "hit" });
+    const copy = withHeaders(original, { "x-threshold-cache": "hit" });
     expect(copy.status).toBe(200);
-    expect(copy.headers.get("x-walkin-cache")).toBe("hit");
+    expect(copy.headers.get("x-threshold-cache")).toBe("hit");
     expect(copy.headers.get("etag")).toBe('"1"');
     expect(await copy.text()).toBe('{"ok":true}');
   });

@@ -1,4 +1,4 @@
-/* Founders in plain words: money, progress, the deadline, the pledge's terms and the poster's line, and the campaign
+/* Campaigns in plain words: money, progress, the deadline, the pledge's terms and the poster's line, and the campaign
    form's checks, which mirror the server's limits (app/payments/pledges.py). Pure, so they are tested without a browser. */
 import type { CampaignOwner, CampaignProgress, CampaignStatus, MoneyTerms, PayPalConfig } from "../api/founders";
 

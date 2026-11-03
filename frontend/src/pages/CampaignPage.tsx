@@ -29,7 +29,7 @@ import {
 } from "../lib/founders";
 import { absoluteUrl } from "../lib/url";
 import { useNavigate } from "../lib/navigation";
-import { campaignUrl, FOUNDERS_URL, proofUrl, type CampaignRoute } from "../lib/routes";
+import { campaignUrl, BROWSE_URL, proofUrl, type CampaignRoute } from "../lib/routes";
 import { useNow } from "../lib/useNow";
 import { heldPledge, keepPledge, takePrepared, useCampaign, type HeldPledge } from "../state/founders";
 import { session, useSession } from "../state/session";
@@ -209,7 +209,7 @@ function PledgeCard({ campaign, now, held, back, said, news, onHeld, onWithdrawn
     else if (!config) {
       pay = (
         <p className="pay-note" data-tone="error">
-          Walk-in&apos;s settings could not be loaded, so PayPal can&apos;t start.{" "}
+          Threshold&apos;s settings could not be loaded, so PayPal can&apos;t start.{" "}
           <button
             type="button"
             className="text-button"
@@ -441,7 +441,7 @@ function Story({ campaign }: { campaign: Campaign }) {
               </li>
             ))}
           </ol>
-          <p className="cp-source">Provided by the owner. Walk-in has not verified it.</p>
+          <p className="cp-source">Provided by the owner. Threshold has not verified it.</p>
         </section>
       ) : null}
       {campaign.perks.length ? (
@@ -498,10 +498,10 @@ function Unavailable({ load, onRetry }: { load: { state: "loading" } | { state: 
     <Page className="campaign-page">
       <header className="page-head">
         <p className="eyebrow mono">
-          <b>Founders</b> Back it before it opens
+          <b>Campaign</b> Back it before it opens
         </p>
         <h1 className="page-title" ref={titleRef} tabIndex={-1}>
-          {load.state === "missing" ? "This campaign isn't here" : "Founders"}
+          {load.state === "missing" ? "This campaign isn't here" : "Campaign"}
         </h1>
       </header>
       <section className="pg-sec" aria-busy={load.state === "loading"} aria-label="The campaign">
@@ -513,7 +513,7 @@ function Unavailable({ load, onRetry }: { load: { state: "loading" } | { state: 
         ) : load.state === "missing" ? (
           <p className="cp-unavailable">
             The link may be mistyped, or the campaign was removed.{" "}
-            <Link className="text-link" href={FOUNDERS_URL}>
+            <Link className="text-link" href={BROWSE_URL}>
               See the open campaigns <span aria-hidden="true">→</span>
             </Link>
           </p>
@@ -530,7 +530,7 @@ function Unavailable({ load, onRetry }: { load: { state: "loading" } | { state: 
   );
 }
 
-/** A Founders campaign: the business, the place, why here, the count, and "Pledge with PayPal"; its owner's part too. */
+/** A campaign: the business, the place, why here, the count, and "Pledge with PayPal"; its owner's part too. */
 export function CampaignPage({ route }: { route: CampaignRoute }) {
   const { phase, user } = useSession();
   const navigate = useNavigate();
@@ -544,7 +544,7 @@ export function CampaignPage({ route }: { route: CampaignRoute }) {
   const [handled, setHandled] = useState<{ pledge: string | null; cancelled: boolean }>({ pledge: null, cancelled: false });
   const [news, setNews] = useState("");
   const [seen, setSeen] = useState<{ id: string; supporters: number } | null>(null);
-  useDocumentTitle(campaign ? campaign.title : "Founders");
+  useDocumentTitle(campaign ? campaign.title : "Campaign");
 
   // Back from PayPal's own page (the link an AI assistant handed over): the approved order to hold, or nothing held.
   if (route.pledge && route.pledge !== handled.pledge) {
@@ -616,7 +616,7 @@ export function CampaignPage({ route }: { route: CampaignRoute }) {
     <Page className="campaign-page">
       <header className="cp-head">
         <p className="eyebrow mono">
-          <b>Founders</b> · {campaign.concept.genre}
+          <b>Campaign</b> · {campaign.concept.genre}
         </p>
         <h1 className="cp-title" ref={titleRef} tabIndex={-1}>
           {campaign.title}

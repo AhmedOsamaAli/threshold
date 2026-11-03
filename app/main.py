@@ -4,7 +4,7 @@ stores, limits, background work), its middleware (security headers, cookies, cac
 
 Layers, from the outside in: routes (app.routes) -> the pledge rules and settlement (app.payments, app.settlement) ->
 clients of the outside world (Valhalla, Overpass, Nominatim, the AI chain, PayPal: app.services) and storage (app.db,
-the disk caches). Walk-in Founders (campaigns, pledges, settlement and payouts with PayPal) plugs in through
+the disk caches). Campaigns, pledges, settlement and payouts with PayPal plug in through
 app.payments.founders.
 """
 from __future__ import annotations
@@ -37,7 +37,7 @@ from .response_cache import GZIP_LEVEL, GZIP_MIN_BYTES, ResponseCache
 from .routes import account, maps, meta
 from .services import Services
 
-log = logging.getLogger("walkin")
+log = logging.getLogger("threshold")
 
 # Per client and hour (app.ratelimit), so one visitor cannot spend the free quotas everyone shares.
 MAP_REQUESTS_PER_HOUR = 200
@@ -47,7 +47,7 @@ SETTLE_FROM_SETTINGS = -1.0
 
 # Sign in with Google loads its script, button frame and styles from accounts.google.com/gsi
 # (developers.google.com/identity/gsi/web/guides/get-google-api-clientid#content_security_policy). PayPal's JavaScript
-# SDK (v6) loads its script and checkout frames from paypal.com, the sandbox's or the live one (docs/founders/CONTRACT.md).
+# SDK (v6) loads its script and checkout frames from paypal.com, the sandbox's or the live one (docs/CONTRACT.md).
 # The same policy as frontend/public/_headers (Cloudflare Pages) and vite.config.ts (preview).
 GOOGLE_SIGN_IN = "https://accounts.google.com/gsi/"
 PAYPAL = "https://www.sandbox.paypal.com https://www.paypal.com"
@@ -141,13 +141,16 @@ def create_app(
             await database.dispose()
 
     app = FastAPI(
-        title="Walk-in",
+        title="Threshold",
         version="1.0.0",
         description=(
-            "Walk-in Founders: an owner describes a business planned for an empty storefront and starts a campaign "
+            "Threshold: neighbors back a new place before it opens. An owner describes a business and starts a campaign "
             "(POST /api/business-campaigns), and neighbors back it with PayPal (GET /api/campaigns finds them): PayPal "
-            "only holds each pledge, and everyone is charged only if enough neighbors join by the deadline. The "
-            "other endpoints are JSON, and sign-in with Google keeps an owner's campaigns in GET /api/me/campaigns."
+            "only holds each pledge, and everyone is charged only if enough neighbors join by the deadline. An assistant "
+            "(POST /api/assistant) can prepare a pledge inside limits the person sets (POST /api/limits), and "
+            "GET /api/campaigns/{id}/proof checks a campaign's signed pledges against PayPal. GET /api/spot lists what "
+            "OpenStreetMap shows within a ten-minute walk. The endpoints are JSON, and sign-in with Google keeps an "
+            "owner's campaigns in GET /api/me/campaigns."
         ),
         lifespan=lifespan,
     )
@@ -185,8 +188,8 @@ def create_app(
         log.warning("frontend/dist is missing (npm run build in frontend/): serving the API only")
         return app
 
-    # The owner's page (/me) and the privacy note (/privacy), besides the pages of campaigns (/p), the open campaigns
-    # (/founders) and a pledge's private receipt (/r), are pages of the web app.
+    # The owner's page (/me) and the privacy note (/privacy), besides the pages in founders.PAGES (a campaign, the open
+    # campaigns, starting one, a pledge's private receipt, the assistant, a proof, Check a spot), are pages of the web app.
     @app.get("/me", include_in_schema=False)
     @app.get("/privacy", include_in_schema=False)
     async def shared_page() -> FileResponse:

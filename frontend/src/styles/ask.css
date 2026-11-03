@@ -86,10 +86,14 @@ select.field-input, textarea.field-input { font-family: inherit; }
 .proof-marks li.bad { color: var(--red); font-weight: 500; }
 .proof-problems { margin: 0; padding: 10px 14px 10px 30px; font-size: 14px; }
 .proof-ids { overflow-wrap: anywhere; color: var(--ash); font-size: 10px; line-height: 1.6; }
-.proof-terms { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); max-width: 900px; }
+.proof-terms { display: flex; flex-wrap: wrap; max-width: 900px; }
+.proof-terms > div { flex: 1 1 190px; }
+/* Hashes, references and PayPal's ids are case-sensitive: shown as they are, never in capitals. */
+.raw { text-transform: none; letter-spacing: .02em; overflow-wrap: anywhere; }
 .proof-how { max-width: 66ch; margin-top: 16px; font-size: 15px; line-height: 1.5; color: var(--text-2); }
 .proof-key { max-width: 66ch; margin-top: 12px; font-size: 14px; line-height: 1.5; color: var(--text-3); }
 .proof-money, .proof-steps { display: grid; gap: 10px; max-width: 66ch; margin: 0; padding-left: 22px; font-size: 16px; line-height: 1.5; }
+.proof-steps { list-style: decimal; }
 .proof-money { padding-left: 0; list-style: none; }
 .proof-money li { padding: 10px 0; border-bottom: var(--hair); }
 .proof-actions { padding: 26px var(--pad) 44px; }

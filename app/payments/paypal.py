@@ -22,7 +22,7 @@ from typing import Any
 
 import httpx
 
-log = logging.getLogger("walkin")
+log = logging.getLogger("threshold")
 
 # An authorization holds the money for 29 days; a capture is surest in its first 3, the honor period. After that, one
 # reauthorization (from day 4 to day 29) renews the hold under a new authorization ID.
@@ -82,7 +82,7 @@ WEBHOOK_HEADERS = {
 # PayPal IDs are letters, digits and dashes, at most 64 here as in the columns that keep them (app.db.tables); nothing
 # else may reach a URL path.
 RESOURCE_ID = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
-REQUEST_KEYS = uuid.uuid5(uuid.NAMESPACE_URL, "walk-in:paypal")
+REQUEST_KEYS = uuid.uuid5(uuid.NAMESPACE_URL, "threshold:paypal")
 
 
 class PayPalError(RuntimeError):
@@ -179,7 +179,7 @@ class PayPalClient:
         custom_id: str,
         reference_id: str | None = None,
         invoice_id: str | None = None,
-        brand_name: str = "Walk-in",
+        brand_name: str = "Threshold",
         request_id: str,
         return_url: str | None = None,
         cancel_url: str | None = None,

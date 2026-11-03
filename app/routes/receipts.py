@@ -4,7 +4,7 @@ its campaign's public progress and terms; POST /api/receipts/{receipt}/withdraw 
 page does (app.routes.campaigns.withdraw_pledge: under the settlement lock, only while the campaign takes pledges).
 
 The receipt is the only key, so its answers name no payer and no PayPal order, are never kept by a browser or the front
-door (no-store), and come only for a receipt Walk-in knows, found by its SHA-256 alone; any other gets 404, however it
+door (no-store), and come only for a receipt Threshold knows, found by its SHA-256 alone; any other gets 404, however it
 is written. Each address may ask a few times an hour. Uvicorn's access log writes request paths, so it writes a
 receipt's as ***."""
 from __future__ import annotations
@@ -52,7 +52,7 @@ def allow(request: Request, limiter: RateLimiter, doing: str) -> None:
 
 
 async def pledge_of(request: Request, receipt: str) -> dict:
-    """The pledge a receipt belongs to, found by the receipt's digest: 404 for any receipt Walk-in does not know."""
+    """The pledge a receipt belongs to, found by the receipt's digest: 404 for any receipt Threshold does not know."""
     found = None
     if receipts.well_formed(receipt):
         found = await request.app.state.campaigns.pledge(receipt_hash=receipts.digest(receipt))

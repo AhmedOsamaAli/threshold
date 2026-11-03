@@ -68,8 +68,8 @@ def frontend_dist(tmp_path_factory: pytest.TempPathFactory) -> Path:
     """A stand-in for the React build (npm run build in frontend/): an index.html and one asset. It sits outside every
     test's own folder, which some tests use as a cache and expect empty."""
     dist = tmp_path_factory.mktemp("dist")
-    (dist / "index.html").write_text("<!doctype html><title>Walk-in</title><div id=root></div>", encoding="utf-8")
-    (dist / "app.js").write_text('document.title = "Walk-in";\n', encoding="utf-8")
+    (dist / "index.html").write_text("<!doctype html><title>Threshold</title><div id=root></div>", encoding="utf-8")
+    (dist / "app.js").write_text('document.title = "Threshold";\n', encoding="utf-8")
     return dist
 
 

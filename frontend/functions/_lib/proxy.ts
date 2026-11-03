@@ -1,11 +1,11 @@
 /**
- * Walk-in's front door, as a function of the request and what it needs (the backend's address and secret, the edge
+ * Threshold's front door, as a function of the request and what it needs (the backend's address and secret, the edge
  * cache, fetch and a timer), so it is tested without Cloudflare.
  *
  * Every /api request goes on to the backend on Render with the proxy's headers, as it always has. A GET the backend
  * marks shareable is kept at the edge (cache.ts) and answered from there until it expires. While the backend is waking,
  * down, slow or failing, a GET with a stale copy gets that copy; anything else gets 503 {"waking": true}, and the app
- * shows its own note while it retries. Every answer says how the edge handled it in `x-walkin-cache`.
+ * shows its own note while it retries. Every answer says how the edge handled it in `x-threshold-cache`.
  */
 import {
   CACHE_STATUS_HEADER,
@@ -21,7 +21,7 @@ import {
 } from "./cache";
 
 export interface Env {
-  /** The backend's origin, such as https://walk-in-aoa2.onrender.com. */
+  /** The backend's origin, such as https://threshold-api.onrender.com. */
   BACKEND_ORIGIN: string;
   /** Shared with the backend, which trusts X-Client-IP (the visitor's address, for rate limits) only with it. */
   PROXY_SECRET: string;
@@ -119,7 +119,7 @@ async function ask(request: Request, deps: FrontDoorDeps, signal: AbortSignal): 
 const SLOW = Symbol("slow");
 
 /**
- * Answers an /api request. `x-walkin-cache` says how: "hit" from the edge's fresh copy, "stale" from its stale copy
+ * Answers an /api request. `x-threshold-cache` says how: "hit" from the edge's fresh copy, "stale" from its stale copy
  * while the backend could not answer, "miss" from the backend with an answer now kept at the edge, and "bypass" for
  * everything the edge does not keep (other methods, receipts, private answers, errors, the waking
  * note).

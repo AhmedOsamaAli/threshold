@@ -2,7 +2,7 @@
 
 Users sign in with Google; a session row holds only the SHA-256 of its cookie.
 
-Walk-in Founders: a campaign keeps what its page shows (the business, the place, why here), its pledges are PayPal
+Campaigns: a campaign keeps what its page shows (the business, the place, why here), its pledges are PayPal
 orders that only hold money until it settles, its payout sends the net collected total to the owner, and PayPal's
 webhook events are kept once each. A pledge keeps only the SHA-256 of its private receipt, as a session keeps only that
 of its cookie.
@@ -80,7 +80,7 @@ users = Table(
 
 sessions = Table(
     "sessions", metadata,
-    Column("token_hash", String(64), primary_key=True),  # SHA-256 of the walkin_session cookie, never the cookie
+    Column("token_hash", String(64), primary_key=True),  # SHA-256 of the threshold_session cookie, never the cookie
     Column("user_id", String(32), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True),
     _created(),
     Column("expires_at", UTCDateTime, nullable=False, index=True),

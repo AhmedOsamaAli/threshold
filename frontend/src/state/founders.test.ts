@@ -56,7 +56,7 @@ describe("a receipt prepared for a pledge not yet approved", () => {
   it("waits apart from the held pledges, and is given back once", () => {
     const data = stubStorage();
     keepPrepared("c4f1e2", RECEIPT, NOW);
-    expect([...data.keys()].every((key) => !key.startsWith("walk-in-pledge"))).toBe(true);
+    expect([...data.keys()].every((key) => !key.startsWith("threshold-pledge"))).toBe(true);
     expect(takePrepared("c4f1e2", NOW + 60_000)).toBe(RECEIPT);
     expect(takePrepared("c4f1e2", NOW + 60_000)).toBeUndefined();
     expect(data.size).toBe(0);
@@ -86,7 +86,7 @@ describe("a receipt prepared for a pledge not yet approved", () => {
   it("ignores whatever else is in storage", () => {
     const data = stubStorage();
     for (const stored of ["not json", "null", "[]", JSON.stringify({ receipt: RECEIPT }), JSON.stringify({ receipt: 5, at: NOW }), JSON.stringify({ receipt: "short", at: NOW }), JSON.stringify({ receipt: RECEIPT, at: "yesterday" })]) {
-      data.set("walk-in-prepared:c4f1e2", stored);
+      data.set("threshold-prepared:c4f1e2", stored);
       expect(takePrepared("c4f1e2", NOW)).toBeUndefined();
     }
   });

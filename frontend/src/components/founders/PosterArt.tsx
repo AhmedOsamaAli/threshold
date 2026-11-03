@@ -152,7 +152,7 @@ export function PosterArt({ poster, link, campaign, sandbox = false,
       {sandbox ? <text x={POSTER_M} y={POSTER_H - 48} fontFamily={POSTER_FONTS.sans}
         fontSize="9" fill={brand.ink}>{SANDBOX_NOTICE}</text> : null}
       {readableLink.map((line, i) => <text key={i} x={POSTER_M} y={POSTER_H - 30 + i * 10} fontFamily={POSTER_FONTS.mono} fontSize="8.5" fill={brand.ink}>{line}</text>)}
-      <text x={POSTER_W - POSTER_M} y={POSTER_H - 10} textAnchor="end" fontFamily={POSTER_FONTS.sans} fontSize="6.8" fill={brand.ink}>Made with Walk-in</text>
+      <text x={POSTER_W - POSTER_M} y={POSTER_H - 10} textAnchor="end" fontFamily={POSTER_FONTS.sans} fontSize="6.8" fill={brand.ink}>Made with Threshold</text>
     </svg>
   );
 }

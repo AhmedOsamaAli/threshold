@@ -1,6 +1,6 @@
 """A pledge's private receipt: a random token minted with the pledge and given once, in the answer that starts it, to
 whoever started it (the campaign page in the supporter's browser, or the AI assistant preparing it for a person).
-Walk-in keeps only its SHA-256 (pledges.receipt_hash), as a session keeps only that of its cookie, so the database never
+Threshold keeps only its SHA-256 (pledges.receipt_hash), as a session keeps only that of its cookie, so the database never
 holds a working receipt; a receipt is looked up by its digest alone, so how long a lookup takes says nothing about the
 receipt's characters. Whoever holds it may follow the pledge and withdraw it while its campaign takes pledges, from any
 device (app.routes.receipts); it names neither the payer nor the PayPal order.

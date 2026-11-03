@@ -1,4 +1,4 @@
-"""Walk-in Founders over a fake PayPal: starting a campaign from the owner's description (drafting its words, checking
+"""Campaigns over a fake PayPal: starting a campaign from the owner's description (drafting its words, checking
 the terms and the edited words), the campaign page, finding campaigns, pledging with the buttons or a redirect, holding
 (idempotent, declined, refused), withdrawing, the owner's close and cancel, and what the rest of the app shows of
 campaigns: /api/config, the owner's campaigns and the Origin check."""
@@ -516,7 +516,7 @@ def test_without_paypal_nobody_can_pledge(monkeypatch):
 
 
 def test_paypal_and_the_scheduler_are_not_held_to_the_origin_check(monkeypatch):
-    configure(monkeypatch, public_url="https://walk-in.example.com", auth_dev_login=False)
+    configure(monkeypatch, public_url="https://threshold.example.com", auth_dev_login=False)
     with make_client(paypal=FakePayPal()) as client:
         evil = {"origin": "https://evil.example.com"}
         assert client.post("/api/campaigns/abc/pledges", headers=evil).status_code == 403
@@ -542,7 +542,7 @@ def test_pledges_and_drafts_are_rate_limited_per_address(world):
 def test_campaign_pages_are_pages_of_the_web_app(world):
     client = world["client"]
     campaign_id = start(world)
-    for path in (f"/p/{campaign_id}", "/p/anything", "/founders", "/founders/start", "/r/anything", "/me", "/privacy",
+    for path in (f"/p/{campaign_id}", "/p/anything", "/browse", "/start", "/r/anything", "/me", "/privacy",
                  "/ask", "/spot", f"/proof/{campaign_id}"):
         page = client.get(path)
         assert page.status_code == 200 and page.headers["content-type"].startswith("text/html"), path

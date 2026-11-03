@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: walk-in
+    name: threshold
     runtime: docker
     plan: free
     # Ohio, next to the Neon database (AWS us-east-2), so each query stays a few milliseconds away.
@@ -34,7 +34,7 @@ services:
         value: "45"
       - key: GROQ_API_KEY
         sync: false
-      # Walk-in Founders: PayPal (the sandbox until PAYPAL_ENV=live), its webhook, the scheduled settlement's secret
+      # PayPal (the sandbox until PAYPAL_ENV=live), its webhook, the scheduled settlement's secret
       # and the in-app settlement period.
       - key: PAYPAL_CLIENT_ID
         sync: false
@@ -48,3 +48,6 @@ services:
         sync: false
       - key: SETTLE_EVERY_S
         value: "180"
+      # Signs each pledge's terms and the limits a person sets; a hosted site prepares no pledges without it.
+      - key: SIGNING_KEY
+        sync: false

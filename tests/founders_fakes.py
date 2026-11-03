@@ -1,4 +1,4 @@
-"""Fakes for Walk-in Founders' tests: PayPal's sandbox in memory (an httpx.MockTransport handler) with Orders, Payments,
+"""Fakes for Threshold's tests: PayPal's sandbox in memory (an httpx.MockTransport handler) with Orders, Payments,
 Payouts and webhook verification, the payment settings, an app wired to them with the settlement loop off, a business
 for the campaigns to start from, and two requests raced around a PayPal call. Accounts' fakes come from
 tests.account_fakes."""

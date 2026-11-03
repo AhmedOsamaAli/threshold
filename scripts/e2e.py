@@ -34,7 +34,6 @@ import httpx
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-sys.path.insert(0, str(ROOT / "docs" / "founders"))
 
 from sandbox_money_flows import approve, buyers, env_file  # noqa: E402
 

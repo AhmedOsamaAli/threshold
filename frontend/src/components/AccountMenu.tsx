@@ -210,7 +210,7 @@ function AccountControl({
             if (next && !popup.current?.contains(next) && !trigger.current?.contains(next)) close(false);
           }}
         >
-          <p className="account-title">Sign in to Walk-in</p>
+          <p className="account-title">Sign in to Threshold</p>
           <SignInOptions why="Sign in to start a campaign and follow the ones you run. Backing a campaign never needs an account." />
         </div>
       ) : null}

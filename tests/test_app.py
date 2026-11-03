@@ -34,10 +34,9 @@ def test_health_config_and_the_map_lookups():
         walk = client.get("/api/catchment", params={"lat": SITE[0], "lon": SITE[1], "minutes": 15}).json()
         assert walk["minutes"] == 15 and walk["radius_m"] > 1100 and walk["travel"] == "walk"
         assert client.get("/api/geocode", params={"q": "Main Street"}).json()[0]["lat"] == SITE[0]
-        assert client.get("/api/reverse", params={"lat": SITE[0], "lon": SITE[1]}).json()["label"]
         assert client.get("/api/campaigns").json() == {"campaigns": []}
         page = client.get("/")
-        assert page.status_code == 200 and "Walk-in" in page.text
+        assert page.status_code == 200 and "Threshold" in page.text
         assert "frame-ancestors 'none'" in page.headers["content-security-policy"]
 
 
@@ -80,8 +79,8 @@ def test_the_endpoints_that_are_gone_are_gone():
 def test_shared_links_open_the_web_app_and_leave_the_api_alone(web_build):
     with make_client() as client:
         home = client.get("/")
-        assert "<title>Walk-in</title>" in home.text
-        for path in ("/me", "/privacy", "/p/abc123", "/founders", "/founders/start", "/r/abc123", "/ask", "/spot", "/proof/abc123"):
+        assert "<title>Threshold</title>" in home.text
+        for path in ("/me", "/privacy", "/p/abc123", "/browse", "/start", "/r/abc123", "/ask", "/spot", "/proof/abc123"):
             page = client.get(path)
             assert page.status_code == 200 and page.text == home.text, path
             for header in ("content-security-policy", "x-content-type-options", "referrer-policy", "cache-control"):
@@ -98,7 +97,7 @@ def test_shared_links_open_the_web_app_and_leave_the_api_alone(web_build):
 
 def test_without_the_react_build_the_server_serves_the_api_only(tmp_path, caplog):
     built = services()
-    with caplog.at_level(logging.WARNING, logger="walkin"):
+    with caplog.at_level(logging.WARNING, logger="threshold"):
         app = create_app(lambda: built, web_root=tmp_path / "no-build")
     assert "frontend/dist is missing (npm run build in frontend/): serving the API only" in caplog.messages
     with TestClient(app) as client:

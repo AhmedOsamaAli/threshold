@@ -1,6 +1,6 @@
 """A pledge's private receipt over a fake PayPal: minted with the pledge and kept only as its digest, read in plain
 words with the campaign's progress and terms and nothing about the payer, withdrawn as the campaign's page withdraws
-(under the settlement lock, only while the campaign takes pledges), 404 for any receipt Walk-in does not know, limited
+(under the settlement lock, only while the campaign takes pledges), 404 for any receipt Threshold does not know, limited
 per address, never cached, and kept out of the access log."""
 from __future__ import annotations
 

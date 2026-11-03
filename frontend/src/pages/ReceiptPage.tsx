@@ -54,7 +54,7 @@ export function ReceiptPage({ token }: { token: string }) {
   const receipt = load.phase === "ready" ? load.receipt : null;
   return (
     <Page>
-      <PageHead eyebrow="Founders private receipt" title={receipt?.state ?? "Your pledge receipt"} titleRef={titleRef}
+      <PageHead eyebrow="Private receipt" title={receipt?.state ?? "Your pledge receipt"} titleRef={titleRef}
         standfirst="This link is the key to your pledge. Keep it private: anyone with it can follow or withdraw the pledge." />
       <section className="pg-sec receipt-page" aria-busy={load.phase === "loading" || busy} aria-label="Your pledge">
         {load.phase === "loading" ? <p role="status">Reading your receipt...</p> : null}

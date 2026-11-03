@@ -24,7 +24,7 @@ class Services:
     answers: AnswerCache = field(default_factory=lambda: AnswerCache(None))
     osm: OsmClient | None = None  # OpenStreetMap's places inside an area; without it, no area is read
     google: auth.GoogleKeys = field(default_factory=auth.GoogleKeys)
-    paypal: PayPalClient | None = None  # Walk-in Founders' pledges and payouts; without it nobody can pledge
+    paypal: PayPalClient | None = None  # pledges and payouts; without it nobody can pledge
 
     async def aclose(self) -> None:
         if self.osm is not None:

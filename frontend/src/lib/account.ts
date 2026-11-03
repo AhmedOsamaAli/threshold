@@ -18,9 +18,9 @@ export function plainError(error: unknown, fallback = "Something went wrong. Try
     if (error.status === 401) return "You're signed out. Sign in and try again.";
     if (error.status === 403) return "The server refused this request. Reload the page and try again.";
     if (error.status === 404) return "That isn't available any more.";
-    if (error.status >= 500) return "Walk-in's server had a problem. Try again in a moment.";
+    if (error.status >= 500) return "Threshold's server had a problem. Try again in a moment.";
     return fallback;
   }
-  if (error instanceof TypeError) return "Walk-in can't be reached. Check your connection and try again.";
+  if (error instanceof TypeError) return "Threshold can't be reached. Check your connection and try again.";
   return fallback;
 }

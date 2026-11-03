@@ -1,12 +1,13 @@
-"""One-off setup for Walk-in Founders: registers the PayPal webhook for a backend's address, writes its id to .env as
+"""One-off setup for Threshold: registers the PayPal webhook for a backend's address, writes its id to .env as
 PAYPAL_WEBHOOK_ID, and adds a CRON_SECRET there if there is none. Prints no secret values.
 
-    python docs/founders/setup_paypal_webhook.py https://walk-in-aoa2.onrender.com
+    python scripts/setup_paypal_webhook.py https://<the backend's address>
 
 The address is the backend's own (PayPal delivers to {address}/api/paypal/webhook, over HTTPS). A webhook already
 registered for that address is reused, its event types brought up to date. Uses PAYPAL_CLIENT_ID and
-PAYPAL_CLIENT_SECRET from .env, and refuses a live PayPal account: set the same PAYPAL_WEBHOOK_ID on the backend (Render's
-environment), and the same CRON_SECRET there and in the repository's secrets for .github/workflows/settle.yml.
+PAYPAL_CLIENT_SECRET from .env (or the file ENV_FILE names), writes only to this repository's own .env, and refuses a
+live PayPal account: set the same PAYPAL_WEBHOOK_ID on the backend (Render's environment), and the same CRON_SECRET there
+and in the repository's secrets for .github/workflows/settle.yml.
 """
 from __future__ import annotations
 
@@ -17,7 +18,7 @@ from pathlib import Path
 
 import httpx
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from app.config import settings  # noqa: E402

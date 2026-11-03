@@ -32,7 +32,10 @@ export function PledgePanel({ pledge }: { pledge: PreparedPledge }) {
       </div>
       <SandboxNotice />
       <p className="ask-pledge-proof">
-        <span className="mono">Signed terms {pledge.ref}</span> · PayPal's own record of the order carries their fingerprint.{" "}
+        <span className="mono">
+          Signed terms <span className="raw">{pledge.ref}</span>
+        </span>{" "}
+        · PayPal's own record of the order carries their fingerprint.{" "}
         <Link className="text-link" href={proofUrl(pledge.campaign_id)}>
           See the proof
         </Link>

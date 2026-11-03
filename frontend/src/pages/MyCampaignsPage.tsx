@@ -26,7 +26,7 @@ function CampaignRow({ campaign }: { campaign: MyCampaign }) {
     <li>
       <Link className="place-row" href={campaign.url}>
         <span className="place-main">
-          <span className="place-kicker mono">Founders campaign</span>
+          <span className="place-kicker mono">Campaign</span>
           <span className="place-name">{campaign.title}</span>
           <span className="place-sub">
             {campaign.supporters} of {campaign.goal} neighbors · {heldText(campaign.status, campaign.total)}
@@ -78,7 +78,7 @@ function Campaigns({ userId }: { userId: string }) {
 
   return (
     <section className="pg-sec" aria-labelledby="mine-campaigns" aria-busy={load.state === "loading"}>
-      <SectionHead id="mine-campaigns" no="01" title="Founders campaigns" note={note} />
+      <SectionHead id="mine-campaigns" no="01" title="Campaigns you run" note={note} />
       {load.state === "loading" ? (
         <div className="place-list" aria-hidden="true">
           <div className="sk sk-row" />
@@ -138,7 +138,7 @@ function Farewell({ left }: { left: Left }) {
   );
 }
 
-/** Who is signed in, what Walk-in keeps about them, and the ways out: signing out, or deleting the account. */
+/** Who is signed in, what Threshold keeps about them, and the ways out: signing out, or deleting the account. */
 function AccountSection({ user, onLeft }: { user: User; onLeft: (how: Left) => void }) {
   const { busy, error } = useSession();
   const [asking, setAsking] = useState(false);
@@ -156,7 +156,7 @@ function AccountSection({ user, onLeft }: { user: User; onLeft: (how: Left) => v
 
   return (
     <section className="pg-sec" aria-labelledby="mine-account">
-      <SectionHead id="mine-account" no="02" title="Your account" note="What Walk-in keeps about you, and how to remove it." />
+      <SectionHead id="mine-account" no="02" title="Your account" note="What Threshold keeps about you, and how to remove it." />
       <div className="account-card">
         <div className="account-id">
           <Avatar user={user} className="avatar-large" />
@@ -166,10 +166,10 @@ function AccountSection({ user, onLeft }: { user: User; onLeft: (how: Left) => v
           </p>
         </div>
         <p className="account-keeps">
-          Walk-in keeps your account id, email, name and picture link, only to show you&apos;re signed in and to list your
+          Threshold keeps your account id, email, name and picture link, only to show you&apos;re signed in and to list your
           campaigns here.{" "}
           <Link className="text-link" href={PRIVACY_URL}>
-            How Walk-in handles your data
+            How Threshold handles your data
           </Link>
         </p>
         <div className="account-actions">
@@ -229,7 +229,7 @@ function AccountSection({ user, onLeft }: { user: User; onLeft: (how: Left) => v
   );
 }
 
-/** My campaigns: the signed-in user's Founders campaigns and account, or the ways to sign in. */
+/** My campaigns: the signed-in user's campaigns and account, or the ways to sign in. */
 export function MyCampaignsPage() {
   const { phase, user } = useSession();
   const { note } = useEngine();
@@ -251,8 +251,8 @@ export function MyCampaignsPage() {
         titleRef={titleRef}
         standfirst={
           user
-            ? `Signed in as ${user.email}. The Founders campaigns you run, open on any device.`
-            : "The Founders campaigns you run, open on any device."
+            ? `Signed in as ${user.email}. The campaigns you run, open on any device.`
+            : "The campaigns you run, open on any device."
         }
       />
       {user ? (

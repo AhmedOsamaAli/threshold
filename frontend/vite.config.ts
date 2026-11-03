@@ -15,13 +15,15 @@ const proxy: Record<string, ProxyOptions> = {
 // cannot open (docs/CONTRACT.md).
 const GOOGLE_SIGN_IN = "https://accounts.google.com/gsi/";
 const PAYPAL = "https://www.sandbox.paypal.com https://www.paypal.com";
+// The street map (MapLibre) asks OpenFreeMap for its style, tiles, fonts and icons; its worker is a file of this site.
+const MAP_TILES = "https://tiles.openfreemap.org";
 const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
   `script-src 'self' ${GOOGLE_SIGN_IN}client ${PAYPAL}`,
   `style-src 'self' 'unsafe-inline' ${GOOGLE_SIGN_IN}style`,
   "img-src 'self' data: https:",
   "font-src 'self'",
-  `connect-src 'self' ${GOOGLE_SIGN_IN} ${PAYPAL}`,
+  `connect-src 'self' ${GOOGLE_SIGN_IN} ${PAYPAL} ${MAP_TILES}`,
   `frame-src ${GOOGLE_SIGN_IN} ${PAYPAL}`,
   "object-src 'none'",
   "base-uri 'self'",
@@ -46,5 +48,7 @@ export default defineConfig({
     outDir: "dist",
     // Inlined assets become data: URLs, which the policy blocks for fonts.
     assetsInlineLimit: 0,
+    // The street map's chunk (MapLibre, about 300 kB gzipped) is the one big file, and it loads only where a map is shown.
+    chunkSizeWarningLimit: 1200,
   },
 });

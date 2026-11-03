@@ -32,9 +32,12 @@ class FakeOsm:
     as the real client's cache keeps it, so a scan that outlasted its visitor leaves its answer for the next ask."""
 
     def __init__(self, *places: dict, checked: bool = True, note: str | None = None, delay: float = 0.0,
-                 as_of: str | None = "2026-11-01T06:00:00Z", remember: bool = False, fail: bool = False) -> None:
+                 as_of: str | None = "2026-11-01T06:00:00Z", remember: bool = False, fail: bool = False,
+                 source: str = "https://overpass.test", unpinned: frozenset[str] = frozenset(),
+                 kind_notes: dict[str, str] | None = None) -> None:
         self.places, self.checked, self.note, self.delay, self.as_of = list(places), checked, note, delay, as_of
         self.remember, self.fail, self._kept = remember, fail, None
+        self.source, self.unpinned, self.kind_notes = source, unpinned, kind_notes or {}
         self.calls = 0
 
     async def scan(self, catchment) -> osm.Scan:
@@ -47,10 +50,29 @@ class FakeOsm:
             raise RuntimeError("an answer shaped unlike any seen")
         if not self.checked:
             return osm.Scan(False, note=self.note or osm.NOTES["unavailable"])
-        found = osm.Scan(True, [p for p in self.places if catchment.contains(p["lat"], p["lon"])], "https://overpass.test", self.as_of)
+        found = osm.Scan(True, [p for p in self.places if catchment.contains(p["lat"], p["lon"])], self.source, self.as_of,
+                         unpinned=self.unpinned, kind_notes=self.kind_notes)
         if self.remember:
             self._kept = found
         return found
+
+    async def aclose(self) -> None:
+        pass
+
+
+class FakeDetails:
+    """What OpenStreetMap's volunteers wrote down, by place id; `asked` keeps what was asked for."""
+
+    def __init__(self, found: dict[str, dict] | None = None, delay: float = 0.0, fail: bool = False) -> None:
+        self.found, self.delay, self.fail, self.asked = found or {}, delay, fail, []
+
+    async def lookup(self, ids) -> dict[str, dict]:
+        self.asked = list(ids)
+        if self.delay:
+            await asyncio.sleep(self.delay)
+        if self.fail:
+            raise RuntimeError("the API fell over")
+        return {i: d for i, d in self.found.items() if i in self.asked}
 
     async def aclose(self) -> None:
         pass
@@ -75,12 +97,13 @@ class AddressDown(StubGeocoder):
         raise httpx.ConnectError("no route")
 
 
-def services(fake: FakeOsm | None, walker=None, geocoder=None) -> Services:
-    return Services(walker=walker or StreetWalker(), llm=account_fakes.LLM("", None, "test-model"), geocoder=geocoder or StubGeocoder(), osm=fake)
+def services(fake: FakeOsm | None, walker=None, geocoder=None, details: FakeDetails | None = None) -> Services:
+    return Services(walker=walker or StreetWalker(), llm=account_fakes.LLM("", None, "test-model"), geocoder=geocoder or StubGeocoder(),
+                    osm=fake, details=details)
 
 
-def check(fake: FakeOsm | None, kind: str = "bakery", walker=None) -> dict:
-    return asyncio.run(spot.check_spot(services(fake, walker), SITE[0], SITE[1], kind, "1 Test Street", NOW))
+def check(fake: FakeOsm | None, kind: str = "bakery", walker=None, details: FakeDetails | None = None) -> dict:
+    return asyncio.run(spot.check_spot(services(fake, walker, details=details), SITE[0], SITE[1], kind, "1 Test Street", NOW))
 
 
 BAKERIES = (
@@ -237,6 +260,94 @@ def test_the_busiest_kinds_and_the_dots_are_bounded():
     assert answer["around"]["count"] == 200 and answer["same_kind"]["count"] == 0 and answer["same_kind"]["nearest"] == []
 
 
+def test_a_busy_street_lists_its_nearest_places_up_to_a_limit_and_counts_them_all():
+    loaves = [place(i, f"Loaf {i}", 10 + 5 * i, 0, shop="bakery") for i in range(1, 41)]
+    answer = check(FakeOsm(*loaves))
+    nearest = answer["same_kind"]["nearest"]
+    assert answer["same_kind"]["count"] == 40 and len(nearest) == spot.LISTED == 30
+    assert [p["name"] for p in nearest] == [f"Loaf {i}" for i in range(1, 31)]  # nearest first
+
+
+def test_each_place_carries_its_openstreetmap_page_and_what_volunteers_wrote_down():
+    details = FakeDetails({"node/2": {"hours": "Mo-Fr 07:00-15:00", "website": "https://near.example", "phone": "+1 555 0100"}})
+    answer = check(FakeOsm(*BAKERIES), details=details)
+    near, sweet, far = answer["same_kind"]["nearest"]
+    assert (near["name"], near["osm"]) == ("Near Loaf", "node/2")
+    assert near["details"] == {"hours": "Mo-Fr 07:00-15:00", "website": "https://near.example", "phone": "+1 555 0100"}
+    assert sweet["details"] is None and far["details"] is None and sweet["osm"] == "node/3"
+    assert set(near) == {"name", "kind", "distance_m", "lat", "lon", "osm", "details"}
+
+
+def test_only_the_nearest_places_are_asked_about():
+    loaves = [place(i, f"Loaf {i}", 10 + 5 * i, 0, shop="bakery") for i in range(1, 41)]
+    details = FakeDetails()
+    check(FakeOsm(*loaves), details=details)
+    assert details.asked == [f"node/{i}" for i in range(1, spot.DETAILED + 1)]
+
+
+def test_a_place_with_no_openstreetmap_page_is_not_asked_about_and_has_no_link():
+    nameless = place(1, "Pop Up", 100, shop="bakery")
+    nameless["id"] = "point/12345"
+    details = FakeDetails()
+    [shown] = check(FakeOsm(nameless), details=details)["same_kind"]["nearest"]
+    assert shown["osm"] is None and details.asked == []
+
+
+@pytest.mark.parametrize("trouble", [{"fail": True}, {"delay": 5.0}])
+def test_details_that_fail_or_come_too_late_do_not_hold_the_answer(monkeypatch, trouble):
+    monkeypatch.setattr(spot, "DETAILS_SECONDS", 0.05)
+    answer = check(FakeOsm(*BAKERIES), details=FakeDetails({"node/2": {"phone": "1"}}, **trouble))
+    assert answer["checked"] is True and answer["same_kind"]["count"] == 3
+    assert [p["details"] for p in answer["same_kind"]["nearest"]] == [None, None, None]
+
+
+def test_without_a_details_service_the_places_simply_have_none():
+    assert [p["details"] for p in check(FakeOsm(*BAKERIES))["same_kind"]["nearest"]] == [None, None, None]
+
+
+def test_the_nearest_parks_are_named_for_the_green_around():
+    parks = (place(11, "Linden Park", 300, 90, leisure="park"), place(12, "Little Garden", 100, 0, leisure="garden"),
+             place(13, "Far Park", 700, 0, leisure="park"), place(14, "Big Park", 500, 180, leisure="park"),
+             place(15, "Pitch", 50, 0, leisure="pitch"))
+    answer = check(FakeOsm(*BAKERIES, *parks))
+    assert answer["around"]["green"] == [
+        {"name": "Little Garden", "kind": "garden", "distance_m": pytest.approx(100, abs=3)},
+        {"name": "Linden Park", "kind": "park", "distance_m": pytest.approx(300, abs=3)},
+        {"name": "Big Park", "kind": "park", "distance_m": pytest.approx(500, abs=3)}]
+    assert answer["around"]["count"] == 4  # a park is no business
+    assert check(FakeOsm(*BAKERIES))["around"]["green"] == []
+
+
+@pytest.mark.parametrize("kind", ["barber", "studio"])
+def test_a_kind_the_source_cannot_tell_apart_gets_no_count_of_its_own(kind):
+    barber = place(1, "Sharp Cuts", 100, shop="hairdresser", hairdresser="barber")
+    answer = check(FakeOsm(barber, *BAKERIES, unpinned=frozenset({"barber", "studio"})), kind)
+    assert answer["checked"] is True and answer["same_kind"] is None and answer["around"]["count"] == 5
+    assert answer["summary"] == (f"The map data this check reads cannot tell {kind} businesses from other places, so there is no "
+                                 "count of their own kind to compare. 5 businesses are listed inside a 10-minute walk of this address.")
+    assert check(FakeOsm(barber), "barber")["same_kind"]["count"] == 1  # a source that can tell them apart counts them
+
+
+def test_a_label_the_source_gave_is_the_kind_shown():
+    hall = place(1, "Iron Works", 100, leisure="fitness_centre")
+    hall["label"] = "yoga studio"
+    answer = check(FakeOsm(hall), "gym")
+    assert answer["same_kind"]["nearest"][0]["kind"] == "yoga studio" and answer["around"]["top_kinds"] == [{"kind": "yoga studio", "count": 1}]
+
+
+def test_the_map_tiles_are_credited_where_they_were_the_source():
+    from app import tiles
+    assert check(FakeOsm(*BAKERIES))["source"]["name"] == "OpenStreetMap contributors"
+    credited = check(FakeOsm(*BAKERIES, source=tiles.SOURCE))["source"]
+    assert credited["name"] == "OpenStreetMap contributors, through OpenFreeMap" and credited["url"].endswith("/copyright")
+
+
+def test_a_source_says_how_roughly_it_counts_a_kind_but_only_for_that_kind():
+    notes = {"bakery": "Bakeries are told by their names here."}
+    assert check(FakeOsm(*BAKERIES, kind_notes=notes))["note"].endswith("Bakeries are told by their names here.")
+    assert "told by" not in check(FakeOsm(*BAKERIES, kind_notes=notes), "cafe")["note"]
+
+
 # The endpoint
 
 def spot_client(fake: FakeOsm | None, geocoder=None):
@@ -274,6 +385,20 @@ def test_a_point_is_checked_without_an_address_search():
     with spot_client(FakeOsm(*BAKERIES), geocoder=AddressDown()) as client:
         answer = client.get("/api/spot", params={"lat": SITE[0], "lon": SITE[1], "kind": "bakery"}).json()
         assert answer["place"]["label"] == "40.00000, -73.00000" and answer["same_kind"]["count"] == 3
+
+
+def test_a_point_may_be_named_for_the_answer_and_the_name_is_text_of_bounded_length():
+    fake = FakeOsm(*BAKERIES)
+    with spot_client(fake, geocoder=AddressDown()) as client:
+        base = {"lat": SITE[0], "lon": SITE[1], "kind": "bakery"}
+        named = client.get("/api/spot", params={**base, "label": "  Bedford   Ave,\nBrooklyn "}).json()
+        assert named["place"]["label"] == "Bedford Ave, Brooklyn" and fake.calls == 1
+        blank = client.get("/api/spot", params={**base, "label": "   "}).json()
+        assert blank["place"]["label"] == "40.00000, -73.00000" and fake.calls == 1  # kept: a name changes no count
+        assert client.get("/api/spot", params={**base, "label": "x" * 161}).status_code == 422
+    with spot_client(fake) as client:
+        by_address = client.get("/api/spot", params={"address": "Crumb Street 1", "kind": "bakery", "label": "Ignored"}).json()
+        assert by_address["place"]["label"] == "Crumb Street 1, Testville"  # a name is for a point; an address names itself
 
 
 @pytest.mark.parametrize("params", [

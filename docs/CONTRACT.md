@@ -247,45 +247,78 @@ public API, like any outside assistant, so the same rules bind it:
 
 ## Check a spot
 
-`GET /api/spot?kind=bakery&address=Logan Square, Chicago` (or `lat=` and `lon=` instead of an address, not both; anyone;
-30 an hour per address) says what OpenStreetMap lists inside a 10-minute walk of the place for one kind of business
-(`cafe`, `restaurant`, `bakery`, `bar`, `gym`, `studio`, `salon`, `barber`, `bookstore`, `grocery`, and `shop`, `kids`,
-`services`, `other`). It shows **supply, never demand**: demand is what the pledges measure.
+`GET /api/spot?kind=bakery&address=Logan Square, Chicago` (or `lat=` and `lon=` instead of an address, not both, and an
+optional `label=` to name a point in the answer; anyone; 30 an hour per address) says what OpenStreetMap lists inside a
+10-minute walk of the place for one kind of business (`cafe`, `restaurant`, `bakery`, `bar`, `gym`, `studio`, `salon`,
+`barber`, `bookstore`, `grocery`, and `shop`, `kids`, `services`, `other`). It shows **supply, never demand**: demand is
+what the pledges measure.
 ```ts
 { place: { label; lat; lon }; kind; walk_minutes: 10;
-  checked: boolean; reason: string | null;                // false: OpenStreetMap could not be read, and nothing below is a number
-  same_kind: { count: number | null; nearest: { name; kind; distance_m; lat; lon }[] } | null;  // null for kinds no single tag pins down
-  around: { count; top_kinds: { kind; count }[]; dots: [lat, lon, 0 | 1][] } | null;           // 1: the asked kind
+  checked: boolean; reason: string | null;                // false: the map data could not be read, and nothing below is a number
+  same_kind: { count: number | null; nearest: Neighbor[] } | null;  // null for kinds no single tag pins down
+  around: { count; top_kinds: { kind; count }[]; dots: [lat, lon, 0 | 1][];      // 1: the asked kind
+           green: { name; kind; distance_m }[] } | null;                          // the nearest parks and gardens
   area: { ring: [lat, lon][]; source: "walk" | "circle" } | null;   // circle: the routing service did not answer
   summary: string;                                         // a sentence written from the numbers and nothing else
   source: { name; url; as_of: string | null }; checked_at: string; note: string }
-```
-- Nothing is a guess. When OpenStreetMap or the routing service does not answer, `checked` is false, there are no
-  numbers, and `reason` says why. A kind no single tag pins down gets no count of its own kind. Every answer says that
-  OpenStreetMap is volunteers' work and can be incomplete, and that the check shows what is open, not what people want.
-- A visitor waits at most 45 s. A check that is only slow goes on in the background and fills the caches (the places a
-  walk covers are kept on disk for 7 days), so asking again a minute later finds the answer. An answer with no numbers is
-  never kept; one with numbers is kept for a day by point (to about 10 m) and kind.
-- Data © OpenStreetMap contributors, under the Open Database License.
 
-Live, against the real public servers (`scripts/spot_live.py`, before slow checks went on in the background): East Austin
-café, 2 listed, nearest 413 m (25.9 s); Logan Square gym, 1, nearest 406 m (10.3 s); Zamalek café, 22, nearest 57 m
-(6.3 s). Three more addresses (a Williamsburg bakery, a Kreuzberg bookstore, a Shibuya bar) did not finish in 14 to 26 s
-and answered, honestly, with no numbers.
+Neighbor = { name; kind; distance_m; lat; lon;
+             osm: "node/123" | "way/456" | "relation/789" | null;   // its page on OpenStreetMap, when it has one
+             details: { hours?; website?; phone?; address? } | null }  // what volunteers wrote down, when they did
+```
+- **Where the places come from.** The map's own tiles (OpenFreeMap's, drawn from OpenStreetMap) carry a layer of named
+  points of interest. Reading the one to four tiles under a walk (`app/tiles.py`, a small vector-tile reader with no
+  library) takes about a second and a few static files, where the public Overpass servers are volunteers' and were
+  mostly timing out in November 2026. The tiles come first; Overpass (`app/osm.py`) is asked only when they cannot be
+  read. A tile keeps only a class and a subclass, so each place gets the few OpenStreetMap tags the rules read, and:
+  a barber is not told from a hair salon and a pilates or dance studio is not told from a yoga one, so `barber` and
+  `studio` get **no count of their own kind** from the tiles (the answer says so); a sports centre is counted as a gym
+  only when its name says so (fitness, gym, crossfit, boxing...), and the `note` says that gyms are recognised by name.
+- **Details of a place** (`hours`, `website`, `phone`, `address`) come from OpenStreetMap's own API
+  (`app/osmdetails.py`), for the nearest 12 places only, best effort, within 4 s; a website is kept only when it is an
+  http or https address. Most places have none, and the answer says nothing of those.
+- `nearest` lists up to 30 places of the kind, nearest first; `count` is how many there are.
+- Nothing is a guess. When the map data or the routing service does not answer, `checked` is false, there are no
+  numbers, and `reason` says why. Every answer says that OpenStreetMap is volunteers' work and can be incomplete, and that
+  the check shows what is open, not what people want.
+- A visitor waits at most 45 s. A check that is only slow goes on in the background, so asking again a minute later
+  finds the answer. An answer with no numbers is never kept; one with numbers is kept for a day by point (to about 10 m)
+  and kind.
+- Data © OpenStreetMap contributors, under the Open Database License; tiles by OpenFreeMap.
+
+Live, against the real public services, 3 November 2026 (`app/tiles.py`): a Zamalek café, 22 listed, nearest 60 m
+(about 1 s to read); a Bedford Avenue bakery, 6; a Williamsburg gym, 3. The same day most public Overpass servers timed
+out for minutes, which is why it reads the tiles.
+
+### The map and the place cards
+
+The web page draws the walk on a street map (MapLibre GL with OpenFreeMap's "Bright" look: streets, parks, water and every
+named place), with a numbered pin for each place of the kind and the same places in a list. Pointing at a pin or a row
+lights both and brings up a small card; pressing one opens its card: what it is, how far, how long on foot, its hours,
+address, phone and website when OpenStreetMap has them, a link to its page on OpenStreetMap and one to its card on Google
+Maps. **OpenStreetMap has no ratings or photos, so the card says so and links to Google Maps, which has them;** nothing
+from Google is read by Threshold. The campaign page ("Where it will be") shows the same map for the campaign's address
+with its nearest neighbours of the same kind, and Browse shows every open campaign as a price tag on a map. If the map
+cannot load (no WebGL, no reach to its tiles) the page shows the plain plan of the walk, and the list still works.
 
 ## Pages
 
-- `/`: what the product is, how a pledge works, and the ways in.
+- `/`: what the product is and how a pledge works, shown: the pitch beside a short animation of the money moving (held,
+  then collected and paid, or released), one open campaign, the three steps, the assistant's limits, the proof of a real test
+  run, Check a spot, and the ways in.
 - `/ask`: the assistant. The person's limits above (the form, then what is left of them), the conversation below: campaign
   cards with Back it, a prepared pledge with PayPal's own approval link and the private receipt, and what the assistant did.
-- `/proof/{id}`: a campaign's signed terms, each pledge's checks against PayPal, where the money is, and how to check it.
-- `/spot`: Check a spot, with a plan of the walk, the nearest places of the kind and what else is around.
-- `/p/{id}`: the campaign. Supporter view: the business, the place, why here (in the owner's words),
+- `/proof/{id}`: a campaign's four steps (pledged, held by PayPal, collected or released, paid out, with where it is now),
+  its signed terms, each pledge's checks against PayPal, where the money is, and how to check it.
+- `/spot`: Check a spot: the walk on a street map with a numbered pin for each place of the kind, the same places in a list,
+  a card for each (hours, phone, website, links to OpenStreetMap and Google Maps), and what else is around.
+- `/p/{id}`: the campaign. Supporter view: the business, the place, why here (in the owner's words), "Where it will be"
+  (the street map of its address with its nearest neighbours of the same kind),
   the pitch and perks, the progress toward the goal, the deadline, "Pledge $25 with PayPal" (the buttons), and in plain
   words: "PayPal holds $25. You are charged only if 40 neighbors join by Nov 30; otherwise the hold is released."
   After pledging: thanks, the progress, and how to withdraw. Owner view adds the counts, close early (once funded),
   cancel, the settlement report and the payout.
-- `/browse`: open campaigns, newest first, and "Start one".
+- `/browse`: open campaigns on a street map (each a price tag at its address) and as cards, newest first, and "Start one".
 - `/start`: start a campaign (the form, the AI draft, edit, publish). Signed out: "Sign in with Google to
   start one."
 - The **window poster**: its QR code opens the campaign and the poster says, from the campaign's own terms (not from
@@ -309,7 +342,9 @@ receipt capabilities for a code rollback.
 ## Content-Security-Policy additions (the server's in `app/main.py`, `frontend/public/_headers`, `vite.config.ts`)
 
 `script-src` and `connect-src` add `https://www.sandbox.paypal.com https://www.paypal.com`; `frame-src` adds
-`https://www.sandbox.paypal.com https://www.paypal.com`; `img-src` already allows `https:`. Change all three together.
+`https://www.sandbox.paypal.com https://www.paypal.com`; `img-src` already allows `https:`. The street map (MapLibre) asks
+`https://tiles.openfreemap.org` for its style, tiles, fonts and icons, so `connect-src` adds that too; its worker is a file
+of this site, which `script-src 'self'` covers, so there is no `worker-src` and no `blob:`. Change all three together.
 
 ## Agents (MCP server, `mcp_server/threshold_mcp.py`)
 
@@ -327,7 +362,7 @@ sees a card or an account.
 - `app/trust/`: signing keys, signed terms, limits and proof (`app/routes/trust.py`).
 - `app/assistant.py` and `app/intent.py`: the Ask page's assistant and the rules that decide consent
   (`app/routes/assistant.py`).
-- `app/spot.py`, `app/osm.py`, `app/catchment.py`: Check a spot (`app/routes/spot.py`).
+- `app/spot.py`, `app/tiles.py`, `app/osmdetails.py`, `app/osm.py`, `app/catchment.py`: Check a spot (`app/routes/spot.py`).
 - `app/db/` and `migrations/`: tables, access and the Alembic baseline.
 - `frontend/`: the React app; `frontend/functions/` is the Cloudflare Pages front door (proxy and edge cache).
 - `mcp_server/`: the MCP server. `scripts/`: the end-to-end run, the demo data and PayPal webhook setup.

@@ -16,7 +16,7 @@ from app import auth
 from app.auth import SESSION_COOKIE, GoogleKeys, KeysUnavailable, TokenError, verify_google_token
 from app.config import ROOT
 from app.db.tables import campaigns, sessions, users
-from app.main import CONTENT_SECURITY_POLICY, GOOGLE_SIGN_IN, PAYPAL
+from app.main import CONTENT_SECURITY_POLICY, GOOGLE_SIGN_IN, MAP_TILES, PAYPAL
 from tests.account_fakes import (
     CLIENT_ID,
     Clock,
@@ -353,7 +353,7 @@ def test_the_app_gets_one_policy_wherever_it_is_served():
     assert pages == preview == CONTENT_SECURITY_POLICY
     policy = dict(part.strip().split(" ", 1) for part in CONTENT_SECURITY_POLICY.split(";"))
     assert policy["script-src"] == f"'self' {GOOGLE_SIGN_IN}client {PAYPAL}" and policy["font-src"] == "'self'"
-    assert policy["connect-src"] == f"'self' {GOOGLE_SIGN_IN} {PAYPAL}"
+    assert policy["connect-src"] == f"'self' {GOOGLE_SIGN_IN} {PAYPAL} {MAP_TILES}"
     assert policy["frame-src"] == f"{GOOGLE_SIGN_IN} {PAYPAL}"
-    assert "worker-src" not in policy
-    assert PAYPAL == "https://www.sandbox.paypal.com https://www.paypal.com"
+    assert "worker-src" not in policy  # the map's worker is a file of this site, so script-src covers it
+    assert PAYPAL == "https://www.sandbox.paypal.com https://www.paypal.com" and MAP_TILES == "https://tiles.openfreemap.org"

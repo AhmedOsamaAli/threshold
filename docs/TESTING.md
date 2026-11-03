@@ -39,13 +39,19 @@ the campaign, it is collected and paid out, and a second campaign is cancelled a
 
 No login needed.
 
-1. **Home** (`/`) says what Threshold is and how a pledge works, with an example of an assistant's limits.
-2. **Browse** (`/browse`) lists the open campaigns, newest first. Press **Show the nearest to me** to sort by distance (your
-   location is asked for only when you press it, and only used to sort).
-3. Open a campaign. The page shows the business and the place, why here (in the owner's words, not verified), the pitch and
-   perks, the progress toward the goal, the deadline, and the terms in plain words: "PayPal holds $25. You are charged only
+1. **Home** (`/`) says what Threshold is and shows it: a short animation of the money moving (pledges into PayPal's hold, then
+   collected and paid when the goal is met, or released when it is missed; **Pause** stops it, and it stands still for anyone
+   who asked their system for less motion), one campaign that is open now, how a pledge works, an example of an assistant's
+   limits, and the proof of a real test run (open it to see three verified pledges, the collection and the payout).
+2. **Browse** (`/browse`) puts the open campaigns on a street map, each a price tag at its address, and lists them below,
+   newest first; pointing at one lights the other. Press **Show the nearest to me** to sort by distance (your location is asked
+   for only when you press it, and only used to sort).
+3. Open a campaign. The page shows the business and the place, why here (in the owner's words, not verified), **Where it
+   will be** (the street map of its address with its nearest neighbours of the same kind), the pitch and perks, the progress
+   toward the goal, the deadline, and the terms in plain words: "PayPal holds $25. You are charged only
    if 40 neighbors join by Nov 30; otherwise the hold is released."
-4. Under the terms, **See the proof** opens the campaign's proof. A campaign with no pledges yet says so; you will come back
+4. Under the terms, **See the proof** opens the campaign's proof, which begins with four steps (pledged, held by PayPal,
+   collected or released, paid out) showing where the campaign is. A campaign with no pledges yet says so; you will come back
    to it after a pledge (section 2).
 
 ## 2. Pledge as a neighbor
@@ -93,12 +99,20 @@ labels each answer: "AI wording, checked by the server" or "Plain answer from th
 
 ## 4. Check a spot
 
-1. Open **Check a spot** (`/spot`), type an address (for example `Zamalek, Cairo`), pick a kind of business and press the
-   button.
-2. It shows what OpenStreetMap lists within a 10-minute walk, drawn on a plan: the nearest places of that kind and what else
-   is around. It shows supply, never demand, and says that OpenStreetMap is volunteers' work and can be incomplete.
-3. A check waits at most 45 seconds. When OpenStreetMap or the routing service does not answer, it says so and shows no
-   numbers rather than guessing; ask again a minute later and the answer is usually there.
+1. Open **Check a spot** (`/spot`), press an example (for example `cafe · Zamalek, Cairo`) or type an address, pick a kind
+   of business and press the button.
+2. It shows what OpenStreetMap lists within a 10-minute walk on a real street map: the walking area in blue, a numbered pin
+   for each place of that kind (22 cafés in Zamalek), the same places in a list beside it, and what else is around. It shows
+   supply, never demand, and says that OpenStreetMap is volunteers' work and can be incomplete.
+3. Point at a number on the map or a row in the list: both light up and a small card appears. Press one: its card shows how
+   far it is and how long on foot, its opening hours, address, phone and website when OpenStreetMap has them, and two links
+   that open in a new tab: **Open it on OpenStreetMap** and **Ratings and photos on Google Maps** (OpenStreetMap has no
+   ratings or photos, and the card says so). Press Esc to close it. Zoom in on the map to see every number.
+4. A check waits at most 45 seconds. When the map data or the routing service does not answer, it says so and shows no
+   numbers rather than guessing; ask again a minute later. If the street map cannot load, a plain plan of the walk takes
+   its place and the list still works.
+5. On a campaign's page, **Where it will be** shows the same map of its address with its nearest neighbours of the same
+   kind; on **Browse**, every open campaign is a price tag on a map, lit together with its card in the list.
 
 ## 5. Withdraw
 

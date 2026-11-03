@@ -12,6 +12,7 @@ import {
   deadlineText,
   defaultDeadline,
   emailProblem,
+  featuredOf,
   goalProblem,
   heldText,
   inSandbox,
@@ -92,6 +93,14 @@ describe("progress in words", () => {
     expect(progressShare({ supporters: 45, goal: 40 })).toBe(1);
     expect(progressShare({ supporters: 0, goal: 40 })).toBe(0);
     expect(progressShare({ supporters: 3, goal: 0 })).toBe(0);
+  });
+
+  it("features the campaign with the most neighbors, the newest when tied, and none when there are none", () => {
+    const list = [{ id: "new", supporters: 2 }, { id: "busy", supporters: 9 }, { id: "also", supporters: 9 }, { id: "old", supporters: 0 }];
+    expect(featuredOf(list)?.id).toBe("busy");
+    expect(featuredOf(list.filter((campaign) => campaign.supporters < 3))?.id).toBe("new");
+    expect(featuredOf([{ id: "only", supporters: 0 }])?.id).toBe("only");
+    expect(featuredOf([])).toBeNull();
   });
 
   it("tells a screen reader the new count, and when the goal is met", () => {

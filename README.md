@@ -14,7 +14,7 @@ Live demo: <https://threshold-pledge.pages.dev> · Source: MIT licensed, this re
 
 **Check, don't trust.** Every pledge is signed (Ed25519) with the exact terms it was made under: the amount, the goal, the deadline and who is paid. PayPal's order carries the terms' fingerprint in its `invoice_id`. A campaign's proof page re-checks each signature, confirms the terms did not change, asks PayPal whether its own record agrees (state, amount, invoice) and says plainly when something differs. It names no one: pledges show a short public reference, never an id that could withdraw them.
 
-**Check a spot.** Enter an address and a kind of business, and see what OpenStreetMap lists within a 10-minute walk, drawn on a plan. It shows supply, never demand, and when OpenStreetMap or the router does not answer it says so instead of guessing.
+**Check a spot.** Enter an address and a kind of business, and see what OpenStreetMap lists within a 10-minute walk on a real street map: the walking area, every place of that kind numbered, and a card for each (its hours, phone and website where volunteers wrote them down, a link to its page on OpenStreetMap and one to its ratings and photos on Google Maps, since OpenStreetMap has none). It shows supply, never demand, and when the map data or the router does not answer it says so instead of guessing. The same map shows where a campaign will be, with its nearest neighbours of the same kind, and Browse puts every open campaign on one.
 
 **Bring your own agent.** [`mcp_server/`](mcp_server) is a stdio MCP server over the same public API, so Claude, Copilot or any MCP client can find campaigns, read one, [check its proof](mcp_server/README.md), and prepare a pledge inside the same limits. It never sees a card or an account.
 
@@ -39,13 +39,15 @@ A real end-to-end run against the sandbox ([`scripts/e2e.py`](scripts/e2e.py)): 
 ```mermaid
 flowchart LR
   UI["React app<br/>Home, Browse, Ask, Proof, Check a spot"] -->|"/api"| Edge["Cloudflare Pages front door<br/>proxy and edge cache"]
+  UI -->|"street map tiles"| Tiles["OpenFreeMap<br/>tiles from OpenStreetMap"]
   Agent["Any MCP client"] -->|stdio| MCP["mcp_server/threshold_mcp.py"]
   MCP -->|public API| Edge
   Edge --> API["FastAPI on Render"]
   API --> DB[("Postgres on Neon<br/>or SQLite")]
   API --> PP["PayPal sandbox<br/>Orders, Payments, Payouts"]
   PP -->|webhook| API
-  API --> OSM["OpenStreetMap<br/>Nominatim, Overpass, routing"]
+  API --> OSM["OpenStreetMap<br/>Nominatim, routing, place details"]
+  API --> Tiles
   API -.->|optional| LLM["Gemini or Groq<br/>drafts words, phrases answers"]
 ```
 
@@ -54,7 +56,7 @@ flowchart LR
 | [`app/payments/`](app/payments) | Campaigns, pledges, private receipts, PayPal's REST client, wording rules |
 | [`app/trust/`](app/trust) | Signing keys, signed terms, limits, proof |
 | [`app/assistant.py`](app/assistant.py), [`app/intent.py`](app/intent.py) | The Ask page's assistant and the rules that decide consent |
-| [`app/spot.py`](app/spot.py), [`app/osm.py`](app/osm.py) | Check a spot |
+| [`app/spot.py`](app/spot.py), [`app/tiles.py`](app/tiles.py), [`app/osmdetails.py`](app/osmdetails.py), [`app/osm.py`](app/osm.py) | Check a spot: the places come from the map's own tiles (Overpass is the backup) |
 | [`app/routes/`](app/routes), [`app/db/`](app/db), [`migrations/`](migrations) | HTTP routes, tables, Alembic |
 | [`frontend/`](frontend) | React 19, Vite and TypeScript; [`frontend/functions/`](frontend/functions) is the Cloudflare Pages front door |
 | [`mcp_server/`](mcp_server) | The MCP server |
@@ -106,4 +108,4 @@ Much of the code was written with GitHub Copilot's agent mode under the author's
 
 ## License
 
-MIT. See [LICENSE](LICENSE). Map data © OpenStreetMap contributors, under the Open Database License.
+MIT. See [LICENSE](LICENSE). Map data © OpenStreetMap contributors, under the Open Database License; street map tiles by [OpenFreeMap](https://openfreemap.org) (© OpenMapTiles).

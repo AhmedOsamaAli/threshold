@@ -1,0 +1,133 @@
+/* "How the money moves": the product's idea as a small animation. The still frame is the default; the motion is added only
+   where it is welcome (a still reader gets the held-money frame and the caption under it). One 10 s cycle in two acts: a
+   campaign that meets its goal (0 to 48 %) and one that does not (50 to 98 %). Every keyframe percentage below is a moment
+   in that cycle, and the chips are told apart only by their delay (0, .45 s and .9 s). */
+.flow { display: grid; gap: 10px; margin: 0; padding: 14px 16px 16px; border: var(--rule); background: var(--card); box-shadow: 8px 8px 0 var(--marker); }
+.fl-head-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; }
+.fl-title { color: var(--blue); font-size: 10.5px; }
+.fl-pause {
+  min-height: 28px; padding: 0 12px; border: 1px solid var(--ink); border-radius: 99px; background: none; color: var(--ink);
+  font-size: 10px; cursor: pointer; transition: background .3s, color .3s;
+}
+.fl-pause:hover { background: var(--ink); color: var(--on-ink); }
+.fl-stage { display: block; width: 100%; height: auto; overflow: visible; }
+
+.fl-lanes path { fill: none; stroke: var(--edge); stroke-width: 1.5; stroke-dasharray: 3 5; stroke-linecap: round; }
+.fl-person circle:first-child { fill: var(--bone); stroke: var(--ink); stroke-width: 1.5; }
+.fl-person path { fill: none; stroke: var(--ink); stroke-width: 1.5; stroke-linecap: round; }
+.fl-head { fill: var(--ink); }
+.fl-label { fill: var(--ash); font: 500 11.5px var(--f-mono); letter-spacing: .06em; text-transform: uppercase; }
+.fl-paypal { fill: var(--blue); }
+.fl-box { fill: var(--card); stroke: var(--ink); stroke-width: 1.5; }
+.fl-n { fill: var(--ink); font: 400 42px var(--f-serif); letter-spacing: -.02em; opacity: 0; }
+.fl-n75 { opacity: 1; }
+.fl-slot { fill: none; stroke: var(--ink); stroke-width: 1.5; }
+.fl-fill { fill: var(--yellow); stroke: var(--on-yellow); stroke-width: 1.2; }
+.fl-awning { fill: var(--blue-wash); stroke: var(--ink); stroke-width: 1.5; stroke-linejoin: round; }
+.fl-shop { fill: var(--card); stroke: var(--ink); stroke-width: 1.5; }
+.fl-door { fill: var(--bone); stroke: var(--ink); stroke-width: 1.5; }
+
+.fl-badge { opacity: 0; transform-box: fill-box; transform-origin: center; }
+.fl-badge rect { fill: var(--yellow); stroke: var(--on-yellow); stroke-width: 1.2; }
+.fl-badge text { fill: var(--on-yellow); font: 600 11px var(--f-mono); letter-spacing: .08em; text-transform: uppercase; }
+.fl-missed rect { fill: var(--card); stroke: var(--red); }
+.fl-missed text { fill: var(--red); }
+.fl-released rect { fill: var(--blue-wash); stroke: var(--blue); }
+.fl-released text { fill: var(--blue); }
+
+.fl-chip { opacity: 0; }
+.fl-chip rect { fill: var(--yellow); stroke: var(--on-yellow); stroke-width: 1.2; }
+.fl-chip text { fill: var(--on-yellow); font: 600 12.5px var(--f-mono); }
+
+.fl-says { display: grid; min-height: 3.1em; }
+.fl-say { grid-area: 1 / 1; margin: 0; font-size: 15px; line-height: 1.45; color: var(--text-2); opacity: 0; text-wrap: pretty; }
+.fl-say1 { opacity: 1; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .fl-chip, .fl-n, .fl-fill, .fl-badge, .fl-say {
+    animation-duration: 10s; animation-iteration-count: infinite; animation-fill-mode: both;
+    animation-timing-function: cubic-bezier(.4, 0, .2, 1);
+  }
+  .flow[data-still] :is(.fl-chip, .fl-n, .fl-fill, .fl-badge, .fl-say) { animation-play-state: paused; }
+  .fl-chip { animation-name: fl-chip; animation-delay: var(--d); }
+  .fl-n0 { animation-name: fl-n0; }
+  .fl-n25 { animation-name: fl-n25; }
+  .fl-n50 { animation-name: fl-n50; }
+  .fl-n75 { animation-name: fl-n75; }
+  .fl-s1 { animation-name: fl-s1; }
+  .fl-s2 { animation-name: fl-s2; }
+  .fl-s3 { animation-name: fl-s3; }
+  .fl-met { animation-name: fl-met; }
+  .fl-paid { animation-name: fl-paid; }
+  .fl-missed { animation-name: fl-missed; }
+  .fl-released { animation-name: fl-released; }
+  .fl-say1 { animation-name: fl-say1; }
+  .fl-say2 { animation-name: fl-say2; }
+  .fl-say3 { animation-name: fl-say3; }
+  .fl-say4 { animation-name: fl-say4; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fl-pause { display: none; }
+}
+
+@keyframes fl-chip {
+  0%, 1.5% { transform: translate(84px, var(--y0)) scale(1); opacity: 0; }
+  3.5% { transform: translate(84px, var(--y0)) scale(1); opacity: 1; }
+  12% { transform: translate(146px, var(--y1)) scale(1); opacity: 1; }
+  13.5% { transform: translate(160px, var(--y1)) scale(.5); opacity: 0; }
+  29.5% { transform: translate(300px, var(--y1)) scale(.5); opacity: 0; }
+  31% { transform: translate(304px, var(--y1)) scale(1); opacity: 1; }
+  36% { transform: translate(362px, 124px) scale(1); opacity: 1; }
+  37.5% { transform: translate(394px, 126px) scale(.45); opacity: 0; }
+  51.5% { transform: translate(84px, var(--y0)) scale(1); opacity: 0; }
+  53.5% { transform: translate(84px, var(--y0)) scale(1); opacity: var(--b); }
+  62% { transform: translate(146px, var(--y1)) scale(1); opacity: var(--b); }
+  63.5% { transform: translate(160px, var(--y1)) scale(.5); opacity: 0; }
+  77.5% { transform: translate(152px, var(--y1)) scale(.5); opacity: 0; }
+  79% { transform: translate(146px, var(--y1)) scale(1); opacity: var(--b); }
+  86% { transform: translate(84px, var(--y0)) scale(1); opacity: var(--b); }
+  87.5%, 100% { transform: translate(70px, var(--y0)) scale(.5); opacity: 0; }
+}
+@keyframes fl-n0 {
+  0%, 13.4% { opacity: 1; } 13.5%, 39.9% { opacity: 0; } 40%, 63.4% { opacity: 1; } 63.5%, 83.4% { opacity: 0; } 83.5%, 100% { opacity: 1; }
+}
+@keyframes fl-n25 {
+  0%, 13.4% { opacity: 0; } 13.5%, 17.9% { opacity: 1; } 18%, 35.4% { opacity: 0; } 35.5%, 39.9% { opacity: 1; }
+  40%, 63.4% { opacity: 0; } 63.5%, 67.9% { opacity: 1; } 68%, 78.9% { opacity: 0; } 79%, 83.4% { opacity: 1; } 83.5%, 100% { opacity: 0; }
+}
+@keyframes fl-n50 {
+  0%, 17.9% { opacity: 0; } 18%, 22.4% { opacity: 1; } 22.5%, 30.9% { opacity: 0; } 31%, 35.4% { opacity: 1; }
+  35.5%, 67.9% { opacity: 0; } 68%, 78.9% { opacity: 1; } 79%, 100% { opacity: 0; }
+}
+@keyframes fl-n75 {
+  0%, 22.4% { opacity: 0; } 22.5%, 30.9% { opacity: 1; } 31%, 100% { opacity: 0; }
+}
+@keyframes fl-s1 {
+  0%, 13.4% { opacity: 0; } 13.5%, 48% { opacity: 1; } 49%, 63.4% { opacity: 0; } 63.5%, 78.9% { opacity: 1; } 79%, 100% { opacity: 0; }
+}
+@keyframes fl-s2 {
+  0%, 17.9% { opacity: 0; } 18%, 48% { opacity: 1; } 49%, 67.9% { opacity: 0; } 68%, 83.4% { opacity: 1; } 83.5%, 100% { opacity: 0; }
+}
+@keyframes fl-s3 {
+  0%, 22.4% { opacity: 0; } 22.5%, 48% { opacity: 1; } 49%, 100% { opacity: 0; }
+}
+@keyframes fl-met {
+  0%, 23.4% { opacity: 0; transform: scale(.7); } 24.5% { opacity: 1; transform: scale(1.1); }
+  25.5%, 47.5% { opacity: 1; transform: scale(1); } 48.5%, 100% { opacity: 0; transform: scale(.9); }
+}
+@keyframes fl-paid {
+  0%, 36.9% { opacity: 0; transform: scale(.7); } 38% { opacity: 1; transform: scale(1.12); }
+  39%, 47.5% { opacity: 1; transform: scale(1); } 48.5%, 100% { opacity: 0; transform: scale(.9); }
+}
+@keyframes fl-missed {
+  0%, 69.4% { opacity: 0; transform: scale(.7); } 70.5% { opacity: 1; transform: scale(1.1); }
+  71.5%, 82.5% { opacity: 1; transform: scale(1); } 83.5%, 100% { opacity: 0; transform: scale(.9); }
+}
+@keyframes fl-released {
+  0%, 83.4% { opacity: 0; transform: scale(.7); } 84.5% { opacity: 1; transform: scale(1.1); }
+  85.5%, 97% { opacity: 1; transform: scale(1); } 98%, 100% { opacity: 0; transform: scale(.9); }
+}
+@keyframes fl-say1 { 0%, .4% { opacity: 0; } 1.5%, 23% { opacity: 1; } 24%, 100% { opacity: 0; } }
+@keyframes fl-say2 { 0%, 23.4% { opacity: 0; } 24.5%, 47.5% { opacity: 1; } 48.5%, 100% { opacity: 0; } }
+@keyframes fl-say3 { 0%, 50.4% { opacity: 0; } 51.5%, 69% { opacity: 1; } 70%, 100% { opacity: 0; } }
+@keyframes fl-say4 { 0%, 69.4% { opacity: 0; } 70.5%, 97.5% { opacity: 1; } 98.5%, 100% { opacity: 0; } }

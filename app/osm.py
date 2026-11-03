@@ -27,6 +27,7 @@ from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
+from typing import Protocol
 from urllib.parse import urlsplit
 
 import httpx
@@ -510,10 +511,20 @@ class Scan:
 
     checked: bool
     places: list[dict] = field(default_factory=list)
-    source: str | None = None  # the Overpass instance that answered
-    as_of: str | None = None  # when OpenStreetMap's data was last updated on that instance
+    source: str | None = None  # where the places were read: the Overpass instance, or the map tiles
+    as_of: str | None = None  # when OpenStreetMap's data was last updated there
     note: str | None = None  # why the area was not read
     reason: str = "unavailable"  # why not: 'unavailable' (no answer in time) or 'too_big'
+    unpinned: frozenset[str] = frozenset()  # kinds of business this source cannot tell apart, so counts none of them
+    kind_notes: dict[str, str] = field(default_factory=dict)  # what this source says of a kind it counts only roughly
+
+
+class PlaceSource(Protocol):
+    """Whatever reads the places inside an area: the map tiles, Overpass, or the two in turn (app.tiles.Places)."""
+
+    async def scan(self, catchment: Catchment) -> Scan: ...
+
+    async def aclose(self) -> None: ...
 
 
 def main_tag(tags: Mapping[str, str]) -> str | None:

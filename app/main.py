@@ -29,6 +29,7 @@ from .db.tables import utcnow
 from .geocode import Geocoder
 from .keepawake import keep_awake
 from .osm import OsmClient
+from .osmdetails import OsmDetails
 from .payments import founders
 from .payments.paypal import PayPalClient
 from .providers import build_llm
@@ -36,6 +37,7 @@ from .ratelimit import RateLimiter
 from .response_cache import GZIP_LEVEL, GZIP_MIN_BYTES, ResponseCache
 from .routes import account, maps, meta
 from .services import Services
+from .tiles import Places, TileClient
 
 log = logging.getLogger("threshold")
 
@@ -47,17 +49,19 @@ SETTLE_FROM_SETTINGS = -1.0
 
 # Sign in with Google loads its script, button frame and styles from accounts.google.com/gsi
 # (developers.google.com/identity/gsi/web/guides/get-google-api-clientid#content_security_policy). PayPal's JavaScript
-# SDK (v6) loads its script and checkout frames from paypal.com, the sandbox's or the live one (docs/CONTRACT.md).
+# SDK (v6) loads its script and checkout frames from paypal.com, the sandbox's or the live one (docs/CONTRACT.md). The
+# street map (MapLibre) asks OpenFreeMap for its style, tiles, fonts and icons, and runs its worker from this site's own files.
 # The same policy as frontend/public/_headers (Cloudflare Pages) and vite.config.ts (preview).
 GOOGLE_SIGN_IN = "https://accounts.google.com/gsi/"
 PAYPAL = "https://www.sandbox.paypal.com https://www.paypal.com"
+MAP_TILES = "https://tiles.openfreemap.org"
 CONTENT_SECURITY_POLICY = "; ".join([
     "default-src 'self'",
     f"script-src 'self' {GOOGLE_SIGN_IN}client {PAYPAL}",
     f"style-src 'self' 'unsafe-inline' {GOOGLE_SIGN_IN}style",
     "img-src 'self' data: https:",
     "font-src 'self'",
-    f"connect-src 'self' {GOOGLE_SIGN_IN} {PAYPAL}",
+    f"connect-src 'self' {GOOGLE_SIGN_IN} {PAYPAL} {MAP_TILES}",
     f"frame-src {GOOGLE_SIGN_IN} {PAYPAL}",
     "object-src 'none'",
     "base-uri 'self'",
@@ -86,7 +90,8 @@ def default_services() -> Services:
         llm=build_llm(settings),
         geocoder=Geocoder(),
         answers=AnswerCache(settings.agent_cache_dir, enabled=settings.agent_cache),
-        osm=OsmClient(settings.cache_dir / "osm"),
+        osm=Places(TileClient(settings.cache_dir / "tiles"), OsmClient(settings.cache_dir / "osm")),
+        details=OsmDetails(),
         paypal=paypal,
     )
 

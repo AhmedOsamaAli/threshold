@@ -5,10 +5,11 @@ import { ApiError } from "../api/client";
 import { trust, type Proof, type ProofPledge } from "../api/trust";
 import { Link } from "../components/Link";
 import { Page, PageHead, useDocumentTitle, useFocusOnMount } from "../components/Page";
+import { ProofTimeline } from "../components/ProofTimeline";
 import { plainError } from "../lib/account";
 import { whenText } from "../lib/ask";
 import { deadlineText, moneyText } from "../lib/founders";
-import { anyDiffers, marksOf, outcomeLines, shortHash, stateText, summaryText, verdictOf } from "../lib/proof";
+import { anyDiffers, marksOf, outcomeLines, shortHash, stateText, summaryText, timelineOf, verdictOf } from "../lib/proof";
 import { campaignUrl } from "../lib/routes";
 
 type Load = { phase: "loading" } | { phase: "ready"; proof: Proof } | { phase: "failed"; message: string };
@@ -115,6 +116,12 @@ function Record({ proof }: { proof: Proof }) {
   const differs = anyDiffers(proof);
   return (
     <>
+      <section className="pg-sec" aria-labelledby="proof-line">
+        <h2 className="ask-side-title" id="proof-line">
+          Where the money is on its way
+        </h2>
+        <ProofTimeline steps={timelineOf(proof)} />
+      </section>
       <section className="pg-sec" aria-labelledby="proof-checks">
         <h2 className="ask-side-title" id="proof-checks">
           What was checked

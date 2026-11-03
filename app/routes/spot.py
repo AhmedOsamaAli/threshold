@@ -22,6 +22,7 @@ async def spot(
     address: Annotated[str | None, Query(min_length=3, max_length=160, description="An address, neighborhood or city")] = None,
     lat: Annotated[float | None, Query(ge=-90, le=90)] = None,
     lon: Annotated[float | None, Query(ge=-180, le=180)] = None,
+    label: Annotated[str | None, Query(max_length=160, description="What to call the point (lat and lon), in the answer")] = None,
 ) -> dict:
     """What OpenStreetMap lists within a 10-minute walk of an address (or of lat and lon), for one kind of business."""
     by_address = address is not None and bool(address.strip())
@@ -31,7 +32,10 @@ async def spot(
     state = request.app.state
     if not state.spot_limiter.allow(client_ip(request)):
         raise HTTPException(429, "Too many checks from this address. Try again later.")
-    label = f"{lat:.5f}, {lon:.5f}" if by_point else ""
+    name = f"{lat:.5f}, {lon:.5f}" if by_point else ""
+    if by_point and label and label.strip():
+        name = " ".join(label.split())
+    label = name
     if by_address:
         try:
             hits = await state.services.geocoder.search(address.strip())

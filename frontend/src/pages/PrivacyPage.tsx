@@ -106,8 +106,20 @@ export function PrivacyPage() {
             pledge&apos;s receipt, PayPal&apos;s approval link or the numbers in your limits.
           </Item>
           <Item term="OpenStreetMap's services">
-            Find the addresses you search for, and draw the walking area and list the places in it for Check a spot.
-            Threshold&apos;s server asks them, never your browser, so they learn nothing about you.
+            Find the addresses you search for, draw the walking area, and read what its volunteers wrote about a place
+            (opening hours, website, phone) for Check a spot. Threshold&apos;s server asks them, never your browser, so they
+            learn nothing about you.
+          </Item>
+          <Item term="OpenFreeMap">
+            Draws the street map where a page shows one, such as Check a spot. Your browser asks it for the map&apos;s tiles,
+            fonts and icons, so, like any map host, it sees your IP address and the part of the map you look at. It sets no
+            cookies and needs no key. Threshold&apos;s server also reads the places in a walking area from its tiles, which
+            tells it nothing about you.
+          </Item>
+          <Item term="Google Maps">
+            Only if you press &ldquo;Ratings and photos on Google Maps&rdquo; on a place&apos;s card: that opens Google Maps in
+            a new tab, where Google&apos;s own terms and privacy statement apply. Threshold sends it nothing but the place&apos;s
+            name and position, in the link.
           </Item>
           <Item term="Google">
             Runs the sign-in itself when you sign in with Google, and tells Threshold your account id, email, name and

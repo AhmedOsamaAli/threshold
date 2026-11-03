@@ -1,0 +1,48 @@
+/* A campaign's money on its way from the neighbors to the owner, in four steps (components/ProofTimeline.tsx): across on a
+   wide page and stacked on a narrow one. The circle says where it is: a tick when done, the yellow marker where the campaign is
+   now, a dashed number while still to come, a dash for what never happens and red when something is wrong. */
+.proof-line { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0 18px; margin: 0; padding: 0; list-style: none; }
+.proof-line li { position: relative; display: grid; align-content: start; gap: 12px; }
+.pl-node {
+  position: relative; z-index: 1; display: grid; place-items: center; width: 30px; height: 30px;
+  border: 1.5px solid var(--ink); border-radius: 50%; background: var(--card); color: var(--ink);
+}
+.pl-node svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.pl-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--on-yellow); }
+.pl-no { font-size: 11px; }
+.pl-body { display: grid; gap: 6px; min-width: 0; }
+.pl-title { font: 400 clamp(21px, 1.9vw, 24px)/1.1 var(--f-serif); letter-spacing: -.012em; }
+.pl-detail { font-size: 14.5px; line-height: 1.45; color: var(--text-3); text-wrap: pretty; }
+
+/* The line to the next step: solid and blue once this one is done. */
+.proof-line li::after { content: ""; position: absolute; top: 14px; left: 38px; right: -12px; border-top: 2px dashed var(--edge); }
+.proof-line li:last-child::after { display: none; }
+.proof-line li[data-state="done"]::after { border-top-style: solid; border-top-color: var(--blue); }
+
+.proof-line li[data-state="done"] .pl-node { border-color: var(--blue-fill); background: var(--blue-fill); color: var(--on-blue); }
+.proof-line li[data-state="now"] .pl-node { border-color: var(--on-yellow); background: var(--yellow); box-shadow: 0 0 0 5px var(--marker); }
+.proof-line li[data-state="todo"] .pl-node { border-style: dashed; color: var(--ash); }
+.proof-line li:is([data-state="todo"], [data-state="off"]) .pl-title { color: var(--text-4); }
+.proof-line li[data-state="off"] .pl-node { border-color: var(--edge); color: var(--ash); }
+.proof-line li[data-state="off"] .pl-title, .proof-line li[data-state="off"] .pl-detail { color: var(--ash); }
+.proof-line li[data-state="bad"] .pl-node { border-color: var(--red); color: var(--red); }
+.proof-line li[data-state="bad"] .pl-title { color: var(--red); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .proof-line li[data-state="now"] .pl-node { animation: plPulse 2.4s ease-in-out infinite; }
+}
+@keyframes plPulse { 50% { box-shadow: 0 0 0 9px transparent; } }
+
+/* Stacked: the circles down the left and the line running down between them. */
+.proof-line.stacked { grid-template-columns: minmax(0, 1fr); gap: 0; }
+.proof-line.stacked li { grid-template-columns: 30px minmax(0, 1fr); gap: 0 14px; padding-bottom: 22px; }
+.proof-line.stacked li:last-child { padding-bottom: 0; }
+.proof-line.stacked li::after { top: 36px; bottom: 6px; left: 14px; right: auto; border-top: 0; border-left: 2px dashed var(--edge); }
+.proof-line.stacked li[data-state="done"]::after { border-left-style: solid; border-left-color: var(--blue); }
+@container page (max-width: 760px) {
+  .proof-line { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .proof-line li { grid-template-columns: 30px minmax(0, 1fr); gap: 0 14px; padding-bottom: 22px; }
+  .proof-line li:last-child { padding-bottom: 0; }
+  .proof-line li::after { top: 36px; bottom: 6px; left: 14px; right: auto; border-top: 0; border-left: 2px dashed var(--edge); }
+  .proof-line li[data-state="done"]::after { border-left-style: solid; border-left-color: var(--blue); }
+}

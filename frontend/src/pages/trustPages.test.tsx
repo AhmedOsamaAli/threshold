@@ -17,6 +17,19 @@ describe("the home page", () => {
     expect(html).toContain("The deadline decides");
   });
 
+  it("shows the money moving and one open campaign, in a section that waits for it", () => {
+    expect(html).toContain("How the money moves");
+    expect(html).toContain("Open for pledges right now");
+    expect(html).toContain("Looking for an open campaign");
+  });
+
+  it("shows the proof of a real test run, and links to it", () => {
+    expect(html).toContain("A real test run · its proof page");
+    expect(html).toContain("$15 collected from 3 neighbors.");
+    expect(html).toContain("$13.02 paid to the owner. PayPal&#x27;s batch agrees.");
+    expect(html).toContain('href="/proof/a539c2daddc34db8"');
+  });
+
   it("opens the ways in", () => {
     for (const href of ["/browse", "/ask", "/spot", "/start"]) expect(html).toContain(`href="${href}"`);
   });

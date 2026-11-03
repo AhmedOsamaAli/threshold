@@ -4,10 +4,11 @@ import { useEffect, useId, useRef, useState, type SyntheticEvent } from "react";
 import { BUSINESS_KINDS, type BusinessKind } from "../api/founders";
 import { spot as spotApi, type Spot, type SpotWhere } from "../api/spot";
 import { Page, PageHead, useDocumentTitle, useFocusOnMount } from "../components/Page";
-import { SpotPlan } from "../components/spot/SpotPlan";
+import { SpotMap } from "../components/spot/SpotMap";
 import { plainError } from "../lib/account";
 import { whenText } from "../lib/ask";
-import { metresText, SPOT_EXAMPLES, topKindsText } from "../lib/spot";
+import { prefersReducedMotion } from "../lib/motion";
+import { SPOT_EXAMPLES } from "../lib/spot";
 
 type Load =
   | { phase: "idle" }
@@ -18,9 +19,13 @@ type Load =
 type Locate = "idle" | "asking" | "refused";
 
 function Result({ spot, again }: { spot: Spot; again: () => void }) {
-  const nearest = spot.same_kind?.nearest ?? [];
+  const section = useRef<HTMLElement>(null);
+  useEffect(() => {
+    // The answer is below the form: bring it into view, so the map is the first thing seen.
+    section.current?.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
+  }, []);
   return (
-    <section className="spot-result" aria-label="What was found">
+    <section ref={section} className="spot-result" aria-label="What was found">
       <p className="spot-summary serif">{spot.summary}</p>
       {spot.checked ? null : (
         <div className="cf-actions">
@@ -29,36 +34,7 @@ function Result({ spot, again }: { spot: Spot; again: () => void }) {
           </button>
         </div>
       )}
-      {spot.checked ? (
-        <div className="spot-grid">
-          <SpotPlan spot={spot} />
-          <div className="spot-facts">
-            {spot.same_kind && spot.same_kind.count !== null ? (
-              <p className="spot-count">
-                <b>{spot.same_kind.count}</b> listed {spot.kind} place{spot.same_kind.count === 1 ? "" : "s"} in the walk
-              </p>
-            ) : null}
-            {nearest.length ? (
-              <>
-                <h3 className="mono label">Nearest of the same kind</h3>
-                <ul className="spot-nearest">
-                  {nearest.map((place) => (
-                    <li key={`${place.name}-${place.distance_m}`}>
-                      <span>{place.name}</span> <span className="mono">{metresText(place.distance_m)}</span>
-                    </li>
-                  ))}
-                </ul>
-              </>
-            ) : null}
-            {spot.around ? (
-              <>
-                <h3 className="mono label">{spot.around.count} places of any kind listed around</h3>
-                {spot.around.top_kinds.length ? <p className="spot-kinds">{topKindsText(spot.around.top_kinds)}</p> : null}
-              </>
-            ) : null}
-          </div>
-        </div>
-      ) : null}
+      {spot.checked ? <SpotMap key={`${spot.place.lat},${spot.place.lon},${spot.kind},${spot.checked_at}`} spot={spot} /> : null}
       <p className="spot-note">{spot.note}</p>
       <p className="spot-source mono">
         Source:{" "}
@@ -195,18 +171,18 @@ export function SpotPage() {
         ) : null}
         <ul className="spot-examples" aria-label="Places to try">
           {SPOT_EXAMPLES.map((example) => (
-            <li key={example.address}>
+            <li key={example.label}>
               <button
                 className="text-button"
                 type="button"
                 disabled={busy}
                 onClick={() => {
-                  setAddress(example.address);
+                  setAddress(example.label);
                   setKind(example.kind);
-                  void check({ address: example.address }, example.kind, example.address);
+                  void check({ lat: example.lat, lon: example.lon, label: example.label }, example.kind, example.label);
                 }}
               >
-                {example.kind} · {example.address}
+                {example.kind} · {example.label}
               </button>
             </li>
           ))}

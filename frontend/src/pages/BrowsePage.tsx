@@ -1,14 +1,15 @@
 import "../styles/founders.css";
 import { useEffect, useState } from "react";
 import { founders, paypalOf, type CampaignCard, type Near } from "../api/founders";
-import { ProgressBar } from "../components/founders/ProgressBar";
+import { CampaignTile } from "../components/founders/CampaignTile";
+import { CampaignsMap } from "../components/founders/CampaignsMap";
 import { SandboxNotice } from "../components/founders/SandboxNotice";
 import { Link } from "../components/Link";
 import { Page, PageHead, useDocumentTitle, useFocusOnMount } from "../components/Page";
 import { SectionHead } from "../components/SectionHead";
 import { plainError } from "../lib/account";
 import { cssVars } from "../lib/css";
-import { heldText, inSandbox, moneyText, timeLeft } from "../lib/founders";
+import { inSandbox } from "../lib/founders";
 import { useNow } from "../lib/useNow";
 import { MY_CAMPAIGNS_URL, START_CAMPAIGN_URL } from "../lib/routes";
 import { useSession } from "../state/session";
@@ -23,43 +24,25 @@ type Locate = "idle" | "asking" | "refused";
 
 const NEAR_KM = 25;
 
-/** "2.4 km away", "180 m away". */
-function distanceText(km: number): string {
-  return km < 1 ? `${Math.max(10, Math.round((km * 1000) / 10) * 10)} m away` : `${km < 10 ? km.toFixed(1) : Math.round(km)} km away`;
-}
-
-/** One open campaign: what it is, where, how far along, and its link over the whole card. */
-function Card({ campaign, now, index }: { campaign: CampaignCard; now: number; index: number }) {
-  const left = timeLeft(campaign.deadline, now);
-  const funded = campaign.supporters >= campaign.goal;
-  const where = [campaign.place.label, campaign.distance_km === null ? null : distanceText(campaign.distance_km)].filter(Boolean);
+/** One open campaign in the list, lit together with its pin on the map. */
+function Card({ campaign, now, index, lit, onLit }: {
+  campaign: CampaignCard;
+  now: number;
+  index: number;
+  lit: boolean;
+  onLit: (id: string | null) => void;
+}) {
   return (
-    <li style={cssVars({ "--i": index })}>
-      <article className="fd-card">
-        <p className="fd-card-kicker mono">{where.join(" · ")}</p>
-        <h2 className="fd-card-title">
-          <Link className="fd-card-link" href={campaign.url}>
-            {campaign.title}
-          </Link>
-        </h2>
-        <p className="fd-card-name">{campaign.name}</p>
-        <div className="fd-card-progress">
-          <p className="fd-card-count">
-            <b>{campaign.supporters}</b> of {campaign.goal} neighbors
-            <span className="fd-card-held"> · {heldText("open", campaign.total)}</span>
-          </p>
-          <ProgressBar
-            supporters={campaign.supporters}
-            goal={campaign.goal}
-            funded={funded}
-            label={`Neighbors backing ${campaign.name}`}
-          />
-        </div>
-        <p className="fd-card-foot">
-          <span className="fd-card-amount mono">Pledge {moneyText(campaign.amount)}</span>
-          <span className="fd-card-left mono">{left.closed ? "Closing" : left.text}</span>
-        </p>
-      </article>
+    <li
+      style={cssVars({ "--i": index })}
+      onPointerEnter={(event) => {
+        if (event.pointerType === "mouse") onLit(campaign.id);
+      }}
+      onPointerLeave={(event) => {
+        if (event.pointerType === "mouse") onLit(null);
+      }}
+    >
+      <CampaignTile campaign={campaign} now={now} lit={lit} />
     </li>
   );
 }
@@ -72,6 +55,7 @@ function OpenCampaigns() {
   const [attempt, setAttempt] = useState(0);
   const key = `${order.by === "nearest" ? `${order.near.lat},${order.near.lon}` : "newest"}:${attempt}`;
   const [load, setLoad] = useState<{ key: string; load: ListLoad }>({ key, load: { state: "loading" } });
+  const [lit, setLit] = useState<string | null>(null);
   const near = order.by === "nearest" ? order.near : null;
 
   useEffect(() => {
@@ -118,6 +102,7 @@ function OpenCampaigns() {
   return (
     <section className="pg-sec" aria-labelledby="fd-open" aria-busy={shown.state === "loading"}>
       <SectionHead id="fd-open" no="01" title="Open campaigns" note={note} />
+      {shown.state === "shown" && campaigns.length ? <CampaignsMap campaigns={campaigns} now={now} lit={lit} onLit={setLit} /> : null}
       <div className="fd-order">
         {order.by === "nearest" ? (
           <button
@@ -167,7 +152,7 @@ function OpenCampaigns() {
         campaigns.length ? (
           <ol className="fd-list">
             {campaigns.map((campaign, index) => (
-              <Card key={campaign.id} campaign={campaign} now={now} index={index} />
+              <Card key={campaign.id} campaign={campaign} now={now} index={index} lit={lit === campaign.id} onLit={setLit} />
             ))}
           </ol>
         ) : (

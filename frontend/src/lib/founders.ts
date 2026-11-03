@@ -1,6 +1,6 @@
 /* Campaigns in plain words: money, progress, the deadline, the pledge's terms and the poster's line, and the campaign
    form's checks, which mirror the server's limits (app/payments/pledges.py). Pure, so they are tested without a browser. */
-import type { CampaignOwner, CampaignProgress, CampaignStatus, MoneyTerms, PayPalConfig } from "../api/founders";
+import type { CampaignCard, CampaignOwner, CampaignProgress, CampaignStatus, MoneyTerms, PayPalConfig } from "../api/founders";
 
 /** Shown wherever money appears while PayPal runs in its sandbox. */
 export const SANDBOX_NOTICE = "Demo payments — no real money.";
@@ -97,6 +97,13 @@ export function timeLeft(deadline: string, now: number): { closed: boolean; text
 export function progressShare(progress: Pick<CampaignProgress, "supporters" | "goal">): number {
   if (progress.goal <= 0) return 0;
   return Math.max(0, Math.min(1, progress.supporters / progress.goal));
+}
+
+/** The open campaign the home page shows as an example: the one with the most neighbors so far, the newest when tied. */
+export function featuredOf<T extends Pick<CampaignCard, "supporters">>(campaigns: readonly T[]): T | null {
+  let best: T | null = null;
+  for (const campaign of campaigns) if (!best || campaign.supporters > best.supporters) best = campaign;
+  return best;
 }
 
 /**

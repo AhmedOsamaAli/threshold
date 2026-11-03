@@ -25,3 +25,24 @@ export function safeUrl(url: unknown): string | null {
 export function googleMapsUrl(lat: number, lon: number): string {
   return `https://www.google.com/maps/search/?api=1&query=${lat.toFixed(6)},${lon.toFixed(6)}`;
 }
+
+/** A place on Google Maps by name, around its coordinates: its card there has the ratings, photos and hours. */
+export function googlePlaceUrl(name: string, lat: number, lon: number): string {
+  return `https://www.google.com/maps/search/${encodeURIComponent(name)}/@${lat.toFixed(6)},${lon.toFixed(6)},18z`;
+}
+
+/** A place's page on OpenStreetMap, from its id ("node/123", "way/456", "relation/789"); null for anything else. */
+export function osmPageUrl(id: string | null | undefined): string | null {
+  return typeof id === "string" && /^(node|way|relation)\/[1-9]\d{0,14}$/.test(id) ? `https://www.openstreetmap.org/${id}` : null;
+}
+
+/** A link to a place's own website: http or https only, so no script URL can ever be opened. */
+export function webLink(url: unknown): string | null {
+  if (typeof url !== "string") return null;
+  try {
+    const parsed = new URL(url);
+    return (parsed.protocol === "https:" || parsed.protocol === "http:") && parsed.hostname ? parsed.href : null;
+  } catch {
+    return null;
+  }
+}

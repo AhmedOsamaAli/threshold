@@ -63,9 +63,25 @@ export function topKindsText(kinds: readonly { kind: string; count: number }[]):
   return kinds.map((each) => `${each.kind} ${each.count}`).join(", ");
 }
 
-/** The places to try first, each one checked on a real run (docs/CONTRACT.md). */
+/** About how long a walk of this many metres takes: 80 m a minute, and never less than a minute. */
+export function walkMinutes(metres: number): number {
+  return Math.max(1, Math.round(metres / 80));
+}
+
+/** "4 min on foot": how far a place is, as a walker feels it. */
+export function walkText(metres: number): string {
+  return `${walkMinutes(metres)} min on foot`;
+}
+
+/** Opening hours as OpenStreetMap's volunteers write them, a little plainer where that is safe: "24/7" is every hour. */
+export function hoursText(hours: string): string {
+  return hours.trim() === "24/7" ? "Open 24 hours, every day" : hours;
+}
+
+/** The places to try first. Their coordinates are fixed, so trying one never depends on an address search; each was checked
+ * on a real run, and each has several places of its kind in the walk (docs/CONTRACT.md). */
 export const SPOT_EXAMPLES = [
-  { address: "East Austin, Austin", kind: "cafe" },
-  { address: "Logan Square, Chicago", kind: "gym" },
-  { address: "Zamalek, Cairo", kind: "cafe" },
+  { label: "Zamalek, Cairo", lat: 30.06299, lon: 31.21963, kind: "cafe" },
+  { label: "Bedford Ave, Brooklyn", lat: 40.7181, lon: -73.9572, kind: "bakery" },
+  { label: "Williamsburg, Brooklyn", lat: 40.7081, lon: -73.9571, kind: "gym" },
 ] as const;

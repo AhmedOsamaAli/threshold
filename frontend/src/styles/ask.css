@@ -111,7 +111,7 @@ select.field-input, textarea.field-input { font-family: inherit; }
 .page-state > p { padding: 22px var(--pad); }
 .page-state > p[role="status"] { color: var(--text-3); }
 .spot-summary { max-width: 52ch; margin-bottom: 22px; font-size: clamp(22px, 2.4vw, 30px); line-height: 1.25; text-wrap: balance; }
-.spot-grid { display: grid; grid-template-columns: minmax(260px, 380px) minmax(0, 1fr); gap: 28px 40px; align-items: start; }
+.spot-result { scroll-margin-top: calc(var(--bar-h) + 16px); }
 .spot-plan { margin: 0; }
 .spot-plan svg { display: block; width: 100%; height: auto; border: var(--rule); background: var(--card); }
 .spot-plan figcaption { margin-top: 10px; font-size: 10px; line-height: 1.6; color: var(--ash); }
@@ -125,9 +125,6 @@ select.field-input, textarea.field-input { font-family: inherit; }
 .spot-facts .label { margin: 14px 0 4px; }
 .spot-count { font-size: 17px; }
 .spot-count b { font: 500 28px/1 var(--f-sans); letter-spacing: -.02em; margin-right: 4px; }
-.spot-nearest { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; border-top: var(--hair); }
-.spot-nearest li { display: flex; justify-content: space-between; gap: 14px; padding: 9px 0; border-bottom: var(--hair); font-size: 15.5px; }
-.spot-nearest .mono { color: var(--blue); }
 .spot-kinds { font-size: 15px; color: var(--text-3); overflow-wrap: anywhere; }
 .spot-note { max-width: 66ch; margin-top: 26px; font-size: 14px; line-height: 1.5; color: var(--text-3); }
 .spot-source { margin-top: 10px; color: var(--ash); font-size: 10px; line-height: 1.6; }
@@ -141,5 +138,4 @@ select.field-input, textarea.field-input { font-family: inherit; }
   .ask-composer .go { justify-self: start; }
   .ask-msg.bot { padding-left: 12px; }
   .proof-marks li { grid-template-columns: minmax(0, 1fr); gap: 0; }
-  .spot-grid { grid-template-columns: minmax(0, 1fr); }
 }

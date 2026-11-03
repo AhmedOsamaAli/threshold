@@ -1,23 +1,25 @@
 """Check a spot: what OpenStreetMap lists inside a 10-minute walk of an address, for one kind of business.
 
-It shows supply, never demand: how many places of the kind are listed nearby, the nearest few with their distances, and what
-else is around. Demand is what the pledges measure. Nothing here is a guess: when OpenStreetMap or the routing service does
-not answer, the answer says so and carries no counts, and a kind of business that no single tag pins down gets no count of
-its own kind. OpenStreetMap is volunteers' work and thinner in some cities than others, so every answer says it can be
-incomplete.
+It shows supply, never demand: how many places of the kind are listed nearby, the nearest of them with their distances and
+what OpenStreetMap's volunteers wrote down about each (opening hours, website, phone), the parks, and what else is around.
+Demand is what the pledges measure. Nothing here is a guess: when the map data or the routing service does not answer, the
+answer says so and carries no counts, and a kind of business that no single tag pins down (or that the data read cannot
+tell apart) gets no count of its own kind. OpenStreetMap is volunteers' work and thinner in some cities than others, so
+every answer says it can be incomplete.
 
 Data © OpenStreetMap contributors, available under the Open Database License (www.openstreetmap.org/copyright)."""
 from __future__ import annotations
 
 import asyncio
 import logging
+import re
 import time
 from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from . import osm
+from . import osm, tiles
 from .catchment import Catchment
 from .geo import distance_m
 from .intent import squash
@@ -27,12 +29,17 @@ WALK_MINUTES = 10
 TOTAL_SECONDS = 45.0  # how long a visitor waits; the free public servers are volunteers' and can be slow
 SLOW = ("OpenStreetMap's free servers are slow right now. The check goes on in the background: ask again in a minute and "
         "the answer will be waiting.")
-NEAREST = 5
+LISTED = 30  # the nearest places of the kind an answer names (a busy street has more; the count says how many)
+DETAILED = 12  # of those, how many get their details read from OpenStreetMap
+DETAILS_SECONDS = 4.0  # the most the details may add to a visitor's wait
+GREEN = 3
+GREEN_LEISURE = frozenset({"park", "garden", "playground", "nature_reserve", "dog_park"})
 TOP_KINDS = 5
 DOTS = 80
 RING_POINTS = 60
 KEPT_FOR_S = 24 * 3600.0
 KEPT_MOST = 500
+OSM_ID = re.compile(r"^(node|way|relation)/\d+$")
 SOURCE = {"name": "OpenStreetMap contributors", "url": "https://www.openstreetmap.org/copyright"}
 NOTE = "This shows what is open nearby, not what people want. Pledges measure demand."
 INCOMPLETE = "OpenStreetMap is mapped by volunteers and can be incomplete, so check the street before relying on a count."
@@ -111,15 +118,24 @@ def label_of(tags: dict[str, str]) -> str:
     return LABELS.get(main) or main.partition("=")[2].replace("_", " ")
 
 
+def kind_label(place: dict) -> str:
+    """What a place is, in plain words: the label its source gave it where the tags alone would mislabel it."""
+    return place.get("label") or label_of(place["tags"])
+
+
 def distance_text(metres: float) -> str:
     """'180 m', '1.2 km': to the nearest 10 m under a kilometre."""
     rounded = round(metres / 10) * 10
     return f"{max(10, rounded)} m" if rounded < 1000 else f"{metres / 1000:.1f} km"
 
 
-def summary_of(spec: SpotKind | None, kind: str, count: int | None, around: int, nearest: list[dict], circle: bool) -> str:
+def summary_of(spec: SpotKind | None, kind: str, count: int | None, around: int, nearest: list[dict], circle: bool,
+               unpinned: bool = False) -> str:
     """The answer in a sentence, written from the numbers and nothing else."""
     walk = f"a {WALK_MINUTES}-minute walk" if not circle else f"about a {WALK_MINUTES}-minute walk (a circle, not the streets)"
+    if unpinned:
+        return (f"The map data this check reads cannot tell {kind} businesses from other places, so there is no count of their "
+                f"own kind to compare. {around} businesses are listed inside {walk} of this address.")
     if spec is None or count is None:
         return (f"OpenStreetMap has no single tag for {kind} businesses, so there is no count of their own kind to compare. "
                 f"{around} businesses are listed inside {walk} of this address.")
@@ -164,6 +180,24 @@ async def _read(services: Services, lat: float, lon: float) -> tuple[Catchment, 
     return area, await services.osm.scan(area)
 
 
+async def _details(services: Services, ids: list[str]) -> dict[str, dict]:
+    """What OpenStreetMap's volunteers wrote down about these places, for those that have anything; best effort."""
+    if services.details is None or not ids:
+        return {}
+    try:
+        return await asyncio.wait_for(services.details.lookup(ids), DETAILS_SECONDS)
+    except Exception:  # the answer is complete without them
+        return {}
+
+
+def neighbor_of(place: dict, metres: float, details: dict | None) -> dict:
+    """One place of the asked kind as an answer names it; 'osm' is its page on OpenStreetMap ('node/123') when it has one."""
+    return {
+        "name": squash(place["name"], 80), "kind": kind_label(place), "distance_m": round(metres), "lat": place["lat"],
+        "lon": place["lon"], "osm": place["id"] if OSM_ID.match(place["id"]) else None, "details": details or None,
+    }
+
+
 async def check_spot(services: Services, lat: float, lon: float, kind: str, label: str, now: datetime) -> dict:
     """What OpenStreetMap lists inside a walk of this point, for this kind of business. Never raises: a service that does
     not answer in time makes the answer unchecked, with no numbers, and a check that is only slow goes on in the
@@ -185,32 +219,41 @@ async def check_spot(services: Services, lat: float, lon: float, kind: str, labe
         return unchecked(place, kind, scan.note or osm.NOTES["unavailable"], now)
     circle = area.source == "circle"
     spec = SPOT_KINDS.get(kind)
+    unpinned = spec is not None and kind in scan.unpinned  # the data read cannot tell this kind apart: no count of its own
+    if unpinned:
+        spec = None
     businesses = [p for p in scan.places if is_business(p["tags"])]
-    metres = {p["id"]: distance_m(lat, lon, p["lat"], p["lon"]) for p in businesses}
+    metres = {p["id"]: distance_m(lat, lon, p["lat"], p["lon"]) for p in scan.places}
     same = sorted((p for p in businesses if spec and any(k.matches(p["tags"]) for k in spec.tags)), key=lambda p: metres[p["id"]])
-    kinds = Counter(label_of(p["tags"]) for p in businesses)
+    kinds = Counter(kind_label(p) for p in businesses)
     same_ids = {p["id"] for p in same}
     others = sorted((p for p in businesses if p["id"] not in same_ids), key=lambda p: metres[p["id"]])
-    nearest = [
-        {"name": squash(p["name"], 80), "kind": label_of(p["tags"]), "distance_m": round(metres[p["id"]]), "lat": p["lat"],
-         "lon": p["lon"]}
-        for p in same[:NEAREST]
-    ]
+    listed = same[:LISTED]
+    found = await _details(services, [p["id"] for p in listed[:DETAILED] if OSM_ID.match(p["id"])])
+    nearest = [neighbor_of(p, metres[p["id"]], found.get(p["id"])) for p in listed]
+    parks = sorted((p for p in scan.places if p["tags"].get("leisure") in GREEN_LEISURE), key=lambda p: metres[p["id"]])
+    green = [{"name": squash(p["name"], 80), "kind": p["tags"]["leisure"].replace("_", " "), "distance_m": round(metres[p["id"]])}
+             for p in parks[:GREEN]]
     count = len(same) if spec else None
     note = INCOMPLETE if not circle else (
         f"{INCOMPLETE} The routing service did not answer, so the area is a circle of the same walking radius, not the streets.")
+    if kind in scan.kind_notes:
+        note = f"{note} {scan.kind_notes[kind]}"
     dots = [[p["lat"], p["lon"], 1] for p in same[:DOTS]]
     dots += [[p["lat"], p["lon"], 0] for p in others[: DOTS - len(dots)]]
+    source = {**SOURCE, "as_of": scan.as_of}
+    if scan.source == tiles.SOURCE:
+        source["name"] = "OpenStreetMap contributors, through OpenFreeMap"
     return {
         "place": place, "kind": kind, "walk_minutes": WALK_MINUTES, "checked": True, "reason": None,
         "same_kind": {"count": count, "nearest": nearest} if spec else None,
         "around": {
             "count": len(businesses), "dots": dots,
-            "top_kinds": [{"kind": name, "count": n} for name, n in kinds.most_common(TOP_KINDS)],
+            "top_kinds": [{"kind": name, "count": n} for name, n in kinds.most_common(TOP_KINDS)], "green": green,
         },
         "area": {"ring": ring_of(area), "source": "circle" if circle else "walk"},
-        "summary": summary_of(spec, kind, count, len(businesses), nearest, circle),
-        "source": {**SOURCE, "as_of": scan.as_of}, "checked_at": now.isoformat(timespec="seconds"), "note": f"{NOTE} {note}",
+        "summary": summary_of(spec, kind, count, len(businesses), nearest, circle, unpinned),
+        "source": source, "checked_at": now.isoformat(timespec="seconds"), "note": f"{NOTE} {note}",
     }
 
 

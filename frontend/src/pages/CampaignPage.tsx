@@ -9,8 +9,8 @@ import { ProgressBar } from "../components/founders/ProgressBar";
 import { SandboxNotice } from "../components/founders/SandboxNotice";
 import { CampaignPosterButton } from "../components/founders/CampaignPosterButton";
 import { Link } from "../components/Link";
-import { MapsLink } from "../components/MapsLink";
 import { Page, useDocumentTitle, useFocusOnMount } from "../components/Page";
+import { CampaignPlace } from "../components/spot/CampaignPlace";
 import { plainError } from "../lib/account";
 import { cx } from "../lib/css";
 import {
@@ -444,6 +444,7 @@ function Story({ campaign }: { campaign: Campaign }) {
           <p className="cp-source">Provided by the owner. Threshold has not verified it.</p>
         </section>
       ) : null}
+      <CampaignPlace key={campaign.id} campaign={campaign} />
       {campaign.perks.length ? (
         <section className="cp-sec" aria-labelledby="cp-perks">
           <h2 className="cp-h" id="cp-perks">
@@ -484,9 +485,6 @@ function Story({ campaign }: { campaign: Campaign }) {
         </h2>
         <p className="cp-genre mono">{campaign.concept.genre}</p>
         <p className="cp-summary">{campaign.concept.summary}</p>
-        <p className="cp-plan-links">
-          <MapsLink lat={campaign.place.lat} lon={campaign.place.lon} />
-        </p>
       </section>
     </div>
   );

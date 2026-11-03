@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { BUSINESS_KINDS } from "../api/founders";
 import type { Spot } from "../api/spot";
-import { metresText, planOf, SPOT_EXAMPLES, topKindsText } from "./spot";
+import { hoursText, metresText, planOf, SPOT_EXAMPLES, topKindsText, walkMinutes, walkText } from "./spot";
 
 const spot = (patch: Partial<Pick<Spot, "place" | "area" | "around">> = {}): Pick<Spot, "place" | "area" | "around"> => ({
   place: { label: "Zamalek, Cairo", lat: 30, lon: 31 },
@@ -13,7 +14,7 @@ const spot = (patch: Partial<Pick<Spot, "place" | "area" | "around">> = {}): Pic
     ],
     source: "walk",
   },
-  around: { count: 3, top_kinds: [], dots: [] },
+  around: { count: 3, top_kinds: [], dots: [], green: [] },
   ...patch,
 });
 
@@ -37,7 +38,7 @@ describe("a spot's plan", () => {
   });
 
   it("puts north at the top", () => {
-    const plan = planOf(spot({ around: { count: 2, top_kinds: [], dots: [[30.005, 31, 1], [29.995, 31, 0]] } }));
+    const plan = planOf(spot({ around: { count: 2, top_kinds: [], dots: [[30.005, 31, 1], [29.995, 31, 0]], green: [] } }));
     const [north, south] = plan?.dots ?? [];
     expect(north?.y).toBeLessThan(160);
     expect(south?.y).toBeGreaterThan(160);
@@ -58,7 +59,7 @@ describe("a spot's plan", () => {
         ],
         source: "walk",
       },
-      around: { count: 0, top_kinds: [], dots: [] },
+      around: { count: 0, top_kinds: [], dots: [], green: [] },
     });
     const points = (plan?.ring.split(" ") ?? []).map((pair) => pair.split(",").map(Number));
     const xs = points.map(([x]) => x ?? 0);
@@ -67,7 +68,7 @@ describe("a spot's plan", () => {
   });
 
   it("leaves out a place that falls outside the plan", () => {
-    const plan = planOf(spot({ around: { count: 2, top_kinds: [], dots: [[30, 31, 1], [31, 32, 0]] } }));
+    const plan = planOf(spot({ around: { count: 2, top_kinds: [], dots: [[30, 31, 1], [31, 32, 0]], green: [] } }));
     expect(plan?.dots).toHaveLength(1);
     expect(plan?.dots[0]).toMatchObject({ same: true });
   });
@@ -88,8 +89,26 @@ describe("a distance and a list of kinds", () => {
     expect(topKindsText([])).toBe("");
   });
 
-  it("has examples that name a kind the form offers", () => {
+  it("tells how long a walk takes: 80 metres a minute, never less than one", () => {
+    expect(walkMinutes(0)).toBe(1);
+    expect(walkMinutes(57)).toBe(1);
+    expect(walkMinutes(413)).toBe(5);
+    expect(walkMinutes(800)).toBe(10);
+    expect(walkText(292)).toBe("4 min on foot");
+  });
+
+  it("says opening hours as the volunteers wrote them, but 24/7 in words", () => {
+    expect(hoursText("Mo-Fr 08:00-18:00; Sa 09:00-14:00")).toBe("Mo-Fr 08:00-18:00; Sa 09:00-14:00");
+    expect(hoursText(" 24/7 ")).toBe("Open 24 hours, every day");
+  });
+
+  it("has examples with fixed places, each naming a kind the form offers", () => {
     expect(SPOT_EXAMPLES.length).toBeGreaterThan(0);
-    for (const example of SPOT_EXAMPLES) expect(example.address.length).toBeGreaterThan(2);
+    for (const example of SPOT_EXAMPLES) {
+      expect(example.label.length).toBeGreaterThan(2);
+      expect(Math.abs(example.lat)).toBeLessThanOrEqual(90);
+      expect(Math.abs(example.lon)).toBeLessThanOrEqual(180);
+      expect(BUSINESS_KINDS).toContain(example.kind);
+    }
   });
 });

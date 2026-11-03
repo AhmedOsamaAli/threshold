@@ -13,6 +13,7 @@ const spot: Spot = {
   around: {
     count: 3,
     top_kinds: [],
+    green: [],
     dots: [
       [30.002, 31, 1],
       [29.998, 31.001, 1],

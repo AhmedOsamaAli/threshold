@@ -1,0 +1,89 @@
+/* ---------- The street map ---------- */
+.place-map { position: relative; min-width: 0; }
+.pm-canvas { height: clamp(360px, 62vh, 600px); border: var(--rule); background: var(--bone); }
+.pm-canvas[hidden] { display: none; }
+.place-map.small .pm-canvas { height: clamp(240px, 38vh, 320px); }
+.place-map.wide { margin: 0 0 26px; }
+.place-map.wide .pm-canvas { height: clamp(260px, 42vh, 400px); }
+.pin-mark.pill { width: auto; min-width: 26px; padding: 0 9px; border-radius: 13px; }
+.pm-wait { position: absolute; inset: 0; z-index: 1; display: grid; place-items: center; margin: 0; color: var(--ash); pointer-events: none; }
+.pm-fallback { display: grid; gap: 10px; }
+.pm-note { margin: 0; font-size: 13px; line-height: 1.45; color: var(--ash); }
+/* MapLibre's own controls and credit, in this page's colors. */
+.place-map .maplibregl-ctrl-attrib { font-size: 11px; }
+.place-map .maplibregl-ctrl-group { border-radius: 10px; box-shadow: var(--shadow-s); }
+.place-map .maplibregl-cooperative-gesture-screen { font: 500 15px/1.4 var(--f-sans); }
+
+/* A pin is a button on the map: a number, or a short text such as a price. MapLibre places it with its own transform. */
+.mk {
+  box-sizing: border-box; display: grid; place-items: center; min-width: 28px; height: 28px; padding: 0 2px;
+  border: 2px solid #fff; border-radius: 14px; background: var(--blue-fill); color: var(--on-blue);
+  font: 700 13px/1 var(--f-sans); box-shadow: 0 1px 4px rgba(0, 0, 0, .45);
+  transition: scale .14s var(--ease), background-color .14s;
+}
+.mk.pill { padding: 0 10px; font-size: 12.5px; }
+.mk[hidden] { display: none; }
+.mk:hover, .mk.on { background: var(--ink); color: var(--on-ink); scale: 1.2; z-index: 2; }
+.mk:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
+.mk-here {
+  position: relative; width: 30px; height: 30px; border: 2px solid #1d1d1f; border-radius: 50%; background: var(--yellow);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, .35);
+}
+.mk-here::before, .mk-here::after { content: ""; position: absolute; background: #1d1d1f; }
+.mk-here::before { left: 50%; top: 5px; bottom: 5px; width: 2px; margin-left: -1px; }
+.mk-here::after { top: 50%; left: 5px; right: 5px; height: 2px; margin-top: -1px; }
+@media (prefers-reduced-motion: reduce) { .mk { transition: none; } }
+
+/* A place's number, drawn like its pin. */
+.pin-mark {
+  flex: none; display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%;
+  background: var(--blue-fill); color: var(--on-blue); font: 700 12.5px/1 var(--f-sans);
+}
+
+/* A place's card, over the map: a small preview under the pointer, the full card after a press. */
+.place-card {
+  position: absolute; left: 12px; bottom: 12px; z-index: 6; display: grid; gap: 10px; width: min(340px, calc(100% - 24px));
+  max-height: calc(100% - 24px); overflow: auto; padding: 14px 16px; border: var(--rule); border-radius: 14px;
+  background: var(--card); color: var(--ink); box-shadow: var(--shadow);
+}
+.place-card.preview { width: min(300px, calc(100% - 24px)); gap: 8px; box-shadow: var(--shadow-s); }
+.place-card:focus { outline: none; }
+.place-card:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.pc-head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: start; }
+.pc-name { margin: 0; font: 500 18px/1.2 var(--f-sans); letter-spacing: -.01em; overflow-wrap: anywhere; }
+.pc-role { margin: 4px 0 0; font-size: 10.5px; line-height: 1.5; color: var(--ash); }
+.pc-close { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; }
+.pc-close:hover { background: var(--bone); }
+.pc-close svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.pc-facts { display: grid; gap: 6px; margin: 0; }
+.pc-facts > div { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 8px; font-size: 14px; line-height: 1.4; }
+.pc-facts dt { padding-top: 3px; color: var(--ash); font-size: 10.5px; }
+.pc-facts dd { margin: 0; overflow-wrap: anywhere; }
+.pc-known { margin: 0; font-size: 13.5px; line-height: 1.45; color: var(--text-3); }
+.pc-link { font-size: 14.5px; font-weight: 500; color: var(--blue); text-decoration: none; }
+.pc-link:hover { text-decoration: underline; }
+.pc-details { justify-self: start; font-size: 14px; font-weight: 500; color: var(--blue); }
+.pc-details:hover { text-decoration: underline; }
+.pc-source { margin: 0; font-size: 10px; color: var(--ash); }
+
+/* The places beside the map, nearest first: every row lights its pin, and a press opens its card. */
+.spot-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 380px); gap: 28px 40px; align-items: start; }
+.spot-mapcol { min-width: 0; }
+.spot-legend { margin-top: 10px; font-size: 10px; line-height: 1.6; color: var(--ash); }
+.spot-places { display: grid; max-height: min(62vh, 520px); overflow-y: auto; border: var(--hair); border-radius: 12px; background: var(--card); }
+.spot-places li + li { border-top: var(--hair); }
+.sp-row {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "mark name dist" "mark kind kind";
+  gap: 2px 12px; align-items: center; width: 100%; padding: 10px 14px; text-align: left;
+}
+.sp-row .pin-mark { grid-area: mark; }
+.sp-name { grid-area: name; font-size: 15.5px; line-height: 1.25; overflow-wrap: anywhere; }
+.sp-kind { grid-area: kind; font-size: 10px; color: var(--ash); }
+.sp-dist { grid-area: dist; font-size: 11px; color: var(--blue); white-space: nowrap; }
+.sp-row:hover, .sp-row.on { background: var(--blue-wash); }
+
+@media (max-width: 900px) {
+  .spot-grid { grid-template-columns: minmax(0, 1fr); }
+  .pm-canvas { height: clamp(300px, 54vh, 440px); }
+  .place-card, .place-card.preview { left: 8px; right: 8px; bottom: 8px; width: auto; max-height: 70%; }
+}

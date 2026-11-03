@@ -13,7 +13,7 @@ Copilot or any other MCP client can use it as a tool:
 - pledge_status reads one pledge with its private receipt: GET /api/receipts/{receipt};
 - withdraw_pledge releases a pledge's hold with its private receipt: POST /api/receipts/{receipt}/withdraw.
 
-It talks to nothing but THRESHOLD_URL (default https://threshold.pages.dev, whose front door forwards /api to the
+It talks to nothing but THRESHOLD_URL (default https://threshold-pledge.pages.dev, whose front door forwards /api to the
 server) and needs no keys. Run it with `python mcp_server/threshold_mcp.py`: it speaks MCP over stdin and stdout.
 """
 from __future__ import annotations
@@ -32,7 +32,7 @@ from mcp.server.fastmcp import Context, FastMCP
 from mcp.types import ToolAnnotations
 from pydantic import Field
 
-DEFAULT_URL = "https://threshold.pages.dev"
+DEFAULT_URL = "https://threshold-pledge.pages.dev"
 CALL_WAIT_S = 150.0  # any call, waking included
 USER_AGENT = "threshold-mcp/1.2"
 
@@ -327,7 +327,7 @@ def answer_within(seconds: float) -> Iterator[None]:
 
 
 def campaign_id(value: str) -> str:
-    """A campaign's id, also from its link ('https://threshold.pages.dev/p/3f9a1c2b7d4e5f60?pledge=...')."""
+    """A campaign's id, also from its link ('https://threshold-pledge.pages.dev/p/3f9a1c2b7d4e5f60?pledge=...')."""
     value = (value or "").strip()
     found = CAMPAIGN_LINK.search(value)
     found_id = found.group(1) if found else value
@@ -895,7 +895,7 @@ def connect() -> Threshold:
     return Threshold()
 
 
-CAMPAIGN_FIELD = "The campaign's id, such as '3f9a1c2b7d4e5f60', or its link (https://threshold.pages.dev/p/...)."
+CAMPAIGN_FIELD = "The campaign's id, such as '3f9a1c2b7d4e5f60', or its link (https://threshold-pledge.pages.dev/p/...)."
 
 
 @mcp.tool(

@@ -65,7 +65,7 @@ def voids(paypal) -> int:
     return len(paypal.calls(r"/v2/payments/authorizations/[^/]+/void"))
 
 
-def test_each_pledge_gets_a_private_receipt_once_and_walkin_keeps_only_its_digest(world):
+def test_each_pledge_gets_a_private_receipt_once_and_threshold_keeps_only_its_digest(world):
     client, paypal = world["client"], world["paypal"]
     campaign_id = start(world)
     answer = client.post(f"/api/campaigns/{campaign_id}/pledges", json={"flow": "buttons"}).json()

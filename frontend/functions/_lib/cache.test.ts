@@ -13,7 +13,7 @@ import {
   type EdgeCache,
 } from "./cache";
 
-const FRONT = "https://threshold.pages.dev";
+const FRONT = "https://threshold-pledge.pages.dev";
 
 function answer(cacheControl: string | null, init: { status?: number; headers?: Record<string, string> } = {}): Response {
   const headers = new Headers({ "content-type": "application/json", ...init.headers });

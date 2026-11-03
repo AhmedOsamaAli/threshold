@@ -1,9 +1,9 @@
-name: Settle Founders campaigns
+name: Settle campaigns
 
 # The app settles campaigns past their close every few minutes while it runs (and pays their owners), but a free
 # Render instance sleeps when idle. This wakes it every 3 hours and runs one settlement pass; campaigns keep a 2-day
 # margin before their first holds run out. Set the repository secrets BACKEND_URL (the backend's own address, such as
-# https://walk-in-aoa2.onrender.com) and CRON_SECRET (the backend's CRON_SECRET).
+# https://threshold.onrender.com) and CRON_SECRET (the backend's CRON_SECRET).
 on:
   schedule:
     - cron: "17 */3 * * *"

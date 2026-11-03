@@ -42,7 +42,7 @@ async def migrated(url: str) -> Database:
 def test_a_test_only_ever_resolves_its_own_sqlite_file(database_url, tmp_path):
     """The guard: .env may name the production database, yet every way the app finds its database leads here."""
     target = make_url(database_url)
-    assert target.get_backend_name() == "sqlite" and Path(target.database) == tmp_path / "walkin.db"
+    assert target.get_backend_name() == "sqlite" and Path(target.database) == tmp_path / "threshold.db"
     resolved = {
         "environment": os.environ["DATABASE_URL"],
         "a new Settings()": Settings().database_url,
@@ -64,13 +64,13 @@ def test_a_test_only_ever_resolves_its_own_sqlite_file(database_url, tmp_path):
 
 def test_a_test_that_reaches_for_postgres_fails_instead_of_connecting():
     with pytest.raises(pytest.fail.Exception, match="opened a postgresql database"):
-        Database("postgresql://walkin:secret@db.invalid/walkin")
+        Database("postgresql://threshold:secret@db.invalid/threshold")
     with pytest.raises(pytest.fail.Exception, match="tried to connect to Postgres"):
-        asyncio.run(asyncpg.connect("postgresql://walkin:secret@db.invalid/walkin"))
+        asyncio.run(asyncpg.connect("postgresql://threshold:secret@db.invalid/threshold"))
 
 
 def test_sqlite_urls_get_the_async_driver_and_their_folder(tmp_path):
-    path = tmp_path / "data" / "walkin.db"
+    path = tmp_path / "data" / "threshold.db"
     url, connect_args = async_url(f"sqlite:///{path.as_posix()}")
     assert (url.drivername, url.database, connect_args) == ("sqlite+aiosqlite", path.as_posix(), {})
     assert path.parent.is_dir() and not path.exists()
@@ -83,13 +83,13 @@ def test_postgres_urls_get_asyncpg_and_tls_from_sslmode():
     assert (url.username, url.password, url.database) == ("alex", "AbC123dEf", "neondb")
     assert url.host == "ep-cool-darkness-123456.us-east-2.aws.neon.tech"
 
-    url, connect_args = async_url("postgres://walkin:p%40ss@db.example.com:5433/walkin?sslmode=verify-full&sslrootcert=system")
+    url, connect_args = async_url("postgres://threshold:p%40ss@db.example.com:5433/threshold?sslmode=verify-full&sslrootcert=system")
     assert (url.drivername, url.password, url.port, dict(url.query)) == ("postgresql+asyncpg", "p@ss", 5433, {})
     verified = connect_args["ssl"]
     assert isinstance(verified, ssl.SSLContext) and verified.check_hostname and verified.verify_mode == ssl.CERT_REQUIRED
-    assert async_url("postgresql+psycopg2://walkin:pw@localhost/walkin")[1] == {}
+    assert async_url("postgresql+psycopg2://threshold:pw@localhost/threshold")[1] == {}
     with pytest.raises(ValueError):
-        async_url("mysql://walkin:pw@localhost/walkin")
+        async_url("mysql://threshold:pw@localhost/threshold")
 
 
 @pytest.mark.parametrize("pooled", [False, True], ids=["direct", "pooled"])

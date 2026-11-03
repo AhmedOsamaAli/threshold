@@ -1,12 +1,12 @@
-# Walk-in Founders: the contract
+# Threshold: the contract
 
-**Founders** lets the neighbors back a new place (a cafe, a gym, a bakery) with PayPal before the lease is signed: they
+**Threshold** lets neighbors back a new place (a cafe, a gym, a bakery) with PayPal before the lease is signed: they
 pledge, PayPal only holds the money, and everyone is charged only if enough people join by the deadline. If the goal is
 missed, every hold is released and nobody pays.
 
-Every builder codes to this file. If something here cannot work, stop and tell the lead rather than inventing a
-different shape. All JSON. Errors are FastAPI's `{"detail": "plain words"}`. Amounts are strings with two decimals
-(`"25.00"`), never floats. Times are ISO 8601 UTC strings.
+This file is the shape of the API and the rules behind it. The code follows it, the tests hold the code to it, and a
+change to one is a change to the other. All JSON. Errors are FastAPI's `{"detail": "plain words"}`. Amounts are strings
+with two decimals (`"25.00"`), never floats. Times are ISO 8601 UTC strings.
 
 ## Product rules
 
@@ -42,13 +42,13 @@ different shape. All JSON. Errors are FastAPI's `{"detail": "plain words"}`. Amo
     pledge. Only its SHA-256 digest is stored, never the token. Its bearer may read the pledge or withdraw it while
     the campaign takes pledges, without signing in. The receipt is a cancellation capability, not a payment credential:
     keep it private. Old pledges without a receipt still work through their campaign page.
-12. **The owner describes the business.** `/founders/start` is the only way to start a campaign. The owner gives the
+12. **The owner describes the business.** `/start` is the only way to start a campaign. The owner gives the
     name, kind, description, address and optional why-here line, then sets the money terms. Campaigns say "in the
     owner's words" on the web and through MCP: nothing about the place is presented as measured or verified.
     Every campaign uses the same hold, settlement, withdrawal and payout engine.
 13. **One poster.** The same editor serves any campaign. Its actual participation perks lead, with accurate terms and
     a public campaign QR link. Owners may reorder real perks, not invent new ones through the artwork editor.
-    The palette, original motif, typography, logo and optional real street locator belong to the particular project.
+    The palette, original motif, typography and logo belong to the particular project.
     The QR's branded frame remains outside a five-module white quiet zone. Exports must preserve all perks and terms;
     overflow blocks export rather than silently cutting them.
 
@@ -183,7 +183,7 @@ limits before PayPal is asked for an approval link: 403 `{ detail, code, limits 
 `already_pledged` (one pledge per campaign under one token), `wrong_currency`. Pledges prepared and not approved count
 against the limits for an hour; held and collected ones for as long as they stand; a withdrawn or released one frees its
 money. The model never writes or edits limits: they come from the person's page, or from the environment the assistant's
-tools run in (`WALKIN_LIMITS` for the MCP server). The person still approves every pledge in PayPal.
+tools run in (`THRESHOLD_LIMITS` for the MCP server). The person still approves every pledge in PayPal.
 
 `GET /api/campaigns/{id}/proof` (anyone; limited per address; kept for about 45 seconds) → the campaign's record checked
 against PayPal:
@@ -283,13 +283,14 @@ and answered, honestly, with no numbers.
   words: "PayPal holds $25. You are charged only if 40 neighbors join by Nov 30; otherwise the hold is released."
   After pledging: thanks, the progress, and how to withdraw. Owner view adds the counts, close early (once funded),
   cancel, the settlement report and the payout.
-- `/founders`: open campaigns, newest first, and "Start one".
-- `/founders/start`: start a campaign (the form, the AI draft, edit, publish). Signed out: "Sign in with Google to
+- `/browse`: open campaigns, newest first, and "Start one".
+- `/start`: start a campaign (the form, the AI draft, edit, publish). Signed out: "Sign in with Google to
   start one."
 - The **window poster**: its QR code opens the campaign and the poster says, from the campaign's own terms (not from
   the model): "PayPal holds $25. You are charged only if 40 neighbors join by Nov 30; otherwise the hold is released."
   Actual participation perks lead.
-- `/me` lists the user's campaigns. The top bar links "Founders".
+- `/me` lists the user's campaigns. The top bar links Browse, Ask, Check a spot and Start a campaign.
+- `/r/{receipt}` is a pledge's private receipt page; `/privacy` says what is kept and for how long.
 
 ## Schema and release rollback
 
@@ -308,23 +309,23 @@ receipt capabilities for a code rollback.
 `script-src` and `connect-src` add `https://www.sandbox.paypal.com https://www.paypal.com`; `frame-src` adds
 `https://www.sandbox.paypal.com https://www.paypal.com`; `img-src` already allows `https:`. Change all three together.
 
-## Agents (MCP server, `mcp_server/walkin_mcp.py`)
+## Agents (MCP server, `mcp_server/threshold_mcp.py`)
 
-`find_campaigns` (a place or lat/lon, km), `get_campaign` (id or link) and `back_campaign` (id or link): it prepares a
-pledge with `flow: "redirect"` and returns the approval link with the terms in plain words. `pledge_status` and
-`withdraw_pledge` use the pledge's private receipt. The person approves in PayPal; the agent never sees a card or an
-account.
+`find_campaigns` (a place or lat/lon, km), `get_campaign` (id or link), `check_proof` (id or link: the campaign's proof,
+told in plain words) and `back_campaign` (id or link): it prepares a pledge with `flow: "redirect"` and the person's
+limits (`THRESHOLD_LIMITS`, sent as `X-Limits`) and returns the approval link with the terms in plain words.
+`pledge_status` and `withdraw_pledge` use the pledge's private receipt. The person approves in PayPal; the agent never
+sees a card or an account.
 
-## Who builds what
+## Where things live
 
-- **P (payments backend):** `app/payments/**`, `app/settlement.py`, `app/db/campaigns.py`, `app/db/events.py`, the
-  campaign, pledge, payout and event tables in `app/db/tables.py` and the migration, `app/routes/campaigns.py`,
-  `app/routes/business_campaigns.py`, `app/routes/hooks.py`, `app/config.py`, `app/schemas.py`, the router seam and CSP
-  in `app/main.py`, `/api/config` and `/api/me/campaigns` in `app/routes/account.py` and `app/db/accounts.py`,
-  `.env.example`,
-  `render.yaml`, `.github/workflows/settle.yml`, `docs/founders/sandbox_money_flows.py` and
-  `docs/founders/setup_paypal_webhook.py`, and their tests.
-- **W (web):** `frontend/**`: the pages, the start form, the poster's campaign QR and line, the top bar link, the
-  account page, the PayPal buttons, the CSP in `_headers` and `vite.config.ts`.
-- **A (agents):** `mcp_server/**`, `frontend/public/llms.txt` and `docs/founders/agents.md`.
-- **Lead:** this file, the README, deployment, the submission.
+- `app/payments/`: campaigns, pledges, private receipts, PayPal's REST client (`paypal.py`) and the wording rules.
+  `app/settlement.py` closes campaigns and pays owners; `app/routes/campaigns.py`, `hooks.py` and `receipts.py` are the
+  HTTP side.
+- `app/trust/`: signing keys, signed terms, limits and proof (`app/routes/trust.py`).
+- `app/assistant.py` and `app/intent.py`: the Ask page's assistant and the rules that decide consent
+  (`app/routes/assistant.py`).
+- `app/spot.py`, `app/osm.py`, `app/catchment.py`: Check a spot (`app/routes/spot.py`).
+- `app/db/` and `migrations/`: tables, access and the Alembic baseline.
+- `frontend/`: the React app; `frontend/functions/` is the Cloudflare Pages front door (proxy and edge cache).
+- `mcp_server/`: the MCP server. `scripts/`: the end-to-end run, the demo data and PayPal webhook setup.

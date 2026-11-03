@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { freshKey, STALE_MAX_SECONDS, staleKey, type EdgeCache } from "./cache";
 import { frontDoor, STALE_AFTER_MS, upstreamRequest, type FrontDoorDeps } from "./proxy";
 
-const FRONT = "https://threshold.pages.dev";
+const FRONT = "https://threshold-pledge.pages.dev";
 const BACKEND = "https://threshold-backend.example";
 const ENV = { BACKEND_ORIGIN: BACKEND, PROXY_SECRET: "s3cret" };
 const SHARED = "public, max-age=300, s-maxage=3600";
@@ -111,7 +111,7 @@ describe("the front door", () => {
     expect(request.url).toBe(`${BACKEND}/api/config?x=1`);
     expect(request.headers.get("x-client-ip")).toBe("203.0.113.7");
     expect(request.headers.get("x-proxy-secret")).toBe("s3cret");
-    expect(request.headers.get("x-forwarded-host")).toBe("threshold.pages.dev");
+    expect(request.headers.get("x-forwarded-host")).toBe("threshold-pledge.pages.dev");
     expect(request.headers.get("cookie")).toBe("threshold_session=abc");
     expect(init?.redirect).toBe("manual");
   });

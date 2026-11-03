@@ -14,7 +14,7 @@ const campaign: PosterCampaign = {
   id: "c1", amount: "25.00", goal: 40, deadline: "2026-11-20T20:00:00Z", accepting: true,
   perks: ["10% off your membership for the first year", "Your name on the founders' wall", "An invitation to the opening"],
 };
-const LINK = "https://threshold.pages.dev/p/c1";
+const LINK = "https://threshold-pledge.pages.dev/p/c1";
 const visibleWords = (html: string) => [...html.matchAll(/<text\b[^>]*>(.*?)<\/text>/g)].map((match) => match[1]).join(" ");
 
 describe("the campaign poster", () => {
@@ -38,7 +38,7 @@ describe("the campaign poster", () => {
     expect(html).toContain('data-qr-quiet-modules="5"');
     expect(html).toContain('shape-rendering="crispEdges"');
     expect(html).toContain('fill="#111111"');
-    expect(visibleWords(html)).toContain("threshold.pages.dev/p/c1");
+    expect(visibleWords(html)).toContain("threshold-pledge.pages.dev/p/c1");
     expect(html).toContain('data-poster-problem=""');
   });
 
@@ -64,14 +64,14 @@ describe("the campaign poster", () => {
       const adapted = posterForCampaign(record);
       const brand = brandForPoster(adapted, DEFAULT_POSTER_APPEARANCE);
       const html = renderToStaticMarkup(<PosterArt poster={adapted} campaign={record} sandbox
-        link={`https://threshold.pages.dev/p/${record.id}`} />);
+        link={`https://threshold-pledge.pages.dev/p/${record.id}`} />);
       const printed = visibleWords(html);
       expect(brand.direction).toBe(project.direction);
       expect(printed).toContain(brand.face === "sans" ? project.name.toUpperCase() : project.name);
       expect(printed).toContain(project.perk);
       expect(printed).toContain(`$${Number(project.amount)}`);
       expect(printed).toContain(`${project.goal} neighbors join`);
-      expect(printed).toContain(`threshold.pages.dev/p/${project.id}`);
+      expect(printed).toContain(`threshold-pledge.pages.dev/p/${project.id}`);
       expect(html).toContain('data-poster-problem=""');
       expect(html).toContain('data-qr-quiet-modules="5"');
       expect(printed).not.toContain("Pulse Community Gym");
@@ -122,7 +122,7 @@ describe("the campaign poster", () => {
   });
 
   it("rejects private receipts, credentials and individual approval links as public QR destinations", () => {
-    for (const link of [`https://threshold.pages.dev/r/${"x".repeat(32)}`, "https://user:pass@example.com/",
+    for (const link of [`https://threshold-pledge.pages.dev/r/${"x".repeat(32)}`, "https://user:pass@example.com/",
       "https://www.sandbox.paypal.com/checkoutnow?token=buyer", "javascript:alert(1)", "not a link"]) {
       expect(posterLinkProblem(link)).not.toBeNull();
     }

@@ -32,7 +32,7 @@ def test_the_app_imports_and_builds_its_ai_chain_without_openai(tmp_path):
         "chain = build_llm(replace(settings, llm_api_key='key', groq_api_key='key'))\n"
         "print(chain.enabled, 'openai' in sys.modules)\n"
     )
-    env = {**os.environ, "DATABASE_URL": f"sqlite:///{(tmp_path / 'walkin.db').as_posix()}", "LLM_API_KEY": "",
+    env = {**os.environ, "DATABASE_URL": f"sqlite:///{(tmp_path / 'threshold.db').as_posix()}", "LLM_API_KEY": "",
            "GROQ_API_KEY": "", "KEEP_AWAKE_URL": "", "PUBLIC_URL": ""}
     done = subprocess.run([sys.executable, "-c", probe], cwd=REPO, env=env, capture_output=True, text=True, timeout=300)
     assert done.returncode == 0, done.stderr[-2000:]

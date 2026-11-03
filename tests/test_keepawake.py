@@ -53,8 +53,8 @@ def test_a_failed_visit_does_not_stop_the_next():
 def test_it_is_on_only_with_an_address(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.delenv("KEEP_AWAKE_URL", raising=False)
     assert config.Settings().keep_awake_url == ""  # development and tests
-    monkeypatch.setenv("KEEP_AWAKE_URL", " https://walkin-app.pages.dev/api/health ")
-    assert config.Settings().keep_awake_url == "https://walkin-app.pages.dev/api/health"
+    monkeypatch.setenv("KEEP_AWAKE_URL", " https://threshold-pledge.pages.dev/api/health ")
+    assert config.Settings().keep_awake_url == "https://threshold-pledge.pages.dev/api/health"
 
 
 @pytest.mark.parametrize("url", [URL, ""])

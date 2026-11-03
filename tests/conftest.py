@@ -52,7 +52,7 @@ def database_url(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> str:
     """This test's database: a SQLite file in its own folder, for the app, Alembic and any new Settings()."""
     from app import config
 
-    url = f"sqlite:///{(tmp_path / 'walkin.db').as_posix()}"
+    url = f"sqlite:///{(tmp_path / 'threshold.db').as_posix()}"
     monkeypatch.setenv("DATABASE_URL", url)
     settings = replace(config.settings, database_url=url)
     for name, module in list(sys.modules.items()):

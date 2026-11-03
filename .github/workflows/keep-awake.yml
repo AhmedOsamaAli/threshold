@@ -1,14 +1,14 @@
 name: Keep the demo awake
 
-# The free Render instance sleeps after 15 idle minutes and takes about 40 seconds to wake (the Cloudflare front door
-# shows a note meanwhile). The app keeps itself awake (app/keepawake.py); this backup pings it every 10 minutes too, from
-# now (the entry is submitted and judges may open it any day) through the end of judging (Nov 5, 11:45 pm ET), with a
-# few days' margin, and wakes it if Render ever lets it sleep. Dates are UTC. Scheduled runs are free for public
-# repositories; the 750 free instance hours a month cover one instance awake all month.
+# The free Render instance sleeps after 15 idle minutes and takes about a minute to wake (the Cloudflare front door shows
+# a note meanwhile). This pings it every 10 minutes on the days people are likely to open it: around the submission
+# (Nov 9-16) and through judging (Dec 1-16), and wakes it if Render ever lets it sleep. Dates are UTC. Scheduled runs
+# are free for public repositories, and the 750 free instance hours a month cover that many days awake. Set the
+# repository secret BACKEND_URL (the backend's own address, such as https://threshold.onrender.com).
 on:
   schedule:
-    - cron: "*/10 * 26-31 10 *"  # submitted: open to judges and Devpost's eligibility check
-    - cron: "*/10 * 1-8 11 *"  # judging, November 2-5 (ET), and a margin
+    - cron: "*/10 * 9-16 11 *"  # the submission, and a margin
+    - cron: "*/10 * 1-16 12 *"  # judging, December 1-15, and a margin
   workflow_dispatch:
 
 permissions: {}
@@ -19,4 +19,11 @@ jobs:
     timeout-minutes: 3
     steps:
       - name: Ping the health check
-        run: curl --fail --silent --show-error --max-time 90 --retry 2 https://walk-in-aoa2.onrender.com/api/health > /dev/null
+        env:
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+        run: |
+          if [ -z "$BACKEND_URL" ]; then
+            echo "::notice::The BACKEND_URL repository secret is not set, so there is nothing to ping."
+            exit 0
+          fi
+          curl --fail --silent --show-error --max-time 90 --retry 2 "${BACKEND_URL%/}/api/health" > /dev/null

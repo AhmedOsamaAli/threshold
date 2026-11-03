@@ -124,7 +124,7 @@ def test_an_order_pays_now_without_shipping_and_carries_idempotency_headers():
         {"href": "https://www.sandbox.paypal.com/checkoutnow?token=ORDER1", "rel": "payer-action", "method": "GET"},
     ]})])
     order = asyncio.run(client_for(stub).create_order(
-        intent="capture", amount="19", currency="usd", description="  Walk-in order:\n Golden Hour ",
+        intent="capture", amount="19", currency="usd", description="  Threshold order:\n Golden Hour ",
         custom_id="order:run-1", request_id="order-run-1",
     ))
     request = stub.api()[0]
@@ -137,7 +137,7 @@ def test_an_order_pays_now_without_shipping_and_carries_idempotency_headers():
         "purchase_units": [{
             "amount": {"currency_code": "USD", "value": "19.00"},
             "custom_id": "order:run-1",
-            "description": "Walk-in order: Golden Hour",
+            "description": "Threshold order: Golden Hour",
         }],
         "payment_source": {"paypal": {"experience_context": {
             "brand_name": "Threshold", "shipping_preference": "NO_SHIPPING", "user_action": "PAY_NOW",
@@ -151,8 +151,8 @@ def test_a_pledge_order_only_holds_the_money_and_returns_to_the_app():
     stub = Stub()
     asyncio.run(client_for(stub).create_order(
         intent="AUTHORIZE", amount=Decimal("25.5"), currency="USD", description="Pledge " + "x" * 200,
-        custom_id="pledge:c1:p1", reference_id="c1", request_id="pledge-p1", brand_name="Walk-in: Golden Hour",
-        return_url="https://walkin.example/pledge/done", cancel_url="https://walkin.example/pledge/cancel",
+        custom_id="pledge:c1:p1", reference_id="c1", request_id="pledge-p1", brand_name="Threshold: Golden Hour",
+        return_url="https://threshold.example/pledge/done", cancel_url="https://threshold.example/pledge/cancel",
     ))
     body = json.loads(stub.api()[0].content)
     unit = body["purchase_units"][0]
@@ -160,9 +160,9 @@ def test_a_pledge_order_only_holds_the_money_and_returns_to_the_app():
     assert unit["amount"] == {"currency_code": "USD", "value": "25.50"} and unit["reference_id"] == "c1"
     assert len(unit["description"]) == 127  # PayPal keeps 127 characters
     assert body["payment_source"]["paypal"]["experience_context"] == {
-        "brand_name": "Walk-in: Golden Hour", "shipping_preference": "NO_SHIPPING", "user_action": "CONTINUE",
+        "brand_name": "Threshold: Golden Hour", "shipping_preference": "NO_SHIPPING", "user_action": "CONTINUE",
         "payment_method_preference": "IMMEDIATE_PAYMENT_REQUIRED",
-        "return_url": "https://walkin.example/pledge/done", "cancel_url": "https://walkin.example/pledge/cancel",
+        "return_url": "https://threshold.example/pledge/done", "cancel_url": "https://threshold.example/pledge/cancel",
     }
 
 
@@ -471,21 +471,21 @@ def test_failed_or_incomplete_webhook_signatures_are_rejected():
 
 def test_webhooks_are_registered_and_listed_programmatically():
     stub = Stub(replies=[
-        httpx.Response(201, json={"id": "8PT597110X687430LKGECATA", "url": "https://walkin.example/api/paypal/webhook"}),
+        httpx.Response(201, json={"id": "8PT597110X687430LKGECATA", "url": "https://threshold.example/api/paypal/webhook"}),
         httpx.Response(200, json={"webhooks": [{"id": "8PT597110X687430LKGECATA", "event_types": []}, "junk"]}),
         httpx.Response(201, json={"id": "WH2"}),
     ])
     client = client_for(stub)
     created = asyncio.run(client.create_webhook(
-        "https://walkin.example/api/paypal/webhook",
+        "https://threshold.example/api/paypal/webhook",
         ["PAYMENT.CAPTURE.COMPLETED", "PAYMENT.CAPTURE.REFUNDED", "PAYMENT.CAPTURE.COMPLETED"],
     ))
     hooks = asyncio.run(client.list_webhooks())
-    asyncio.run(client.create_webhook("https://walkin.example/other"))
+    asyncio.run(client.create_webhook("https://threshold.example/other"))
     create, listing, default = stub.api()
     assert created["id"] == "8PT597110X687430LKGECATA"
     assert (create.method, create.url.path) == ("POST", "/v1/notifications/webhooks")
-    assert json.loads(create.content) == {"url": "https://walkin.example/api/paypal/webhook", "event_types": [
+    assert json.loads(create.content) == {"url": "https://threshold.example/api/paypal/webhook", "event_types": [
         {"name": "PAYMENT.CAPTURE.COMPLETED"}, {"name": "PAYMENT.CAPTURE.REFUNDED"}]}
     assert create.headers["paypal-request-id"]
     assert (listing.method, listing.url.path, listing.url.params["anchor_type"]) == (
@@ -493,7 +493,7 @@ def test_webhooks_are_registered_and_listed_programmatically():
     assert hooks == [{"id": "8PT597110X687430LKGECATA", "event_types": []}]
     assert [event["name"] for event in json.loads(default.content)["event_types"]] == list(paypal.WEBHOOK_EVENTS)
     with pytest.raises(ValueError):
-        asyncio.run(client.create_webhook("http://walkin.example/hook", ["PAYMENT.CAPTURE.COMPLETED"]))
+        asyncio.run(client.create_webhook("http://threshold.example/hook", ["PAYMENT.CAPTURE.COMPLETED"]))
 
 
 def test_money_time_and_request_keys():
@@ -524,7 +524,7 @@ def test_aclose_closes_only_the_client_it_made():
     assert not shared.is_closed
 
 
-# Payouts and captures, for Walk-in Founders
+# Payouts and captures, for campaigns
 
 BATCH = {
     "batch_header": {

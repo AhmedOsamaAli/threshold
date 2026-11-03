@@ -25,6 +25,11 @@ from ..payments.records import CURRENCY, KINDS, iso, major, minor
 from .keys import Signer
 
 HEADER = "X-Limits"
+# Every code a refusal can carry, so a caller can tell the person's limits from any other reason a pledge was not prepared.
+CODES = frozenset({
+    "limits_required", "limits_invalid", "limits_expired", "over_pledge_limit", "over_total_limit", "too_many_pledges",
+    "too_far", "wrong_kind", "already_pledged", "wrong_currency",
+})
 MAX_TOTAL = Decimal("1000.00")
 MAX_COUNT = 10
 MAX_NEAR_KM = 100.0

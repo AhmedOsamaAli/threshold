@@ -107,14 +107,20 @@ type Campaign = {
 
 `GET /api/campaigns?lat=&lon=&km=` (anyone; agent-friendly) → open campaigns within `km` (default 25, max 100), nearest
 first; without `lat`/`lon`, open campaigns newest first. At most 50:
-`{ campaigns: { id, url, title, name, place: {label, lat, lon}, distance_km: number | null, amount, goal, supporters, total, deadline }[] }`.
-`total` is what the campaign's held pledges add up to (`"75.00"`), as in `progress.total`.
+`{ campaigns: { id, url, title, name, kind, place: {label, lat, lon}, distance_km: number | null, amount, goal, supporters, total, deadline }[] }`.
+`kind` is the owner's kind of business (one of the kinds below). `total` is what the campaign's held pledges add up to
+(`"75.00"`), as in `progress.total`.
 
-`POST /api/campaigns/{id}/pledges` (anyone) body `{ flow: "buttons" | "redirect" }` →
-`{ order_id, approve_url: string | null, receipt: string }`.
-Creates the AUTHORIZE order for the campaign's amount (`custom_id` = our pledge id, description "Founding supporter:
-{name}"). `redirect` adds return/cancel URLs (`{PUBLIC_URL}/p/{id}?pledge={pledgeId}` and `?cancelled=1`) and returns
-PayPal's approval link. 409 when the campaign no longer accepts pledges. Rate-limited per address.
+`POST /api/campaigns/{id}/pledges` (anyone) body `{ flow: "buttons" | "redirect" }`, header `X-Limits` for `redirect` →
+`{ order_id, approve_url: string | null, receipt: string, ref: string, terms_hash: string, limits?: Limits }`
+(`limits` only for `redirect`: the person's limits with `used` and `remaining`).
+Creates the AUTHORIZE order for the campaign's amount, under the campaign's signed terms (see Trust): `custom_id` = our
+pledge id, `invoice_id` = `{ref}-{first 16 hex of terms_hash}`, description "Founding supporter: {name}". `redirect` is
+how an assistant prepares a pledge: it needs the person's limits and adds return/cancel URLs
+(`{PUBLIC_URL}/p/{id}?pledge={pledgeId}` and `?cancelled=1`), and returns PayPal's approval link. The page's own PayPal
+buttons (`buttons`) need no limits: the person is there. 409 when the campaign no longer accepts pledges; 403 with a
+`code` when a `redirect` pledge is outside the limits (see Trust); 503 on a hosted site without a lasting signing key.
+Rate-limited per address.
 
 `POST /api/campaigns/{id}/pledges/{order_id}/authorize` (anyone) → `{ status: "authorized" | "declined", progress }`.
 Idempotent. `402 {detail, retry: true}` when PayPal declines the instrument, so the buttons can restart.
@@ -144,6 +150,98 @@ what is due. Both are exempt from the Origin check.
 
 `GET /api/me/campaigns` (signed in; never cached) →
 `{ campaigns: { id, title, status, supporters, total, goal, deadline, url }[] }`: the user's campaigns, newest first.
+
+## Trust: signed terms, limits and proof
+
+Three things a person can check without taking the server's word for it. The code is `app/trust/`.
+
+`GET /api/keys` → the service's public key as a JWKS: `{ keys: [{ kty: "OKP", crv: "Ed25519", alg: "EdDSA", use: "sig",
+kid, x }] }`. Its private half is `SIGNING_KEY` (a 32-byte seed in base64; `Signer.new_seed()` makes one). Without it the
+key lives for one process, and a hosted site (`PUBLIC_URL` https) refuses to prepare pledges rather than sign what it
+could not later prove. Cacheable like `/api/config`.
+
+**Signed terms.** Every pledge is made under the campaign's terms:
+`{ v: 1, campaign, business, title, amount, currency, goal, deadline, perk, how_it_works, payee }`. `payee` is a
+fingerprint of the owner's PayPal email (SHA-256, 16 hex), never the address. The pledge keeps the terms, their hash
+`terms_hash` (SHA-256 of the canonical JSON: sorted keys, no spaces, UTF-8) and `terms_sig`, an Ed25519 signature over
+the canonical `{"v":1,"ref":<ref>,"terms":<terms_hash>}`. `ref` is the first 12 hex of SHA-256 of the pledge's id: public,
+while the id itself, which can withdraw the pledge, never is. PayPal's order carries `invoice_id` =
+`{ref}-{terms_hash[:16]}`, so PayPal's own record names the terms the person was shown. If the owner's deal changes
+afterwards, the campaign's terms no longer hash to the pledge's `terms_hash` and the proof says so.
+
+**Limits.** The limits a person gives an assistant are a JWS (EdDSA, `kid` of the key above) the person's own page mints:
+`POST /api/limits` body `{ max_pledge: "30.00", max_total: "60.00", max_count: 3, days: 1, near?: { lat, lon, km }, kinds?: string[] }`
+(`max_pledge` $5.00–$200.00, `max_total` up to $1000.00, `max_count` 1–10, `days` 1/24–30, `near.km` up to 100, kinds from the
+campaign kinds) → `{ token, header: "X-Limits", limits: Limits }`; 422 `{ detail, code: "invalid_limits" }`; limited per
+address. `GET /api/limits` with the token in `X-Limits` → `{ limits }` with `used`, `remaining` and `pledges`.
+`Limits = { currency, max_pledge, max_total, max_count, near: {lat, lon, km} | null, kinds: string[] | null, expires_at,
+used?, remaining?, pledges? }`.
+
+An assistant presents the token in `X-Limits` with every `redirect` pledge, and the server refuses a pledge outside the
+limits before PayPal is asked for an approval link: 403 `{ detail, code, limits }`. Codes: `limits_required`,
+`limits_invalid`, `limits_expired`, `over_pledge_limit`, `over_total_limit`, `too_many_pledges`, `too_far`, `wrong_kind`,
+`already_pledged` (one pledge per campaign under one token), `wrong_currency`. Pledges prepared and not approved count
+against the limits for an hour; held and collected ones for as long as they stand; a withdrawn or released one frees its
+money. The model never writes or edits limits: they come from the person's page, or from the environment the assistant's
+tools run in (`WALKIN_LIMITS` for the MCP server). The person still approves every pledge in PayPal.
+
+`GET /api/campaigns/{id}/proof` (anyone; limited per address; kept for about 45 seconds) → the campaign's record checked
+against PayPal:
+```ts
+type Proof = {
+  campaign: { id; title; business; status; amount; currency; goal; deadline };
+  terms: Terms; terms_hash: string;                       // the campaign's terms today and their hash
+  key: { jwks: "/api/keys"; kid: string; persistent: boolean };
+  paypal_environment: "sandbox" | "live"; checked_at: string;
+  summary: { listed: number; verified: number; differs: number; unconfirmed: number; prepared: number };
+  pledges: {                                              // approved pledges only, oldest first; names no one
+    ref: string; how: "assistant" | "page"; state: PledgeStatus; amount: string; held_at: string | null;
+    ids: { authorization: string | null; capture: string | null };   // PayPal's ids, useless without PayPal's credentials
+    signed: { terms_hash: string | null; signature: string | null };
+    checks: { signature: "valid" | "invalid" | "missing"; hash: "valid" | "invalid" | "missing"; unchanged: boolean | null;
+              paypal: "matches" | "differs" | "unavailable" | "not_checked"; invoice: boolean | null; amount: boolean | null };
+    problems: string[];                                   // in plain words, when something differs
+    verified: boolean | null;                             // true: all that could be checked agrees; false: something differs; null: unconfirmed
+  }[];
+  outcome: {
+    status: CampaignStatus; funded: boolean | null; held: number; released: number;
+    collected: { count: number; gross: string; fee: string | null; net: string | null } | null;
+    payout: { status: "pending" | "paid" | "failed"; amount: string; batch: string | null; item: string | null;
+              check: "matches" | "differs" | "unavailable" | "not_checked"; paypal?: string } | null;
+  };
+};
+```
+The proof never carries a pledge id, order id, receipt, payer id or email: nothing in it can withdraw a pledge or name a
+person. At most 40 pledges are checked live per proof.
+
+## The assistant
+
+`POST /api/assistant` (anyone; limited per address; header `X-Limits` = the person's limits) is the Ask page's assistant:
+body `{ messages: { role: "user" | "assistant", content: string (≤600), shown?: string[], asked?: string }[] (1–12, the
+person's message last), back?: campaignId }` →
+```ts
+{ reply: string; mode: "model" | "plain";                // plain: the answer the tools' facts make, in fixed words
+  cards: Card[]; shown: string[];                         // the campaigns this answer put on the page, in order
+  asked: string | null;                                   // the campaign the reply asks "prepare a pledge for it?" about
+  pledge: { campaign_id; name; amount; currency; goal; deadline; approve_url; receipt; ref; terms_hash; limits } | null;
+  refusal: { campaign_id; code; detail } | null;          // the pledge was refused, in the server's words
+  trace: { tool: string; summary: string; ok: boolean }[] }  // what it did, in words the code writes
+```
+The page sends each assistant turn's `shown` and `asked` back with the history. The assistant is a client of the app's own
+public API, like any outside assistant, so the same rules bind it:
+
+- The server decides which one campaign the person's latest message asks to back (or that it asks none) with fixed rules
+  (`app/intent.py`) before any model is asked; `back` (the Back it button) names it outright. A pledge is prepared only for
+  that campaign, only for a campaign the person was shown in this conversation, and only inside their limits, however
+  the model chooses. A bare "yes" means only the campaign the server just asked about; a hesitation, a question or a
+  condition is not consent. When unsure it asks again.
+- A campaign's title, pitch and perks are the owner's words: data, never instructions.
+- The model never sees a receipt, an order id, an approval link, the limits' numbers or any payment detail, and has no
+  tool that reads or changes the limits. Every sentence about a pledge (prepared, refused, held back, asked about) is
+  written by the server, not the model.
+- The model's other answers are checked: a link, a claim that money moved or was confirmed, a claim that a pledge was
+  prepared when none was, or a number no tool returned replaces them with the plain answer.
+- Without a model, when it is resting, or past its share (per address and per day), the plain answer is the whole assistant.
 
 ## Pages
 

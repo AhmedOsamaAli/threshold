@@ -29,6 +29,11 @@ LIMITS_PER_HOUR = 30
 PROOFS_PER_HOUR = 240
 # Pledges prepared under one limits token take one of these locks, so two of them never pass the same limit together.
 LIMIT_LOCKS = 64
+# The assistant answers from fixed rules whenever a model may not be asked, so these only bound the free models' use: a
+# visitor's messages an hour, the messages an hour that may reach a model, and the whole site's a day.
+ASSISTANT_PER_HOUR = 60
+MODEL_PER_HOUR = 20
+MODEL_PER_DAY = 300
 # A receipt's page reads it once as it opens and again after each step, and an assistant on request.
 RECEIPT_CHECKS_PER_HOUR = 120
 RECEIPT_WITHDRAWALS_PER_HOUR = 20
@@ -53,9 +58,9 @@ def paypal_config(state) -> dict:
 
 def install(app: FastAPI) -> None:
     """Adds the campaign and receipt endpoints and the callbacks to the app; the web app's pages are PAGES."""
-    from ..routes import business_campaigns, campaigns, hooks, receipts, trust
+    from ..routes import assistant, business_campaigns, campaigns, hooks, receipts, trust
 
-    for area in (campaigns, hooks, receipts, business_campaigns, trust):
+    for area in (campaigns, hooks, receipts, business_campaigns, trust, assistant):
         app.include_router(area.router)
     app.add_exception_handler(records.Problem, records.problem_response)
     app.state.origin_exempt = frozenset(getattr(app.state, "origin_exempt", frozenset()) | CALLBACKS)
@@ -80,6 +85,9 @@ async def running(app: FastAPI, settle_every: float | None) -> AsyncIterator[Non
     state.limits_limiter = RateLimiter(LIMITS_PER_HOUR, 3600)
     state.proof_limiter = RateLimiter(PROOFS_PER_HOUR, 3600)
     state.limit_locks = tuple(asyncio.Lock() for _ in range(LIMIT_LOCKS))
+    state.assistant_limiter = RateLimiter(ASSISTANT_PER_HOUR, 3600)
+    state.model_limiter = RateLimiter(MODEL_PER_HOUR, 3600)
+    state.model_day = RateLimiter(MODEL_PER_DAY, 86400)
     if settle_every:
         state.settler.start(settle_every)
     try:

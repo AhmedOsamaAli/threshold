@@ -339,6 +339,37 @@ class LLM:
                 })
         return None, model
 
+    async def converse(
+        self,
+        messages: list[dict],
+        tools: list[dict],
+        handlers: dict[str, ToolHandler],
+        max_steps: int = 5,
+        on_call: OnToolCall | None = None,
+    ) -> tuple[str | None, str | None]:
+        """One chat turn with tools: the model may call tools, whose results go back to it, until it answers in text.
+        Returns that answer (None when it never gave one within `max_steps`) and the model that gave it. Tool calls from
+        one model turn run concurrently; waits for resting models share one budget (wait_budget)."""
+        history = list(messages)
+        model: str | None = None
+        budget = WaitBudget(self.wait_budget) if self.wait_budget is not None else None
+        for step in range(max_steps):
+            response, model = await self._create(
+                history, prefer=model, tools=tools, timeout=self.first_reply_timeout if step == 0 else None, budget=budget,
+            )
+            message = response.choices[0].message
+            if not message.tool_calls:
+                return (message.content or "").strip() or None, model
+            history.append(assistant_turn(message, model))
+            calls = [(call, call_arguments(call)) for call in message.tool_calls]
+            if on_call:
+                for call, args in calls:
+                    await on_call(call.function.name, args, message.content)
+            results = await asyncio.gather(*(run_tool(handlers, call.function.name, args) for call, args in calls))
+            for (call, _), result in zip(calls, results, strict=True):
+                history.append({"role": "tool", "tool_call_id": call.id, "content": compact_json(result)[:8000]})
+        return None, model
+
 
 async def run_tool(handlers: dict[str, ToolHandler], name: str, args: dict) -> Any:
     handler = handlers.get(name)

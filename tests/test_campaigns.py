@@ -453,7 +453,7 @@ def test_open_campaigns_are_found_near_a_place_or_newest_first(world):
     assert [c["id"] for c in newest] == [far, near]
     listed = newest[1]
     assert listed == {
-        "id": near, "url": f"/p/{near}", "title": row["title"], "name": BUSINESS["name"],
+        "id": near, "url": f"/p/{near}", "title": row["title"], "name": BUSINESS["name"], "kind": "cafe",
         "place": {"label": BUSINESS["address"], "lat": lat, "lon": lon}, "distance_km": None, "amount": "25.00",
         "goal": 3, "supporters": 1, "total": "25.00", "deadline": listed["deadline"],
     }

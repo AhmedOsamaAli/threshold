@@ -12,6 +12,7 @@ import {
 } from "../../lib/ask";
 import { cssVars, cx } from "../../lib/css";
 import { limits, useLimits } from "../../state/limits";
+import { AssistantToken } from "./AssistantToken";
 
 type Locate = "idle" | "asking" | "refused";
 
@@ -222,7 +223,7 @@ function LimitsEditor({ onDone, onCancel }: { onDone: () => void; onCancel: (() 
 }
 
 function LimitsSummary({ onChange }: { onChange: () => void }) {
-  const { limits: current } = useLimits();
+  const { limits: current, token } = useLimits();
   if (!current) return <p className="ask-limits-wait mono">Reading your limits…</p>;
   const left = leftText(current);
   const prepared = current.pledges ?? 0;
@@ -249,6 +250,7 @@ function LimitsSummary({ onChange }: { onChange: () => void }) {
           </span>
         </div>
       ) : null}
+      {token ? <AssistantToken token={token} /> : null}
       <div className="cf-actions">
         <button className="ghost mono" type="button" onClick={onChange}>
           Change

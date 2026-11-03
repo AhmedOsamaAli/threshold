@@ -2,11 +2,12 @@ import type { ReactNode } from "react";
 import { Link } from "../components/Link";
 import { Page, PageHead, useDocumentTitle, useFocusOnMount } from "../components/Page";
 import { SectionHead } from "../components/SectionHead";
+import { REPO_URL } from "../lib/product";
 import { BROWSE_URL, MY_CAMPAIGNS_URL } from "../lib/routes";
 
 /** The day this note last changed: say so here whenever it does. */
 const UPDATED = "3 November 2026";
-const ISSUES = "https://github.com/AhmedOsamaAli/threshold/issues";
+const ISSUES = `${REPO_URL}/issues`;
 
 function Item({ term, children }: { term: string; children: ReactNode }) {
   return (

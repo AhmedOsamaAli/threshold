@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AskCard, PreparedPledge } from "../../api/assistant";
 import { AskCards } from "./AskCards";
+import { AssistantToken } from "./AssistantToken";
 import { LimitsPanel } from "./LimitsPanel";
 import { PledgePanel } from "./PledgePanel";
 
@@ -133,5 +134,27 @@ describe("the limits panel", () => {
   it("says who checks the limits", () => {
     const html = renderToStaticMarkup(<LimitsPanel />);
     expect(html).toContain("The server checks every one, not the AI");
+  });
+});
+
+describe("the limits token for another assistant", () => {
+  const html = renderToStaticMarkup(<AssistantToken token="header.payload.signature" />);
+
+  it("stays closed until the person opens it, and names the setting to paste it into", () => {
+    expect(html).toContain("<details");
+    expect(html).not.toContain("<details open");
+    expect(html).toContain("Use these limits with another assistant");
+    expect(html).toContain("<code>THRESHOLD_LIMITS</code>");
+  });
+
+  it("shows the token, with a button that copies it", () => {
+    expect(html).toContain(">header.payload.signature</code>");
+    expect(html).toContain('aria-label="Copy your limits token"');
+  });
+
+  it("says it cannot approve a pledge, and links to the MCP server's own page", () => {
+    expect(html).toContain("it cannot approve a pledge, and only you can, in PayPal");
+    expect(html).toContain('href="https://github.com/AhmedOsamaAli/threshold/tree/main/mcp_server"');
+    expect(html).toContain('rel="noopener noreferrer"');
   });
 });

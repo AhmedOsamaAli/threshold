@@ -1,4 +1,4 @@
-"""The Walk-in MCP server (mcp_server/walkin_mcp.py) against a fake Walk-in API on httpx.MockTransport: no network."""
+"""The Threshold MCP server (mcp_server/threshold_mcp.py) against a fake Threshold API on httpx.MockTransport: no network."""
 from __future__ import annotations
 
 import asyncio
@@ -12,12 +12,12 @@ import httpx
 import pytest
 from mcp.shared.memory import create_connected_server_and_client_session
 
-from mcp_server import walkin_mcp
-from mcp_server.walkin_mcp import (
+from mcp_server import threshold_mcp
+from mcp_server.threshold_mcp import (
     TEST_MODE,
     TOO_MANY_PLEDGES,
-    Walkin,
-    WalkinError,
+    Threshold,
+    ThresholdError,
     is_sandbox,
     moment,
     money,
@@ -25,11 +25,11 @@ from mcp_server.walkin_mcp import (
     terms,
 )
 
-BASE = "https://walkin.test"
+BASE = "https://threshold.test"
 
 
 class FakeApi:
-    """Walk-in's API as a test sets it up: one handler per path. Every request is kept."""
+    """Threshold's API as a test sets it up: one handler per path. Every request is kept."""
 
     def __init__(self, routes: dict[str, Callable[[httpx.Request], httpx.Response]]) -> None:
         self.routes = routes
@@ -40,36 +40,36 @@ class FakeApi:
         handler = self.routes.get(request.url.path)
         return handler(request) if handler else httpx.Response(404, json={"detail": "Not Found"})
 
-    def walkin(self, **options) -> Walkin:
-        return Walkin(BASE, transport=httpx.MockTransport(self), **options)
+    def threshold(self, **options) -> Threshold:
+        return Threshold(BASE, transport=httpx.MockTransport(self), **options)
 
 
-def fail(error: type[BaseException] = WalkinError, *, call) -> str:
+def fail(error: type[BaseException] = ThresholdError, *, call) -> str:
     with pytest.raises(error) as raised:
         asyncio.run(call)
     return str(raised.value)
 
 
 def test_the_server_comes_from_the_environment(monkeypatch):
-    monkeypatch.delenv("WALKIN_URL", raising=False)
-    assert Walkin().base == "https://walkin-app.pages.dev"
-    monkeypatch.setenv("WALKIN_URL", " http://127.0.0.1:8772/ ")
-    assert Walkin().base == "http://127.0.0.1:8772"
+    monkeypatch.delenv("THRESHOLD_URL", raising=False)
+    assert Threshold().base == threshold_mcp.DEFAULT_URL
+    monkeypatch.setenv("THRESHOLD_URL", " http://127.0.0.1:8772/ ")
+    assert Threshold().base == "http://127.0.0.1:8772"
 
 
 def test_a_server_that_cannot_be_reached_or_sends_a_page_says_so():
     def refuse(request: httpx.Request) -> httpx.Response:
         raise httpx.ConnectError("connection refused", request=request)
 
-    down = Walkin(BASE, transport=httpx.MockTransport(refuse))
+    down = Threshold(BASE, transport=httpx.MockTransport(refuse))
     assert fail(call=down.campaigns()) == (
-        f"Could not reach Walk-in at {BASE} (connection refused). Check the connection, or WALKIN_URL.")
+        f"Could not reach Threshold at {BASE} (connection refused). Check the connection, or THRESHOLD_URL.")
 
-    page = FakeApi({"/api/campaigns": lambda request: httpx.Response(200, html="<!doctype html><title>Walk-in</title>")})
-    assert fail(call=page.walkin().campaigns()) == f"Walk-in at {BASE} sent a page instead of data; check WALKIN_URL."
+    page = FakeApi({"/api/campaigns": lambda request: httpx.Response(200, html="<!doctype html><title>Threshold</title>")})
+    assert fail(call=page.threshold().campaigns()) == f"Threshold at {BASE} sent a page instead of data; check THRESHOLD_URL."
 
 
-# ---------- Walk-in Founders: find_campaigns, get_campaign, back_campaign ----------
+# ---------- Campaigns: find_campaigns, get_campaign, back_campaign ----------
 
 CAMPAIGN_ID = "c0ffee1234abcd56"
 APPROVE_URL = "https://www.sandbox.paypal.com/checkoutnow?token=5O190127TN364715T"
@@ -83,7 +83,7 @@ WHY = ["The nearest bakery is a 25-minute walk away.", "Three hundred new apartm
 
 
 def campaign(**changes) -> dict:
-    """A campaign as GET /api/campaigns/{id} sends it to anyone but its owner (docs/founders/CONTRACT.md)."""
+    """A campaign as GET /api/campaigns/{id} sends it to anyone but its owner (docs/CONTRACT.md)."""
     return {
         "id": CAMPAIGN_ID, "status": "open", "accepting": True, "source": "owner", "name": "Crumb Theory",
         "place": {"label": "Williamsburg, Brooklyn", "lat": 40.7145, "lon": -73.958, "area": "10-minute walk"},
@@ -126,7 +126,7 @@ def pledged(request: httpx.Request) -> httpx.Response:
 
 
 def founders(**routes: Callable[[httpx.Request], httpx.Response]) -> FakeApi:
-    """Walk-in with one open campaign, PayPal's sandbox, and whatever else a test sets up."""
+    """Threshold with one open campaign, PayPal's sandbox, and whatever else a test sets up."""
     return FakeApi({
         "/api/config": lambda request: httpx.Response(200, json=SANDBOX),
         f"/api/campaigns/{CAMPAIGN_ID}": lambda request: httpx.Response(200, json=campaign()),
@@ -145,7 +145,7 @@ def test_find_campaigns_near_a_place_lists_the_nearest_first():
     async def notify(message: str | None = None) -> None:
         progress.append(message)
 
-    summary = asyncio.run(api.walkin(zone=UTC).campaigns(place=" Williamsburg Brooklyn ", progress=notify))
+    summary = asyncio.run(api.threshold(zone=UTC).campaigns(place=" Williamsburg Brooklyn ", progress=notify))
 
     geocode, found, config = api.requests
     assert dict(geocode.url.params) == {"q": "Williamsburg Brooklyn"}
@@ -153,7 +153,7 @@ def test_find_campaigns_near_a_place_lists_the_nearest_first():
     assert dict(found.url.params) == {"lat": "40.714500", "lon": "-73.958000", "km": "25"}
     assert config.url.path == "/api/config"  # whether the money is PayPal's sandbox
     assert summary.splitlines() == [
-        "## Walk-in Founders: 2 open campaigns within 25 km of Williamsburg, Brooklyn, nearest first",
+        "## Threshold: 2 open campaigns within 25 km of Williamsburg, Brooklyn, nearest first",
         "1. **Crumb Theory**: Back the bakery this block is missing",
         "   - Williamsburg, Brooklyn · 350 m away",
         "   - $25 pledge · 12 of 40 supporters, $300 pledged · deadline Nov 30, 2026",
@@ -172,72 +172,72 @@ def test_find_campaigns_near_a_place_lists_the_nearest_first():
 def test_find_campaigns_without_a_place_lists_the_newest_and_coordinates_need_no_search():
     newest = [listed(distance_km=None), listed("b0b5ea7e00000001", name="Low End", title="Low End", distance_km=None)]
     api = FakeApi({"/api/campaigns": lambda request: httpx.Response(200, json={"campaigns": newest})})  # no config
-    walkin = api.walkin(zone=UTC)
+    client = api.threshold(zone=UTC)
 
-    summary = asyncio.run(walkin.campaigns(km=5))
+    summary = asyncio.run(client.campaigns(km=5))
     assert dict(api.requests[0].url.params) == {}  # no place: newest first, and km means nothing
     lines = summary.splitlines()
-    assert lines[:3] == ["## Walk-in Founders: 2 open campaigns, newest first",
+    assert lines[:3] == ["## Threshold: 2 open campaigns, newest first",
                          "1. **Crumb Theory**: Back the bakery this block is missing", "   - Williamsburg, Brooklyn"]
     assert "2. **Low End**" in lines  # a title that only repeats the name is said once
     assert TEST_MODE not in summary  # the server did not say its money is PayPal's sandbox
 
-    summary = asyncio.run(walkin.campaigns(lat=40.7145, lon=-73.958, km=2.5))
+    summary = asyncio.run(client.campaigns(lat=40.7145, lon=-73.958, km=2.5))
     assert dict(api.requests[2].url.params) == {"lat": "40.714500", "lon": "-73.958000", "km": "2.5"}
-    assert summary.startswith("## Walk-in Founders: 2 open campaigns within 2.5 km of 40.7145, -73.9580, nearest first\n")
+    assert summary.startswith("## Threshold: 2 open campaigns within 2.5 km of 40.7145, -73.9580, nearest first\n")
     assert [request.url.path for request in api.requests] == ["/api/campaigns", "/api/config"] * 2  # no address search
 
 
 def test_find_campaigns_says_when_there_are_none_and_shows_ten_at_most():
     answers = iter([[], [], [listed(f"c{index:015d}", name=f"Place {index}") for index in range(1, 24)]])
     api = FakeApi({"/api/campaigns": lambda request: httpx.Response(200, json={"campaigns": next(answers)})})
-    walkin = api.walkin(zone=UTC)
-    assert asyncio.run(walkin.campaigns(lat=30.06, lon=31.22, km=5)) == (
-        "No open Walk-in Founders campaigns within 5 km of 30.0600, 31.2200. find_campaigns without a place lists the "
-        f"newest anywhere. Owners start one at {BASE}/founders/start")
-    assert asyncio.run(walkin.campaigns()) == (
-        f"No open Walk-in Founders campaigns right now. Owners start one at {BASE}/founders/start")
+    client = api.threshold(zone=UTC)
+    assert asyncio.run(client.campaigns(lat=30.06, lon=31.22, km=5)) == (
+        "No open Threshold campaigns within 5 km of 30.0600, 31.2200. find_campaigns without a place lists the "
+        f"newest anywhere. Owners start one at {BASE}/start")
+    assert asyncio.run(client.campaigns()) == (
+        f"No open Threshold campaigns right now. Owners start one at {BASE}/start")
     assert [request.url.path for request in api.requests] == ["/api/campaigns"] * 2  # no money shown, no config asked
 
-    summary = asyncio.run(walkin.campaigns())
-    assert summary.startswith("## Walk-in Founders: 23 open campaigns, newest first")
+    summary = asyncio.run(client.campaigns())
+    assert summary.startswith("## Threshold: 23 open campaigns, newest first")
     assert "10. **Place 10**: Back the bakery this block is missing" in summary and "Place 11" not in summary
-    assert f"Showing the 10 newest of 23; all of them: {BASE}/founders" in summary
+    assert f"Showing the 10 newest of 23; all of them: {BASE}/browse" in summary
 
 
 def test_find_campaigns_explains_what_it_needs_and_what_went_wrong():
     unused = FakeApi({})
-    assert "Give both lat and lon" in fail(call=unused.walkin().campaigns(lat=40.7))
-    assert "3 to 160 characters" in fail(call=unused.walkin().campaigns(place="NY"))
-    assert unused.requests == []  # told before asking Walk-in anything
+    assert "Give both lat and lon" in fail(call=unused.threshold().campaigns(lat=40.7))
+    assert "3 to 160 characters" in fail(call=unused.threshold().campaigns(place="NY"))
+    assert unused.requests == []  # told before asking Threshold anything
 
     nowhere = FakeApi({"/api/geocode": lambda request: httpx.Response(200, json=[])})
-    assert fail(call=nowhere.walkin().campaigns(place="Nowhere at all")) == (
-        "Walk-in's address search found nothing for \"Nowhere at all\". Try a fuller address, or give lat and lon.")
+    assert fail(call=nowhere.threshold().campaigns(place="Nowhere at all")) == (
+        "Threshold's address search found nothing for \"Nowhere at all\". Try a fuller address, or give lat and lon.")
 
     no_search = FakeApi({"/api/geocode": lambda request: httpx.Response(502, json={"detail": "Address search is unavailable right now."})})
-    assert fail(call=no_search.walkin().campaigns(place="Williamsburg, Brooklyn")) == (
+    assert fail(call=no_search.threshold().campaigns(place="Williamsburg, Brooklyn")) == (
         "Address search is unavailable right now. Give the place's lat and lon instead.")
     assert [request.url.path for request in no_search.requests] == ["/api/geocode"]  # nothing looked up without a place
 
     before_founders = FakeApi({})  # FastAPI's own 404 for a route it does not have
-    assert fail(call=before_founders.walkin().campaigns()) == "This Walk-in server has no Founders campaigns; check WALKIN_URL."
+    assert fail(call=before_founders.threshold().campaigns()) == "This Threshold server has no campaigns; check THRESHOLD_URL."
 
     busy = FakeApi({"/api/campaigns": lambda request: httpx.Response(429, json={"detail": "Slow down."})})
-    assert fail(call=busy.walkin().campaigns()) == "Walk-in is getting too many requests from this address; try again later."
+    assert fail(call=busy.threshold().campaigns()) == "Threshold is getting too many requests from this address; try again later."
 
     invalid = FakeApi({"/api/campaigns": lambda request: httpx.Response(422, json={"detail": [
         {"type": "less_than_equal", "loc": ["query", "km"], "msg": "Input should be less than or equal to 100"}]})})
-    assert fail(call=invalid.walkin().campaigns(lat=40.7, lon=-73.9, km=500)) == (
-        "Walk-in could not read the request: km: Input should be less than or equal to 100.")
+    assert fail(call=invalid.threshold().campaigns(lat=40.7, lon=-73.9, km=500)) == (
+        "Threshold could not read the request: km: Input should be less than or equal to 100.")
 
     garbled = FakeApi({"/api/campaigns": lambda request: httpx.Response(200, json=[listed()])})
-    assert "sent a campaign list this tool cannot read" in fail(call=garbled.walkin().campaigns())
+    assert "sent a campaign list this tool cannot read" in fail(call=garbled.threshold().campaigns())
 
 
 def test_get_campaign_tells_a_campaign_in_plain_words():
     api = founders()
-    summary = asyncio.run(api.walkin(zone=UTC).campaign(CAMPAIGN_ID))
+    summary = asyncio.run(api.threshold(zone=UTC).campaign(CAMPAIGN_ID))
     assert [(request.method, request.url.path) for request in api.requests] == [
         ("GET", f"/api/campaigns/{CAMPAIGN_ID}"), ("GET", "/api/config")]
     assert summary.splitlines() == [
@@ -248,7 +248,7 @@ def test_get_campaign_tells_a_campaign_in_plain_words():
         "",
         "Fresh bread before the 8 a.m. train, from a bakery the neighbors chose.",
         "",
-        "**Why here**, in the owner's words (not verified by Walk-in):",
+        "**Why here**, in the owner's words (not verified by Threshold):",
         f"- {WHY[0]}",
         f"- {WHY[1]}",
         "",
@@ -268,28 +268,28 @@ def test_get_campaign_tells_a_campaign_in_plain_words():
 @pytest.mark.parametrize("given", [
     CAMPAIGN_ID,
     f"  {CAMPAIGN_ID}\n",
-    f"https://walkin-app.pages.dev/p/{CAMPAIGN_ID}",
-    f"https://walkin-app.pages.dev/p/{CAMPAIGN_ID}?pledge=5O190127TN364715T",
-    f"walkin-app.pages.dev/p/{CAMPAIGN_ID}/",
+    f"https://threshold.pages.dev/p/{CAMPAIGN_ID}",
+    f"https://threshold.pages.dev/p/{CAMPAIGN_ID}?pledge=5O190127TN364715T",
+    f"threshold.pages.dev/p/{CAMPAIGN_ID}/",
     f"/p/{CAMPAIGN_ID}#pledge",
 ])
 def test_a_campaign_is_found_by_its_id_or_its_link(given):
     api = founders()
-    summary = asyncio.run(api.walkin(zone=UTC).campaign(given))
+    summary = asyncio.run(api.threshold(zone=UTC).campaign(given))
     assert api.requests[0].url.path == f"/api/campaigns/{CAMPAIGN_ID}"
     assert summary.startswith("## Crumb Theory: Back the bakery this block is missing\n")
     assert summary.splitlines()[-1] == f"Campaign page: {BASE}/p/{CAMPAIGN_ID}"
 
 
 @pytest.mark.parametrize("given", [
-    "", "../api/health", "c0ffee 1234", "c0ffee1234abcd56/pledges", f"https://walkin-app.pages.dev/s/{CAMPAIGN_ID}",
+    "", "../api/health", "c0ffee 1234", "c0ffee1234abcd56/pledges", f"https://threshold.pages.dev/s/{CAMPAIGN_ID}",
     "x" * 65,
 ])
 def test_what_is_not_a_campaign_id_is_never_asked_for(given):
     api = FakeApi({})
-    message = fail(call=api.walkin().campaign(given))
+    message = fail(call=api.threshold().campaign(given))
     assert message.startswith("A campaign id is up to 64 letters, digits, dashes and underscores")
-    assert fail(call=api.walkin().back(given)) == message
+    assert fail(call=api.threshold().back(given)) == message
     assert api.requests == []
 
 
@@ -306,7 +306,7 @@ def test_get_campaign_says_how_a_closed_campaign_ended(status, line):
                 "percent": 100 if funded else 30, "total": "1025.00" if funded else "300.00", "funded": funded}
     closed = campaign(status=status, accepting=False, closed_at="2026-11-28T15:00:00Z", progress=progress)
     api = founders(**{f"/api/campaigns/{CAMPAIGN_ID}": lambda request: httpx.Response(200, json=closed)})
-    lines = asyncio.run(api.walkin(zone=UTC).campaign(CAMPAIGN_ID)).splitlines()
+    lines = asyncio.run(api.threshold(zone=UTC).campaign(CAMPAIGN_ID)).splitlines()
     assert lines[3] == line
     assert TERMS in lines
     assert ("**Progress:** 41 of 40 supporters: the goal is met; $1,025 pledged." if funded
@@ -321,14 +321,14 @@ def test_get_campaign_past_its_deadline_or_without_paypal():
         f"/api/campaigns/{CAMPAIGN_ID}": lambda request: httpx.Response(200, json=closing),
         "/api/config": lambda request: httpx.Response(200, json=live),
     })
-    lines = asyncio.run(api.walkin(zone=UTC).campaign(CAMPAIGN_ID)).splitlines()
-    assert "- Status: closing. Its deadline has passed, and Walk-in is settling it." in lines
+    lines = asyncio.run(api.threshold(zone=UTC).campaign(CAMPAIGN_ID)).splitlines()
+    assert "- Status: closing. Its deadline has passed, and Threshold is settling it." in lines
     assert TEST_MODE not in lines  # live PayPal: real money, so no test-mode notice
 
     switched_off = {"paypal": {"enabled": False, "client_id": None, "environment": "sandbox", "currency": "USD"}}
     api = founders(**{"/api/config": lambda request: httpx.Response(200, json=switched_off)})
-    lines = asyncio.run(api.walkin(zone=UTC).campaign(CAMPAIGN_ID)).splitlines()
-    assert "Pledging with PayPal is switched off on this Walk-in server right now." in lines
+    lines = asyncio.run(api.threshold(zone=UTC).campaign(CAMPAIGN_ID)).splitlines()
+    assert "Pledging with PayPal is switched off on this Threshold server right now." in lines
     assert not any("call back_campaign" in each for each in lines)
     assert TEST_MODE in lines
 
@@ -341,10 +341,10 @@ def test_deadlines_and_amounts_are_told_as_the_campaign_page_tells_them():
     assert terms(late, UTC) == terms(late, eastern).replace("Nov 30", "Dec 1")  # the same moment, told in UTC
     api = founders(**{f"/api/campaigns/{CAMPAIGN_ID}": lambda request: httpx.Response(200, json=late)})
     assert "- Status: open. Taking pledges until Nov 30, 2026, 11:59 PM UTC-5." in asyncio.run(
-        api.walkin(zone=eastern).campaign(CAMPAIGN_ID)).splitlines()
+        api.threshold(zone=eastern).campaign(CAMPAIGN_ID)).splitlines()
     india = timezone(timedelta(hours=5, minutes=30))
     assert "- So far: 12 of 40 supporters (30%), 28 more needed; $300 pledged. Deadline: Dec 1, 2026, 10:29 AM UTC+5:30." in (
-        asyncio.run(api.walkin(zone=india).back(CAMPAIGN_ID)).splitlines())
+        asyncio.run(api.threshold(zone=india).back(CAMPAIGN_ID)).splitlines())
 
     assert moment("next Friday", UTC) is None and terms(campaign(deadline=None), UTC) is None
     assert [money(amount) for amount in ("25.00", "12.50", "1250.00", "5")] == ["$25", "$12.50", "$1,250", "$5"]
@@ -360,7 +360,7 @@ def test_back_campaign_prepares_a_redirect_pledge_and_returns_paypals_link():
     async def notify(message: str | None = None) -> None:
         progress.append(message)
 
-    summary = asyncio.run(api.walkin(zone=UTC).back(f"https://walkin-app.pages.dev/p/{CAMPAIGN_ID}", progress=notify))
+    summary = asyncio.run(api.threshold(zone=UTC).back(f"https://threshold.pages.dev/p/{CAMPAIGN_ID}", progress=notify))
 
     read, prepare = api.requests  # the campaign, then the pledge: nothing else
     assert (read.method, read.url.path) == ("GET", f"/api/campaigns/{CAMPAIGN_ID}")
@@ -388,36 +388,36 @@ def test_back_campaign_prepares_a_redirect_pledge_and_returns_paypals_link():
 def test_back_campaign_asks_paypal_for_nothing_once_a_campaign_stops_taking_pledges():
     funded = campaign(status="funded", accepting=False, closed_at="2026-11-28T15:00:00Z")
     api = founders(**{f"/api/campaigns/{CAMPAIGN_ID}": lambda request: httpx.Response(200, json=funded)})
-    assert fail(call=api.walkin(zone=UTC).back(CAMPAIGN_ID)) == (
+    assert fail(call=api.threshold(zone=UTC).back(CAMPAIGN_ID)) == (
         "Crumb Theory no longer takes pledges (funded). It met its goal, and PayPal is collecting the pledges. "
         "No pledge was prepared.")
     assert [request.method for request in api.requests] == ["GET"]
 
     closed_meanwhile = founders(**{f"/api/campaigns/{CAMPAIGN_ID}/pledges": lambda request: httpx.Response(
         409, json={"detail": "This campaign no longer takes pledges."})})
-    assert fail(call=closed_meanwhile.walkin().back(CAMPAIGN_ID)) == (
+    assert fail(call=closed_meanwhile.threshold().back(CAMPAIGN_ID)) == (
         "This campaign no longer takes pledges. No pledge was prepared.")
 
 
 def test_back_campaign_failures_are_plain_sentences():
     busy = founders(**{f"/api/campaigns/{CAMPAIGN_ID}/pledges": lambda request: httpx.Response(
         429, json={"detail": "Too many pledges from this address. Try again later."})})
-    assert fail(call=busy.walkin().back(CAMPAIGN_ID)) == TOO_MANY_PLEDGES == (
-        "Walk-in is preparing too many pledges from this address right now; try again later. No pledge was prepared.")
+    assert fail(call=busy.threshold().back(CAMPAIGN_ID)) == TOO_MANY_PLEDGES == (
+        "Threshold is preparing too many pledges from this address right now; try again later. No pledge was prepared.")
 
     gone = FakeApi({f"/api/campaigns/{CAMPAIGN_ID}": lambda request: httpx.Response(404, json={"detail": "Campaign not found."})})
     expected = "Campaign not found. Check the id or link; find_campaigns lists the open campaigns."
-    assert fail(call=gone.walkin().back(CAMPAIGN_ID)) == expected
-    assert fail(call=gone.walkin().campaign(CAMPAIGN_ID)) == expected
+    assert fail(call=gone.threshold().back(CAMPAIGN_ID)) == expected
+    assert fail(call=gone.threshold().campaign(CAMPAIGN_ID)) == expected
     assert [request.method for request in gone.requests] == ["GET", "GET"]  # no pledge for a campaign that is not there
 
     before_founders = FakeApi({})
-    assert fail(call=before_founders.walkin().campaign(CAMPAIGN_ID)) == (
-        "Walk-in has no campaign with that id. Check the id or link; find_campaigns lists the open campaigns.")
+    assert fail(call=before_founders.threshold().campaign(CAMPAIGN_ID)) == (
+        "Threshold has no campaign with that id. Check the id or link; find_campaigns lists the open campaigns.")
 
     paypal_down = founders(**{f"/api/campaigns/{CAMPAIGN_ID}/pledges": lambda request: httpx.Response(
         502, json={"detail": "PayPal could not start the pledge. Try again in a moment."})})
-    assert fail(call=paypal_down.walkin().back(CAMPAIGN_ID)) == "PayPal could not start the pledge. Try again in a moment."
+    assert fail(call=paypal_down.threshold().back(CAMPAIGN_ID)) == "PayPal could not start the pledge. Try again in a moment."
 
 
 LIMITS_TOKEN = "eyJhbGciOiJFZERTQSJ9.eyJ2IjoxfQ.c2lnbmF0dXJl"  # shaped like the person's signed limits; this server never reads it
@@ -425,27 +425,27 @@ LIMITS_TOKEN = "eyJhbGciOiJFZERTQSJ9.eyJ2IjoxfQ.c2lnbmF0dXJl"  # shaped like the
 
 def test_the_persons_limits_travel_with_the_pledge_and_nowhere_else():
     api = founders()
-    asyncio.run(api.walkin(zone=UTC, limits=f" {LIMITS_TOKEN} ").back(CAMPAIGN_ID))
+    asyncio.run(api.threshold(zone=UTC, limits=f" {LIMITS_TOKEN} ").back(CAMPAIGN_ID))
     read, prepare = api.requests
     assert "x-limits" not in read.headers and prepare.headers["x-limits"] == LIMITS_TOKEN
 
 
 def test_the_limits_come_from_the_environment_and_without_them_none_are_sent(monkeypatch):
-    monkeypatch.setenv("WALKIN_LIMITS", f"  {LIMITS_TOKEN}  ")
-    assert Walkin().limits == LIMITS_TOKEN
-    monkeypatch.setenv("WALKIN_LIMITS", "   ")
-    assert Walkin().limits is None
-    monkeypatch.delenv("WALKIN_LIMITS", raising=False)
+    monkeypatch.setenv("THRESHOLD_LIMITS", f"  {LIMITS_TOKEN}  ")
+    assert Threshold().limits == LIMITS_TOKEN
+    monkeypatch.setenv("THRESHOLD_LIMITS", "   ")
+    assert Threshold().limits is None
+    monkeypatch.delenv("THRESHOLD_LIMITS", raising=False)
     api = founders()
-    asyncio.run(api.walkin().back(CAMPAIGN_ID))
-    assert Walkin().limits is None and all("x-limits" not in request.headers for request in api.requests)
+    asyncio.run(api.threshold().back(CAMPAIGN_ID))
+    assert Threshold().limits is None and all("x-limits" not in request.headers for request in api.requests)
 
 
 @pytest.mark.parametrize(("code", "detail", "words"), [
     ("limits_required", "An assistant needs the limits its person set before it can prepare a pledge.",
      "has not given this assistant any limits"),
-    ("limits_invalid", "These limits are not valid: ask the person to set them again.", "set new limits on Walk-in's Ask page"),
-    ("limits_expired", "These limits have ended: ask the person to set new ones.", "WALKIN_LIMITS"),
+    ("limits_invalid", "These limits are not valid: ask the person to set them again.", "set new limits on Threshold's Ask page"),
+    ("limits_expired", "These limits have ended: ask the person to set new ones.", "THRESHOLD_LIMITS"),
     ("over_pledge_limit", "This pledge is 25.00 USD and the limit for one pledge is 20.00 USD.", "not yours"),
     ("over_total_limit", "35.00 USD is already prepared or held under these limits, and 25.00 USD more would pass the limit "
                          "of 50.00 USD in all.", "not yours"),
@@ -457,7 +457,7 @@ def test_the_limits_come_from_the_environment_and_without_them_none_are_sent(mon
 def test_a_pledge_the_limits_refuse_is_explained_and_the_model_is_told_not_to_work_around_it(code, detail, words):
     api = founders(**{f"/api/campaigns/{CAMPAIGN_ID}/pledges": lambda request: httpx.Response(
         403, json={"detail": detail, "code": code, "limits": {"max_total": "50.00"}})})
-    said = fail(call=api.walkin(limits=LIMITS_TOKEN).back(CAMPAIGN_ID))
+    said = fail(call=api.threshold(limits=LIMITS_TOKEN).back(CAMPAIGN_ID))
     assert said.startswith("No pledge was prepared.") and words in said and LIMITS_TOKEN not in said
     assert (code == "limits_required") or detail in said  # the server's own words, unless the person has set none
     assert "look for another way" in said or code != "over_pledge_limit"
@@ -466,19 +466,19 @@ def test_a_pledge_the_limits_refuse_is_explained_and_the_model_is_told_not_to_wo
 def test_a_refusal_that_is_not_about_limits_is_told_as_the_server_says_it():
     other = founders(**{f"/api/campaigns/{CAMPAIGN_ID}/pledges": lambda request: httpx.Response(
         403, json={"detail": "Not allowed from here.", "code": "something_else"})})
-    assert fail(call=other.walkin(limits=LIMITS_TOKEN).back(CAMPAIGN_ID)) == "Not allowed from here."
+    assert fail(call=other.threshold(limits=LIMITS_TOKEN).back(CAMPAIGN_ID)) == "Not allowed from here."
 
 
 def test_a_prepared_pledge_tells_its_signed_reference_and_what_is_left_of_the_limits():
     signed = founders(**{f"/api/campaigns/{CAMPAIGN_ID}/pledges": lambda request: httpx.Response(200, json={
         "order_id": "5O190127TN364715T", "approve_url": APPROVE_URL, "ref": "9f2c41a07bd3", "terms_hash": "ab" * 32,
         "limits": {"currency": "USD", "max_total": "60.00", "used": "25.00", "remaining": "35.00"}})})
-    lines = asyncio.run(signed.walkin(zone=UTC, limits=LIMITS_TOKEN).back(CAMPAIGN_ID)).splitlines()
+    lines = asyncio.run(signed.threshold(zone=UTC, limits=LIMITS_TOKEN).back(CAMPAIGN_ID)).splitlines()
     assert (f"- The terms are signed (reference 9f2c41a07bd3); anyone can check them against PayPal's own record at "
             f"{BASE}/proof/{CAMPAIGN_ID}.") in lines
     assert "- Under the person's limits 25.00 of 60.00 USD is prepared or held so far, and 35.00 is left." in lines
     assert all(LIMITS_TOKEN not in line for line in lines)
-    plain = asyncio.run(founders().walkin(zone=UTC).back(CAMPAIGN_ID))
+    plain = asyncio.run(founders().threshold(zone=UTC).back(CAMPAIGN_ID))
     assert "signed" not in plain and "limits" not in plain  # an older server says nothing of either
 
 
@@ -552,10 +552,10 @@ NOT_PAYPAL = [
 def test_back_campaign_only_passes_on_paypals_own_link(approve_url):
     api = founders(**{f"/api/campaigns/{CAMPAIGN_ID}/pledges": lambda request: httpx.Response(
         200, json={"order_id": "5O190127TN364715T", "approve_url": approve_url})})
-    message = fail(call=api.walkin().back(CAMPAIGN_ID))
-    assert message == ("Walk-in did not send PayPal's approval link, so there is nothing to approve yet; try again in a minute."
+    message = fail(call=api.threshold().back(CAMPAIGN_ID))
+    assert message == ("Threshold did not send PayPal's approval link, so there is nothing to approve yet; try again in a minute."
                        if not approve_url else
-                       "Walk-in sent an approval link that is not PayPal's, so this tool does not pass it on; check WALKIN_URL.")
+                       "Threshold sent an approval link that is not PayPal's, so this tool does not pass it on; check THRESHOLD_URL.")
 
 
 def test_only_paypals_two_checkout_hosts_pass_and_only_the_sandbox_is_test_mode():
@@ -593,7 +593,7 @@ def test_a_live_paypal_link_carries_no_test_mode_notice():
     live = "https://www.paypal.com/checkoutnow?token=8AB12345CD678901E"
     api = founders(**{f"/api/campaigns/{CAMPAIGN_ID}/pledges": lambda request: httpx.Response(
         200, json={"order_id": "8AB12345CD678901E", "approve_url": live})})
-    summary = asyncio.run(api.walkin(zone=UTC).back(CAMPAIGN_ID))
+    summary = asyncio.run(api.threshold(zone=UTC).back(CAMPAIGN_ID))
     assert summary.splitlines()[2] == live
     assert TEST_MODE not in summary
 
@@ -624,11 +624,11 @@ def test_the_campaign_tools_wait_while_the_free_server_wakes_up():
     async def notify(message: str | None = None) -> None:
         progress.append(message)
 
-    summary = asyncio.run(api.walkin(sleep=nap, zone=UTC).back(CAMPAIGN_ID, progress=notify))
+    summary = asyncio.run(api.threshold(sleep=nap, zone=UTC).back(CAMPAIGN_ID, progress=notify))
     assert APPROVE_URL in summary.splitlines()
     assert naps == [2.0, 2.0]
     assert [request.method for request in api.requests] == ["GET", "GET", "POST", "POST"]
-    waking_note = "Walk-in's free server is waking up; that takes about a minute."
+    waking_note = "Threshold's free server is waking up; that takes about a minute."
     assert progress == [waking_note, "Preparing the pledge with PayPal", waking_note]
 
 
@@ -647,7 +647,7 @@ def test_the_host_pages_of_a_waking_server_are_waited_through_too():
     async def nap(seconds: float) -> None:
         naps.append(seconds)
 
-    asyncio.run(api.walkin(sleep=nap).campaigns())
+    asyncio.run(api.threshold(sleep=nap).campaigns())
     assert naps == [3.0] and len(api.requests) == 2
 
 
@@ -666,18 +666,18 @@ def test_the_founders_tools_over_the_mcp_protocol(monkeypatch):
         f"/api/campaigns/{CAMPAIGN_ID}/pledges": prepare,
         "/api/campaigns/e0ded0000000000a": lambda request: httpx.Response(200, json=ended),
     })
-    monkeypatch.setattr(walkin_mcp, "connect", lambda: api.walkin(zone=UTC))
+    monkeypatch.setattr(threshold_mcp, "connect", lambda: api.threshold(zone=UTC))
     progress: list[str | None] = []
 
     async def on_progress(value: float, total: float | None, message: str | None) -> None:
         progress.append(message)
 
     async def session():
-        async with create_connected_server_and_client_session(walkin_mcp.mcp) as client:
+        async with create_connected_server_and_client_session(threshold_mcp.mcp) as client:
             tools = {tool.name: tool for tool in (await client.list_tools()).tools}
             calls = [
                 ("find_campaigns", {"place": "Williamsburg, Brooklyn"}),
-                ("get_campaign", {"campaign_id": f"https://walkin-app.pages.dev/p/{CAMPAIGN_ID}"}),
+                ("get_campaign", {"campaign_id": f"https://threshold.pages.dev/p/{CAMPAIGN_ID}"}),
                 ("back_campaign", {"campaign_id": CAMPAIGN_ID}),
                 ("back_campaign", {"campaign_id": CAMPAIGN_ID}),  # a second pledge from the same address: rate-limited
                 ("back_campaign", {"campaign_id": "e0ded0000000000a"}),
@@ -687,7 +687,7 @@ def test_the_founders_tools_over_the_mcp_protocol(monkeypatch):
 
     tools, (found, read, backed, again, ended_one, missing) = asyncio.run(session())
 
-    assert set(tools) == {"find_campaigns", "get_campaign", "back_campaign", "pledge_status", "withdraw_pledge"}
+    assert set(tools) == {"find_campaigns", "get_campaign", "check_proof", "back_campaign", "pledge_status", "withdraw_pledge"}
     find, get, back = tools["find_campaigns"], tools["get_campaign"], tools["back_campaign"]
     assert set(find.inputSchema["properties"]) == {"place", "lat", "lon", "km"} and "required" not in find.inputSchema
     assert find.inputSchema["properties"]["km"]["default"] == 25
@@ -703,19 +703,19 @@ def test_the_founders_tools_over_the_mcp_protocol(monkeypatch):
                     "nothing is charged unless the campaign reaches its goal by its deadline",
                     "every hold is released if it does not", "once per person"):
         assert promise in description
-    instructions = walkin_mcp.mcp.instructions
+    instructions = threshold_mcp.mcp.instructions
     assert all(name in instructions for name in tools)
     assert "they open it and approve the pledge in PayPal themselves" in instructions
     assert "Never ask for a card, a PayPal login or any other payment detail" in instructions
 
     assert not found.isError and found.content[0].text.startswith(
-        "## Walk-in Founders: 2 open campaigns within 25 km of Williamsburg, Brooklyn, nearest first\n")
+        "## Threshold: 2 open campaigns within 25 km of Williamsburg, Brooklyn, nearest first\n")
     assert not read.isError and TERMS in read.content[0].text.splitlines()
     assert not backed.isError
     assert [line for line in backed.content[0].text.splitlines() if line in (APPROVE_URL, TEST_MODE)] == [APPROVE_URL, TEST_MODE]
     assert again.isError and TOO_MANY_PLEDGES in again.content[0].text
     assert ended_one.isError and "Crumb Theory no longer takes pledges (ended)." in ended_one.content[0].text
-    assert missing.isError and "Walk-in has no campaign with that id." in missing.content[0].text
+    assert missing.isError and "Threshold has no campaign with that id." in missing.content[0].text
     posts = [request.url.path for request in api.requests if request.method == "POST"]
     assert posts == [f"/api/campaigns/{CAMPAIGN_ID}/pledges"] * 2  # none for the campaign that ended
     assert progress == ["Found Williamsburg, Brooklyn, Kings County, New York, United States (40.7145, -73.9580)",
@@ -743,10 +743,10 @@ def test_no_tool_sends_or_receives_payment_details(monkeypatch):
         f"/api/campaigns/{CAMPAIGN_ID}": lambda request: httpx.Response(200, json=owners_view),
         f"/api/campaigns/{CAMPAIGN_ID}/pledges": lambda request: httpx.Response(200, json=order),
     })
-    monkeypatch.setattr(walkin_mcp, "connect", lambda: api.walkin(zone=UTC))
+    monkeypatch.setattr(threshold_mcp, "connect", lambda: api.threshold(zone=UTC))
 
     async def session():
-        async with create_connected_server_and_client_session(walkin_mcp.mcp) as client:
+        async with create_connected_server_and_client_session(threshold_mcp.mcp) as client:
             tools = (await client.list_tools()).tools
             answers = [
                 await client.call_tool("find_campaigns", {"place": "Williamsburg, Brooklyn"}),

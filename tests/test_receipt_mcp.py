@@ -7,7 +7,7 @@ import httpx
 import pytest
 from mcp.shared.memory import create_connected_server_and_client_session
 
-from mcp_server import walkin_mcp
+from mcp_server import threshold_mcp
 from tests.test_mcp_server import APPROVE_URL, BASE, CAMPAIGN_ID, campaign, founders
 
 TOKEN = "aB_9" * 8
@@ -24,7 +24,7 @@ def receipt(**changes) -> dict:
 def test_a_prepared_pledge_hands_over_its_private_receipt_without_sending_it_to_paypal():
     api = founders(**{f"/api/campaigns/{CAMPAIGN_ID}/pledges": lambda request: httpx.Response(
         200, json={"order_id": "order1", "approve_url": APPROVE_URL, "receipt": TOKEN})})
-    result = asyncio.run(api.walkin().back(CAMPAIGN_ID))
+    result = asyncio.run(api.threshold().back(CAMPAIGN_ID))
     assert f"Private receipt: {BASE}/r/{TOKEN}" in result
     assert "Anyone with it can check or withdraw this pledge" in result
     assert TOKEN not in APPROVE_URL
@@ -42,10 +42,10 @@ def test_receipt_tools_read_and_withdraw_only_the_pledge_requested(monkeypatch):
         )))
 
     api = founders(**{PATH: endpoint, PATH + "/withdraw": endpoint})
-    monkeypatch.setattr(walkin_mcp, "connect", api.walkin)
+    monkeypatch.setattr(threshold_mcp, "connect", api.threshold)
 
     async def run():
-        async with create_connected_server_and_client_session(walkin_mcp.mcp) as client:
+        async with create_connected_server_and_client_session(threshold_mcp.mcp) as client:
             tools = {tool.name: tool for tool in (await client.list_tools()).tools}
             status = await client.call_tool("pledge_status", {"receipt": f"{BASE}/r/{TOKEN}"})
             withdrawn = await client.call_tool("withdraw_pledge", {"receipt": TOKEN})
@@ -65,21 +65,21 @@ def test_receipt_tools_read_and_withdraw_only_the_pledge_requested(monkeypatch):
 @pytest.mark.parametrize("value", ["", "../campaigns/another/withdraw", "x" * 31, "x" * 33])
 def test_invalid_receipts_never_make_a_request(value):
     api = founders()
-    with pytest.raises(walkin_mcp.WalkinError, match="whole private receipt"):
-        asyncio.run(api.walkin().receipt(value, withdraw=True))
+    with pytest.raises(threshold_mcp.ThresholdError, match="whole private receipt"):
+        asyncio.run(api.threshold().receipt(value, withdraw=True))
     assert api.requests == []
 
 
 def test_receipt_error_messages_do_not_repeat_the_private_token():
     api = founders(**{PATH: lambda request: httpx.Response(418)})
-    with pytest.raises(walkin_mcp.WalkinError) as failure:
-        asyncio.run(api.walkin().receipt(TOKEN))
+    with pytest.raises(threshold_mcp.ThresholdError) as failure:
+        asyncio.run(api.threshold().receipt(TOKEN))
     assert TOKEN not in str(failure.value)
     assert "/api/receipts/***" in str(failure.value)
 
 
 def test_an_owner_s_claim_is_labelled_as_the_owner_s_not_verified():
     page = campaign(evidence=["We would like a cafe on this block."])
-    result = walkin_mcp.campaign_summary(page, CAMPAIGN_ID, founders().walkin(), {})
-    assert "**Why here**, in the owner's words (not verified by Walk-in):" in result
+    result = threshold_mcp.campaign_summary(page, CAMPAIGN_ID, founders().threshold(), {})
+    assert "**Why here**, in the owner's words (not verified by Threshold):" in result
     assert "- We would like a cafe on this block." in result.splitlines()

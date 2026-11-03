@@ -233,6 +233,51 @@ def test_a_place_the_address_search_cannot_find_is_said_plainly():
         assert answer["trace"] == [{"tool": "find_campaigns", "ok": False, "summary": "Searched for “Atlantis”: could not find that place"}]
 
 
+class Several:
+    """An address search that finds several places for one name, as it does for Williamsburg."""
+
+    def __init__(self, *hits: tuple[str, float, float]) -> None:
+        self.hits = [{"label": label, "lat": lat, "lon": lon} for label, lat, lon in hits]
+
+    async def search(self, query: str) -> list[dict]:
+        return self.hits
+
+    async def aclose(self) -> None:
+        pass
+
+
+FAR = (SITE[0] + 5, SITE[1] + 5)  # about 700 km from the campaigns: more than any search reaches
+
+
+def test_a_name_that_names_several_places_is_read_as_the_one_with_a_campaign_near_it():
+    with site() as s:
+        bakery = open_campaign(s, "Crumb Theory", "bakery")
+        s.client.app.state.services.geocoder = Several(("Springfield, Elsewhere", *FAR), ("Springfield, Testville", *SITE))
+        found = Chat(s).say("a bakery near Springfield")
+        assert found["shown"] == [bakery]
+        assert found["reply"].startswith("I found one open campaign near Springfield, Testville: Crumb Theory.")
+        assert found["trace"][0]["summary"] == "Searched open campaigns near Springfield, Testville for bakery: 1 found"
+
+
+def test_the_first_place_with_a_campaign_wins_over_a_later_one():
+    with site() as s:
+        bakery = open_campaign(s, "Crumb Theory", "bakery")
+        s.client.app.state.services.geocoder = Several(("Springfield, Testville", *SITE), ("Springfield, Elsewhere", *FAR))
+        found = Chat(s).say("a bakery near Springfield")
+        assert found["shown"] == [bakery] and "near Springfield, Testville" in found["reply"]
+
+
+def test_a_name_with_no_campaign_near_any_place_is_answered_for_its_first_place():
+    with site() as s:
+        open_campaign(s, "Crumb Theory", "bakery")
+        s.client.app.state.services.geocoder = Several(
+            ("Springfield, Elsewhere", *FAR), ("Springfield, Faraway", FAR[0] + 3, FAR[1] + 3))
+        answer = Chat(s).say("a bakery near Springfield")
+        assert answer["cards"] == [] and answer["asked"] is None
+        assert answer["reply"] == ("I could not find an open campaign near Springfield, Elsewhere that fits. Try a wider area or "
+                                   "another kind of place.")
+
+
 def test_a_budget_in_the_message_filters_the_campaigns():
     with site() as s:
         open_campaign(s, "Crumb Theory", "bakery", amount="10.00")

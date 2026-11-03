@@ -30,6 +30,7 @@ import httpx
 from fastapi import Request
 
 from . import intent
+from .geocode import short_place
 from .intent import squash
 from .llm import compact_json
 from .payments.records import CURRENCY, KINDS
@@ -42,6 +43,8 @@ MAX_STEPS = 5
 MODEL_SECONDS = 24.0
 REPLY_CHARS = 700
 SEEN_MAX = 6
+# How many of the address search's matches for a place name are tried, in order, for one with an open campaign near it.
+PLACES_TRIED = 3
 CAMPAIGN = re.compile(r"^[A-Za-z0-9_-]{1,32}$")
 PAYPAL_HOSTS = frozenset({"www.paypal.com", "www.sandbox.paypal.com"})
 
@@ -263,27 +266,35 @@ class Tools:
         km = min(max(number_arg(args.get("km"), 10.0) or 10.0, 0.5), 100.0)
         most = number_arg(args.get("max_amount"), None)
         self.searched = True
-        params: dict[str, Any] = {}
-        label = None
+        # A name like Williamsburg names several places; the first with an open campaign near it is the one meant, and the
+        # answer says which place it is.
+        spots: list[tuple[str | None, dict[str, Any]]] = [(None, {})]
         if len(place) >= 3:
             status, hits = await self.api.get("/api/geocode", {"q": place})
-            if status != 200 or not isinstance(hits, list) or not hits or not isinstance(hits[0], dict):
+            matches = [hit for hit in hits[:PLACES_TRIED] if isinstance(hit, dict)] if status == 200 and isinstance(hits, list) else []
+            if not matches:
                 found = "could not find that place" if status == 200 else "the address search is unavailable"
                 self.place_missing = place if status == 200 else None
                 self.note("find_campaigns", f"Searched for “{place}”: {found}", ok=False)
                 return {"error": f"The address search {'found nothing for' if status == 200 else 'is unavailable for'} {place}."}
-            label = squash(hits[0].get("label"), 120)
-            params = {"lat": hits[0]["lat"], "lon": hits[0]["lon"], "km": km}
-            self.place = label
-        status, body = await self.api.get("/api/campaigns", params)
-        if status != 200 or not isinstance(body, dict):
-            self.note("find_campaigns", "The list of campaigns is unavailable", ok=False)
-            return {"error": "The list of open campaigns is unavailable right now."}
-        items = [item for item in body.get("campaigns") or [] if isinstance(item, dict) and CAMPAIGN.match(str(item.get("id")))]
-        if kind:
-            items = [item for item in items if item.get("kind") == kind]
-        if most is not None:
-            items = [item for item in items if at_most(item.get("amount"), most)]
+            spots = [(short_place(hit.get("label")) or squash(hit.get("label"), 120), {"lat": hit["lat"], "lon": hit["lon"], "km": km})
+                     for hit in matches]
+        label, items = spots[0][0], []
+        for index, (name, params) in enumerate(spots):
+            status, body = await self.api.get("/api/campaigns", params)
+            if status != 200 or not isinstance(body, dict):
+                self.note("find_campaigns", "The list of campaigns is unavailable", ok=False)
+                return {"error": "The list of open campaigns is unavailable right now."}
+            found_here = [item for item in body.get("campaigns") or [] if isinstance(item, dict) and CAMPAIGN.match(str(item.get("id")))]
+            if kind:
+                found_here = [item for item in found_here if item.get("kind") == kind]
+            if most is not None:
+                found_here = [item for item in found_here if at_most(item.get("amount"), most)]
+            if index == 0 or found_here:
+                label, items = name, found_here
+            if found_here:
+                break
+        self.place = label
         items = items[:SEEN_MAX]
         for item in items:
             self.show(card_of(item))
@@ -398,7 +409,7 @@ def search_words(tools: Tools) -> tuple[str, str | None]:
     found = [tools.known[campaign_id] for campaign_id in tools.displayed]
     near = f" near {tools.place}" if tools.place else ""
     if not tools.searched and not found:
-        return "Tell me what you are looking for and where, for example a bakery near Williamsburg.", None
+        return "Tell me what you are looking for and where, for example a bakery near Williamsburg, Brooklyn.", None
     if tools.place_missing:
         return (f"I could not find “{tools.place_missing}”. Try a street, a neighborhood or a city.", None)
     if not found:

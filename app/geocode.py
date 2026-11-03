@@ -3,6 +3,7 @@ policy and cached."""
 from __future__ import annotations
 
 import asyncio
+import re
 import time
 from collections import OrderedDict
 from collections.abc import Awaitable, Callable
@@ -17,6 +18,18 @@ STREET_KEYS = ("road", "pedestrian", "square", "footway", "path", "place")
 TOWN_KEYS = ("neighbourhood", "quarter", "suburb", "hamlet", "village", "town", "city")
 LABEL_MAX = 160  # an address label is at most this long
 PLACES_KEPT = 500
+# Parts of a search match's full line that say little to a reader: administrative areas.
+ADMINISTRATIVE = re.compile(r"\b(?:county|township|parish|borough|governorate|prefecture|district|municipality)\b", re.I)
+
+
+def short_place(full: str | None) -> str:
+    """A search match's full line as a few words for a sentence: 'Williamsburg, Brooklyn, Kings County, New York, 11249,
+    United States' is 'Williamsburg, Brooklyn'. Without the country, the postcode and the counties, the first two parts."""
+    parts = [part.strip() for part in (full or "").split(",") if part.strip()]
+    if len(parts) > 2:
+        parts = parts[:-1]  # the country
+    named = [part for part in parts if not any(char.isdigit() for char in part) and not ADMINISTRATIVE.search(part)]
+    return ", ".join((named or parts)[:2])
 
 
 def address_of(data: dict) -> dict | None:
@@ -74,7 +87,9 @@ class Geocoder:
         key = query.strip().lower()
         if key in self._cache:
             return self._cache[key]
-        response = await self._get("/search", {"q": query, "format": "jsonv2", "limit": 5})
+        response = await self._get(
+            "/search", {"q": query, "format": "jsonv2", "limit": 5}, headers={"Accept-Language": "en"},
+        )
         response.raise_for_status()
         results = [
             {"label": item.get("display_name"), "lat": float(item["lat"]), "lon": float(item["lon"])}

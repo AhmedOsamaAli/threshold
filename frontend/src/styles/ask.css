@@ -43,6 +43,10 @@ select.field-input, textarea.field-input { font-family: inherit; }
 .ask-refusal { color: var(--red); font-size: 11px; }
 .ask-thinking { margin: 0 0 14px; color: var(--ash); }
 .ask-suggestions { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 18px; padding: 0; list-style: none; }
+/* An example can be longer than a narrow screen is wide: it wraps inside its pill instead of pushing the page sideways, and
+   evenly, so that no line is left with a word on its own. */
+.ask-suggestions li { min-width: 0; max-width: 100%; }
+.ask-suggestions .ghost { max-width: 100%; white-space: normal; text-align: left; text-wrap: balance; }
 .ask-composer { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: end; }
 .ask-composer textarea { min-height: 56px; resize: vertical; font: inherit; }
 

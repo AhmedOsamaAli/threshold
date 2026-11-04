@@ -188,7 +188,11 @@ function AccountControl({
           else show("panel");
         }}
       >
-        Sign in
+        <svg className="account-signin-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <circle cx="12" cy="8.4" r="3.7" />
+          <path d="M4.8 20.2c.9-3.8 3.6-5.7 7.2-5.7s6.3 1.9 7.2 5.7" />
+        </svg>
+        <span className="account-signin-text">Sign in</span>
       </button>
       {open ? (
         <div

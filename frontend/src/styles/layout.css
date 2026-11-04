@@ -54,14 +54,16 @@
 /* Hover is for pointers that have it: after a tap, a phone keeps :hover until the next tap. */
 @media (hover: hover) { .bar-tab:hover { background: var(--bone); } }
 .bar-tab[aria-current="page"] { background: var(--yellow); color: var(--on-yellow); box-shadow: inset 0 0 0 1px var(--on-yellow); }
-/* "Start a campaign" is something to do, not a place to be, so it stays an outlined pill beside the tabs; filled on its own page. */
+/* "Start a campaign" is something to do, not a place to be, so it is a button beside the tabs, and the one filled in blue: the
+   main thing an owner can do must not be missed. It goes dark on its own page and when pointed at. */
 .bar-start {
   display: inline-flex; align-items: center; gap: .55em; min-height: 32px; padding: 0 12px;
-  border: 1px solid var(--ink); border-radius: 999px; color: var(--ink); text-decoration: none; white-space: nowrap;
-  transition: color .3s, background .3s, border-color .3s;
+  border: 1px solid var(--blue-fill); border-radius: 999px; background: var(--blue-fill); color: var(--on-blue);
+  text-decoration: none; white-space: nowrap; transition: color .3s, background .3s, border-color .3s;
 }
-.bar-start:hover { background: var(--ink); color: var(--on-ink); }
-.bar-start[aria-current="page"] { background: var(--blue-fill); border-color: var(--blue-fill); color: var(--on-blue); }
+/* Hover is for pointers that have it: after a tap, a phone keeps :hover until the next tap. */
+@media (hover: hover) { .bar-start:hover { background: var(--ink); border-color: var(--ink); color: var(--on-ink); } }
+.bar-start[aria-current="page"] { background: var(--ink); border-color: var(--ink); color: var(--on-ink); }
 /* Below 980 px the bar is two rows: the mark and the actions above, the tabs under them, each a third of the width and tall
    enough to press, so Check a spot is on a phone too. --bar-h is the whole bar's height, for what is placed under it. */
 @media (max-width: 980px) {
@@ -76,28 +78,25 @@
   .bar-tab[aria-current="page"] { box-shadow: inset 0 -3px 0 var(--on-yellow); }
   .bar-tab:focus-visible { outline-offset: -3px; }
 }
-/* Phones and the narrowest tablets: the pill says only "Start" (the link is named in full for screen readers either way),
-   and below 520 px the mark keeps its door without its word. */
+/* Phones and the narrowest tablets: the button is as tall as the circles beside it, to press with a thumb, and below 520 px the
+   mark keeps its door without its word. */
 @media (max-width: 600px) {
-  .bar-start-more { display: none; }
+  .bar-start { min-height: 36px; }
 }
 @media (max-width: 520px) {
   .bar .mark-word { display: none; }
 }
-/* Phones: the mark, Start, the account and the theme share the top row; the tabs' words are a little smaller. */
+/* Phones: the mark, Start, the account and the theme share the top row; the words are a little smaller. */
 @media (max-width: 420px) {
   .bar-tab { font-size: 10.5px; letter-spacing: .03em; }
-  .bar-start { padding: 0 9px; min-height: 30px; }
+  .bar-start { padding: 0 10px; font-size: 10.5px; letter-spacing: .03em; }
 }
 /* The narrowest phones (320 px): everything a little tighter, so nothing in the bar touches. */
 @media (max-width: 340px) {
   .bar { column-gap: 8px; }
   .bar .bar-end { gap: 6px; }
-  .bar-end .account-signin { padding: 0 9px; }
   .bar-tab { letter-spacing: 0; font-size: 10px; gap: 5px; }
   .bar-tab svg { width: 15px; height: 15px; }
-  .bar-start { padding: 0 5px; }
-  .theme-toggle { width: 32px; height: 32px; }
 }
 .theme-toggle {
   flex: none; display: grid; place-items: center; width: 36px; height: 36px;

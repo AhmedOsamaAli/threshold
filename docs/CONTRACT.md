@@ -325,8 +325,9 @@ cannot load (no WebGL, no reach to its tiles) the page shows the plain plan of t
   the model): "PayPal holds $25. You are charged only if 40 neighbors join by Nov 30; otherwise the hold is released."
   Actual participation perks lead.
 - `/me` lists the user's campaigns. The top bar has three tabs, Browse, Ask and Check a spot (the page on show is filled with
-  the highlighter; below 980 px they are a row of their own under the bar, so a phone has all three), and a Start a campaign
-  button beside them.
+  the highlighter; below 980 px they are a row of their own under the bar, so a phone has all three), and a blue Start a
+  campaign button beside them, which says its whole phrase on every screen (below 420 px "Sign in" becomes a person icon, still
+  named "Sign in" for screen readers, to make room for it).
 - `/r/{receipt}` is a pledge's private receipt page; `/privacy` says what is kept and for how long.
 
 ## Schema and release rollback

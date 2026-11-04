@@ -37,6 +37,8 @@
   transition: background .35s var(--ease), color .35s;
 }
 .account-signin:hover, .account-signin[aria-expanded="true"] { background: var(--ink); color: var(--on-ink); }
+/* A person, drawn with the bar's own pen, for the screens too narrow for the words (below). */
+.account-signin-icon { display: none; width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .avatar {
   display: grid; place-items: center; width: 36px; height: 36px; padding: 0;
   border: 1px solid var(--ink); border-radius: 50%;
@@ -77,9 +79,16 @@
 @media (max-width: 560px) {
   .account-pop, .account-panel { position: fixed; top: calc(var(--bar-h) + 10px); left: 12px; right: 12px; width: auto; }
 }
+/* Below 420 px "Sign in" is a person in a circle, like the moon beside it, so that the Start button can say its whole phrase.
+   The words stay for screen readers. */
 @media (max-width: 420px) {
-  .bar-end { gap: 10px; }
-  .account-signin { padding: 0 12px; }
+  .bar-end { gap: 8px; }
+  .account-signin { display: grid; place-items: center; width: 36px; padding: 0; }
+  .account-signin-icon { display: block; }
+  .account-signin-text {
+    position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden;
+    clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+  }
 }
 
 /* ---------- Signing in ---------- */

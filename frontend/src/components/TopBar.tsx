@@ -61,12 +61,10 @@ export function TopBar({ route, theme, onToggleTheme }: TopBarProps) {
         <Link
           className="bar-start mono"
           href={START_CAMPAIGN_URL}
-          aria-label="Start a campaign"
           aria-current={route.page === "start-campaign" ? "page" : undefined}
           title="Open something? Let the neighbors back it"
         >
-          <span>Start</span>
-          <span className="bar-start-more"> a campaign</span>
+          Start a campaign
         </Link>
         <AccountMenu />
         <ThemeToggle theme={theme} onToggle={onToggleTheme} />

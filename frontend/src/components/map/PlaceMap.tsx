@@ -260,13 +260,23 @@ export function PlaceMap({
     if (!current) return;
     for (const { marker } of current.markers) marker.remove();
     current.markers = pins.map((pin) => {
+      // MapLibre moves this button with its own transform, so only the face inside it may grow on hover (see map.css).
       const element = document.createElement("button");
       element.type = "button";
       element.className = cx("mk", pin.label.length > 2 && "pill", pin.id === activeNow.current && "on");
-      element.textContent = pin.label;
+      const face = document.createElement("span");
+      face.className = "mk-face";
+      face.textContent = pin.label;
+      element.append(face);
       element.setAttribute("aria-label", pin.title);
-      element.addEventListener("mouseenter", () => calls.current.onPoint?.(pin.id, "pointer"));
-      element.addEventListener("mouseleave", () => calls.current.onPoint?.(null, "pointer"));
+      // Pointer events, like the card laid over the map, so that a card that opens under a resting pointer is entered
+      // after the pin is left, never before; a finger only presses, and the press opens the card.
+      element.addEventListener("pointerenter", (event) => {
+        if (event.pointerType === "mouse") calls.current.onPoint?.(pin.id, "pointer");
+      });
+      element.addEventListener("pointerleave", (event) => {
+        if (event.pointerType === "mouse") calls.current.onPoint?.(null, "pointer");
+      });
       element.addEventListener("focus", () => calls.current.onPoint?.(pin.id, "focus"));
       element.addEventListener("blur", () => calls.current.onPoint?.(null, "focus"));
       element.addEventListener("click", (event) => {

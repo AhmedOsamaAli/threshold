@@ -1,11 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import type { CampaignCard } from "../../api/founders";
 import { moneyText, timeLeft } from "../../lib/founders";
 import { Link } from "../Link";
+import { useHold } from "../map/hoverHold";
 import { PlaceMap, type MapPin } from "../map/PlaceMap";
-
-/** How long the pointer may be between a pin and its card before the card goes. */
-const LEAVE_MS = 220;
 
 /** The pins of the open campaigns: each says its pledge, as a price tag on a map does, and reads out where and how far along. */
 export function campaignPins(campaigns: readonly CampaignCard[]): MapPin[] {
@@ -76,29 +74,24 @@ export function CampaignsMap({ campaigns, now, lit, onLit }: {
   const pins = useMemo(() => campaignPins(campaigns), [campaigns]);
   const [previewed, setPreviewed] = useState<string | null>(null);
   const [open, setOpen] = useState<string | null>(null);
-  const leaving = useRef<number | undefined>(undefined);
-  useEffect(
-    () => () => {
-      window.clearTimeout(leaving.current);
-    },
-    [],
-  );
+  const hold = useHold(() => {
+    onLit(null);
+    setPreviewed(null);
+  });
 
   function point(id: string | null, how: "pointer" | "focus") {
-    window.clearTimeout(leaving.current);
     if (id !== null) {
+      hold.enter();
       onLit(id);
       if (how === "pointer") setPreviewed(id);
       return;
     }
     if (how === "focus") {
+      hold.cancel();
       onLit(null);
       return;
     }
-    leaving.current = window.setTimeout(() => {
-      onLit(null);
-      setPreviewed(null);
-    }, LEAVE_MS);
+    hold.leave();
   }
 
   const campaign = campaigns.find((each) => each.id === (open ?? previewed));
@@ -111,7 +104,7 @@ export function CampaignsMap({ campaigns, now, lit, onLit }: {
       active={open ?? lit}
       onPoint={point}
       onSelect={(id) => {
-        window.clearTimeout(leaving.current);
+        hold.cancel();
         setPreviewed(null);
         setOpen(id);
       }}
@@ -125,10 +118,10 @@ export function CampaignsMap({ campaigns, now, lit, onLit }: {
           campaign={campaign}
           now={now}
           onPointerEnter={() => {
-            window.clearTimeout(leaving.current);
+            hold.enter();
           }}
           onPointerLeave={() => {
-            point(null, "pointer");
+            hold.leave();
           }}
           onClose={() => {
             setOpen(null);

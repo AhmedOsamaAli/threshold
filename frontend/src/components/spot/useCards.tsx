@@ -1,9 +1,7 @@
 import { useEffect, useEffectEvent, useRef, useState, type ReactNode } from "react";
 import type { SpotNeighbor } from "../../api/spot";
+import { useHold } from "../map/hoverHold";
 import { PlaceCard } from "./PlaceCard";
-
-/** How long the pointer may be between a pin and its card before the card goes. */
-const LEAVE_MS = 220;
 
 export interface Cards {
   /** The pin to light: the open card's, else the one pointed at or focused. */
@@ -33,34 +31,27 @@ export function useCards(places: readonly SpotNeighbor[]): Cards {
   const [open, setOpen] = useState<{ id: string; byKeyboard: boolean } | null>(null);
   const [show, setShow] = useState<{ id: string } | null>(null);
   const rows = useRef(new Map<string, HTMLElement>());
-  const leaving = useRef<number | undefined>(undefined);
-
-  useEffect(
-    () => () => {
-      window.clearTimeout(leaving.current);
-    },
-    [],
-  );
+  const hold = useHold(() => {
+    setLit(null);
+    setPreviewed(null);
+  });
 
   function point(id: string | null, how: "pointer" | "focus") {
     if (how === "focus") {
       setLit(id);
       return;
     }
-    window.clearTimeout(leaving.current);
     if (id !== null) {
+      hold.enter();
       setLit(id);
       setPreviewed(id);
       return;
     }
-    leaving.current = window.setTimeout(() => {
-      setLit(null);
-      setPreviewed(null);
-    }, LEAVE_MS);
+    hold.leave();
   }
 
   function select(id: string, byKeyboard: boolean) {
-    window.clearTimeout(leaving.current);
+    hold.cancel();
     setPreviewed(null);
     setLit(id);
     setOpen({ id, byKeyboard });
@@ -101,10 +92,10 @@ export function useCards(places: readonly SpotNeighbor[]): Cards {
           select(shownId, false);
         }}
         onPointerEnter={() => {
-          point(shownId, "pointer");
+          hold.enter();
         }}
         onPointerLeave={() => {
-          point(null, "pointer");
+          hold.leave();
         }}
       />
     ) : null;

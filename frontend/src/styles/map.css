@@ -14,17 +14,25 @@
 .place-map .maplibregl-ctrl-group { border-radius: 10px; box-shadow: var(--shadow-s); }
 .place-map .maplibregl-cooperative-gesture-screen { font: 500 15px/1.4 var(--f-sans); }
 
-/* A pin is a button on the map: a number, or a short text such as a price. MapLibre places it with its own transform. */
-.mk {
+/* A pin is a button on the map: a number, or a short text such as a price. MapLibre places the button with its own transform
+   (from the map's corner), so nothing here may scale, move or turn the button itself: a `scale` on it is applied after that
+   translate, about the corner, and throws the pin away from the pointer, which un-hovers it, so it comes back, and so on, a
+   flicker. What is drawn, and what grows on hover, is the face inside it, which grows about its own centre. */
+.mk { display: block; }
+.mk[hidden] { display: none; }
+.mk:hover, .mk.on { z-index: 2; }
+.mk:focus-visible { outline: none; }
+.mk-face {
   box-sizing: border-box; display: grid; place-items: center; min-width: 28px; height: 28px; padding: 0 2px;
   border: 2px solid #fff; border-radius: 14px; background: var(--blue-fill); color: var(--on-blue);
   font: 700 13px/1 var(--f-sans); box-shadow: 0 1px 4px rgba(0, 0, 0, .45);
   transition: scale .14s var(--ease), background-color .14s;
 }
-.mk.pill { padding: 0 10px; font-size: 12.5px; }
-.mk[hidden] { display: none; }
-.mk:hover, .mk.on { background: var(--ink); color: var(--on-ink); scale: 1.2; z-index: 2; }
-.mk:focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
+.mk.pill .mk-face { padding: 0 10px; font-size: 12.5px; }
+.mk.on .mk-face { background: var(--ink); color: var(--on-ink); scale: 1.2; }
+/* Hover is for pointers that have it: after a tap, a phone keeps :hover on the pin until the next tap. */
+@media (hover: hover) { .mk:hover .mk-face { background: var(--ink); color: var(--on-ink); scale: 1.2; } }
+.mk:focus-visible .mk-face { outline: 3px solid var(--yellow); outline-offset: 2px; }
 .mk-here {
   position: relative; width: 30px; height: 30px; border: 2px solid #1d1d1f; border-radius: 50%; background: var(--yellow);
   box-shadow: 0 2px 6px rgba(0, 0, 0, .35);
@@ -32,7 +40,7 @@
 .mk-here::before, .mk-here::after { content: ""; position: absolute; background: #1d1d1f; }
 .mk-here::before { left: 50%; top: 5px; bottom: 5px; width: 2px; margin-left: -1px; }
 .mk-here::after { top: 50%; left: 5px; right: 5px; height: 2px; margin-top: -1px; }
-@media (prefers-reduced-motion: reduce) { .mk { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .mk-face { transition: none; } }
 
 /* A place's number, drawn like its pin. */
 .pin-mark {

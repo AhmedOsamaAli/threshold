@@ -50,6 +50,12 @@ describe("a campaign's tile", () => {
     expect(renderToStaticMarkup(<CampaignTile campaign={campaign({ distance_km: 2.4 })} now={NOW} />)).toContain("2.4 km away");
   });
 
+  it("sits in a wrapper that stays put, so that its lift on hover never takes it out from under the pointer", () => {
+    // The card lifts 3px when pointed at. Were the hover on the card itself, a pointer on its bottom edge would be left outside
+    // it, un-hover it, and the card would drop and lift again, flickering for as long as the pointer rested there.
+    expect(renderToStaticMarkup(<CampaignTile campaign={campaign()} now={NOW} />)).toMatch(/^<div class="fd-tile"><article class="fd-card"/);
+  });
+
   it("says closing once the deadline has passed", () => {
     expect(renderToStaticMarkup(<CampaignTile campaign={campaign({ deadline: "2026-11-01T00:00:00Z" })} now={NOW} />)).toContain("Closing");
   });

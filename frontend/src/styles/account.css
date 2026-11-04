@@ -27,7 +27,6 @@
 .text-link:hover span[aria-hidden] { transform: translateX(4px); }
 
 /* ---------- The account control in the top bar ---------- */
-.bar-gap { min-width: 0; }
 .account { position: relative; display: flex; align-items: center; min-width: 36px; min-height: 36px; }
 /* Shown signed out before the server has said who is signed in: eased in, so an answer that comes quickly with an
    account swaps in the avatar before "Sign in" was ever seen. */
@@ -74,9 +73,6 @@
 }
 .account-item:hover, .account-item:focus-visible { outline: none; background: var(--yellow); color: var(--on-yellow); }
 .account-item[aria-disabled="true"] { opacity: .5; cursor: progress; }
-@media (max-width: 980px) {
-  .bar-gap { display: none; }
-}
 /* On a phone the popup spans the screen under the bar instead of hanging off the control's edge. */
 @media (max-width: 560px) {
   .account-pop, .account-panel { position: fixed; top: calc(var(--bar-h) + 10px); left: 12px; right: 12px; width: auto; }

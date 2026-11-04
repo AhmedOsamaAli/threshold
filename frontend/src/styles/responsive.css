@@ -1,9 +1,3 @@
-/* Below 980px the bar has two columns: the mark, then the links and controls on the right. */
-@media (max-width: 980px) {
-  .bar { grid-template-columns: auto minmax(0, 1fr); }
-  .bar-end { justify-self: end; }
-}
-
 @media (max-width: 420px) {
   .mark-word { font-size: 21px; }
 }

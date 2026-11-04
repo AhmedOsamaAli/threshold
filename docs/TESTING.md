@@ -37,7 +37,9 @@ the campaign, it is collected and paid out, and a second campaign is cancelled a
 
 ## 1. Look around
 
-No login needed.
+No login needed. The bar at the top has the product's three places as tabs, **Browse**, **Ask** and **Check a spot**; the tab of
+the page you are on is filled in yellow. (Below 980 px wide, so on a phone, the tabs are a row of their own under the logo.)
+**Start a campaign** is a button beside them, not a tab.
 
 1. **Home** (`/`) says what Threshold is and shows it: a short animation of the money moving (pledges into PayPal's hold, then
    collected and paid when the goal is met, or released when it is missed; **Pause** stops it, and it stands still for anyone

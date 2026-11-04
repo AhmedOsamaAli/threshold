@@ -137,7 +137,7 @@
 .privacy-list > div { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 6px 22px; padding: 16px 0; border-bottom: var(--hair); }
 .privacy-list dt { font: 400 21px/1.25 var(--f-serif); letter-spacing: -.01em; }
 .privacy-list dd { max-width: 62ch; font-size: 16px; line-height: 1.55; color: var(--text-2); }
-.privacy-plain { max-width: 62ch; font: 400 21px/1.42 var(--f-serif); color: var(--text-2); }
+.privacy-plain { max-width: 62ch; font: 400 21px/1.42 var(--f-serif); color: var(--text-2); overflow-wrap: anywhere; }
 .privacy-back { margin-top: 24px; }
 @container page (max-width: 640px) {
   .privacy-list > div { grid-template-columns: minmax(0, 1fr); }

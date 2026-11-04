@@ -4,7 +4,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-STYLES = Path(__file__).resolve().parents[1] / "frontend" / "src" / "styles"
+SRC = Path(__file__).resolve().parents[1] / "frontend" / "src"
+STYLES = SRC / "styles"
 
 
 def rule(css: str, selector: str) -> str:
@@ -23,3 +24,13 @@ def test_the_assistants_examples_wrap_inside_their_pill_on_a_narrow_screen():
     assert "white-space: normal" in button and "max-width: 100%" in button
     item = rule(css, ".ask-suggestions li")
     assert "min-width: 0" in item and "max-width: 100%" in item
+
+
+def test_the_privacy_notes_contact_link_may_break_instead_of_widening_the_page():
+    """The link to the issues page is 41 characters with no space to break at: at 21 px it is 405 px wide, so the Privacy page
+    scrolled sideways on every phone (by 18 px at 412 and 110 px at 320). Long strings in that paragraph may break anywhere, but
+    the link itself offers a break after each slash so it splits at a slash rather than in the middle of "threshold"."""
+    css = (STYLES / "account.css").read_text(encoding="utf-8")
+    assert "overflow-wrap: anywhere" in rule(css, ".privacy-plain")
+    page = (SRC / "pages" / "PrivacyPage.tsx").read_text(encoding="utf-8")
+    assert "github.com/<wbr />AhmedOsamaAli/<wbr />threshold/<wbr />issues" in page

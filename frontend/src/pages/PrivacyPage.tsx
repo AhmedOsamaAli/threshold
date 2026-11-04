@@ -171,7 +171,7 @@ export function PrivacyPage() {
         <p className="privacy-plain">
           For a question about your data, or a request about it, open an issue at{" "}
           <a className="text-link" href={ISSUES} target="_blank" rel="noopener">
-            github.com/AhmedOsamaAli/threshold/issues
+            github.com/<wbr />AhmedOsamaAli/<wbr />threshold/<wbr />issues
           </a>
           . Issues are public, so please leave personal details out of them.
         </p>
